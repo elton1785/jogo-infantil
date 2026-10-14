@@ -276,6 +276,9 @@
         const barra = document.createElement("div");
         barra.className = "domino-pontas";
         const minhaVez = vez === 0 && !acabou;
+        // Pontas onde dá para jogar agora: as da peça tocada, ou (com dicas) as de qualquer peça da mão
+        const jogaveis = new Set(!minhaVez ? [] : selecionada ? ladosQueCabem(selecionada)
+          : dicas ? voce.mao.flatMap(ladosQueCabem) : []);
         const botaoPonta = lado => {
           const b = document.createElement("button");
           b.className = "ponta-alvo";
@@ -294,6 +297,8 @@
             if (ganha) { const g = document.createElement("span"); g.className = "ganha"; g.textContent = `+${ganha}`; b.appendChild(g); }
           }
           b.disabled = !minhaVez;
+          // Na vez da criança, as pontas onde não dá para jogar ficam apagadas
+          if (minhaVez && (selecionada || dicas) && !jogaveis.has(lado)) b.classList.add("apagada");
           b.addEventListener("click", () => { if (selecionada) jogar(selecionada, lado, null); });
           return b;
         };
@@ -345,13 +350,13 @@
           meio.classList.add("sobre-mesa");
           meioTela.append(colEsq, mesaEl, colDir);
           tela.append(topo, meioTela, mao);
-          desenharMesa(mesaEl);
+          desenharMesa(mesaEl, jogaveis);
           mesaEl.appendChild(meio);
         } else {
           // Em pé: fileira embaixo da mesa: ⬅️ ⬆️ [soma] ⬇️ ➡️
           barra.append(...deLado(["esq", "cima"]), meio, ...deLado(["baixo", "dir", "centro"]));
           tela.append(topo, mesaEl, barra, mao);
-          desenharMesa(mesaEl);
+          desenharMesa(mesaEl, jogaveis);
         }
       }
 
@@ -402,7 +407,7 @@
         return rects;
       }
 
-      function desenharMesa(mesaEl) {
+      function desenharMesa(mesaEl, jogaveis) {
         if (!centro) return;
         const W = mesaEl.clientWidth - 12, H = mesaEl.clientHeight - 12;
         let u = Math.min(30, Math.floor(H / 2.2)), rects = null;
@@ -412,7 +417,8 @@
         const minX = Math.min(...rects.map(r => r.x)), maxX = Math.max(...rects.map(r => r.x + r.w));
         const minY = Math.min(...rects.map(r => r.y)), maxY = Math.max(...rects.map(r => r.y + r.h));
         const ox = mesaEl.clientWidth / 2 - (minX + maxX) / 2, oy = mesaEl.clientHeight / 2 - (minY + maxY) / 2;
-        const pontasAtuais = new Set(pontasAbertas().map(l => (bracos[l].length ? ultima(l) : centro)));
+        // Destaca na mesa só as pontas onde dá para jogar agora
+        const pontasAtuais = new Set([...jogaveis].filter(l => l !== "centro").map(l => (bracos[l].length ? ultima(l) : centro)));
         rects.forEach(r => {
           const p = r.peca, emPe = r.h > r.w;
           let el;
@@ -453,7 +459,6 @@
         ultimoPonto = ganhou ? { pontos: ganhou, j: voce } : null;
         if (ganhou) Motor.falar(`${ganhou} pontos!`);
         else if (op.pecas === "figuras") Motor.falar(Motor.maiuscula(nomeValor(lado === "centro" ? p.b : valorPonta(lado))));
-        if (bateuMeta(voce)) return true;
         if (!voce.mao.length) fimRodada(voce);
         else proximaVez(ganhou ? 1600 : 900);
         return true;
@@ -496,7 +501,6 @@
         const ganhou = colocar(j, escolha.p, escolha.lado);
         ultimoPonto = ganhou ? { pontos: ganhou, j } : null;
         if (ganhou) Motor.falar(`${quem(j, true)} fez ${ganhou}!`);
-        if (bateuMeta(j)) return;
         if (!j.mao.length) fimRodada(j);
         else proximaVez(ganhou ? 1600 : 900);
       }
@@ -531,13 +535,6 @@
       }
 
       // ---------- Fim da rodada e da partida ----------
-      // Pontas de 5: chegar na meta no meio da rodada já termina a partida
-      function bateuMeta(j) {
-        if (!cinco || !meta || placar[time(j)] < meta) return false;
-        terminarRodada(j, `${duplas ? nomesTime[time(j)] + " chegaram" : quem(j, true) + " chegou"} a ${meta} pontos!`, 0);
-        return true;
-      }
-
       function fimRodada(bateu) {
         const soma = j => j.mao.reduce((s, p) => s + valorPeca(p), 0);
         let vencedor = bateu, frase;
@@ -553,10 +550,15 @@
           else if (duplas) frase = `O jogo trancou! ${nomesTime[time(vencedor)]} têm menos pontos.`;
           else frase = `O jogo trancou! ${quem(vencedor, true)} tem menos pontos.`;
         }
+        // Batida: ganha os pontos que sobraram na mão dos adversários.
+        // Trancado: ganha a diferença (ex.: ele ficou com 20, eu com 10 → eu ganho 10).
         let pontos = 0;
         if (vencedor) {
-          pontos = jogadores.filter(j => time(j) !== time(vencedor)).reduce((s, j) => s + soma(j), 0);
-          if (cinco) pontos = Math.round(pontos / 5) * 5; // nas pontas de 5, a batida conta de 5 em 5
+          const adversarios = jogadores.filter(j => time(j) !== time(vencedor));
+          const deles = adversarios.reduce((s, j) => s + soma(j), 0);
+          if (bateu) pontos = deles;
+          else if (duplas) pontos = deles - jogadores.filter(j => time(j) === time(vencedor)).reduce((s, j) => s + soma(j), 0);
+          else pontos = deles - adversarios.length * soma(vencedor); // diferença para cada adversário
           placar[time(vencedor)] += pontos;
           daRodada[time(vencedor)] += pontos;
         }
@@ -575,11 +577,11 @@
 
       function telaResultado(vencedor, frase, pontos, novoRecorde) {
         area.innerHTML = "";
-        // Time que ganhou a partida (-1: ninguém ainda / empate). Com meta, ganha quem tiver mais
-        // pontos entre os que chegaram nela.
-        const chegaram = meta ? placar.map((p, i) => [p, i]).filter(([p]) => p >= meta) : [];
+        // Time que ganhou a partida (-1: ninguém ainda / empate). Com meta, a partida acaba no fim
+        // da rodada em que alguém chegou nela, e ganha quem estiver na frente (empatados: mais uma rodada).
+        const maior = Math.max(...placar), sozinho = placar.filter(p => p === maior).length === 1;
         const campeao = meta
-          ? (chegaram.length ? chegaram.reduce((m, x) => (x[0] > m[0] ? x : m))[1] : -1)
+          ? (maior >= meta && sozinho ? placar.indexOf(maior) : -1)
           : cinco ? maiorPlacar() : vencedor ? time(vencedor) : -1;
         const terminou = !meta || campeao >= 0;
         const nos = vencedor && time(vencedor) === 0;
