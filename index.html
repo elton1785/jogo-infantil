@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#7cc6fe">
+<title>Brincar e Aprender</title>
+<meta name="description" content="Jogos educativos para crianças de 1 a 10 anos">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icones/icone-192.png">
+<link rel="apple-touch-icon" href="icones/icone-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+
+<!-- 1. Escolha da idade -->
+<section id="idades" class="tela ativa">
+  <h1 class="titulo">🌈 Brincar e Aprender 🌈</h1>
+  <div class="lista-opcoes" id="lista-idades"></div>
+</section>
+
+<!-- 2. Jogos da faixa escolhida -->
+<section id="menu" class="tela">
+  <h1 class="titulo" id="titulo-menu"></h1>
+  <div class="lista-opcoes" id="lista-jogos"></div>
+</section>
+
+<!-- 3. O jogo em si -->
+<section id="jogo" class="tela">
+  <div id="area-jogo"></div>
+</section>
+
+<!-- Voltar uma tela (o "voltar" do celular faz o mesmo) -->
+<button class="canto voltar" id="btn-voltar" aria-label="Voltar" style="display:none">🏠</button>
+
+<script src="js/motor.js"></script>
+<script src="js/dados.js"></script>
+<!-- Jogos: cada arquivo registra um jogo em JOGOS (a ordem aqui é a ordem no menu) -->
+<!-- Pequenos -->
+<script src="jogos/animais.js"></script>
+<script src="jogos/bolhas.js"></script>
+<script src="jogos/instrumentos.js"></script>
+<script src="jogos/esconde.js"></script>
+<script src="jogos/vocabulario.js"></script>
+<script src="jogos/cores.js"></script>
+<script src="jogos/formas.js"></script>
+<script src="jogos/tamanhos.js"></script>
+<script src="jogos/memoria.js"></script>
+<script src="jogos/sombras.js"></script>
+<!-- Pintura -->
+<script src="jogos/pintura.js"></script>
+<!-- Arrastar -->
+<script src="jogos/arrastar.js"></script>
+<script src="jogos/quebracabeca.js"></script>
+<!-- Leitura -->
+<script src="jogos/vogais.js"></script>
+<script src="jogos/letras.js"></script>
+<script src="jogos/familias.js"></script>
+<script src="jogos/leitura.js"></script>
+<script src="jogos/silabas.js"></script>
+<script src="jogos/ler.js"></script>
+<script src="jogos/frases.js"></script>
+<script src="jogos/ortografia.js"></script>
+<script src="jogos/historias.js"></script>
+<!-- Matemática -->
+<script src="jogos/contar.js"></script>
+<script src="jogos/sequencias.js"></script>
+<script src="jogos/ordenar.js"></script>
+<script src="jogos/contas.js"></script>
+<script src="jogos/tabuada.js"></script>
+<script src="jogos/dinheiro.js"></script>
+<script src="jogos/fracoes.js"></script>
+<!-- Conhecimentos -->
+<script src="jogos/brasil.js"></script>
+<!-- App por último: monta os menus com os jogos registrados -->
+<script src="js/app.js"></script>
+</body>
+</html>

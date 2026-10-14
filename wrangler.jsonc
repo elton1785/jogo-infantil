@@ -1,0 +1,9 @@
+// Configuração da Cloudflare: o site é 100% estático (sem back-end).
+// `npx wrangler deploy` publica os arquivos desta pasta como "static assets" (gratuito).
+{
+  "name": "jogo-infantil",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./"
+  }
+}
