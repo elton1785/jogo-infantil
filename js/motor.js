@@ -267,6 +267,50 @@ const Motor = (() => {
     return b;
   }
 
+  // ---------- Tela de opções (jogos de mesa) ----------
+  // `opcoes`: [{ chave, titulo, valores: [[valor, rotulo], ...] }]. A escolha fica guardada no
+  // aparelho em `chave`. `antes`: elemento mostrado no topo (ex.: placar). `aoJogar(op)` ao tocar em Jogar.
+  function telaOpcoes(area, { opcoes, padrao, chave, antes, aoJogar }) {
+    let salvo = null;
+    try { salvo = JSON.parse(localStorage.getItem(chave)); } catch (e) { /* sem armazenamento */ }
+    const op = { ...padrao, ...(salvo || {}) };
+    area.innerHTML = "";
+    const caixa = document.createElement("div");
+    caixa.className = "opcoes-jogo";
+    if (antes) caixa.appendChild(antes);
+    opcoes.forEach(o => {
+      const grupo = document.createElement("div");
+      grupo.className = "grupo-op";
+      const t = document.createElement("div");
+      t.className = "titulo-op";
+      t.textContent = o.titulo;
+      const chips = document.createElement("div");
+      chips.className = "chips";
+      o.valores.forEach(([valor, rotulo]) => {
+        const b = document.createElement("button");
+        b.className = "chip" + (op[o.chave] === valor ? " ativo" : "");
+        b.textContent = rotulo;
+        b.addEventListener("click", () => {
+          op[o.chave] = valor;
+          chips.querySelectorAll(".chip").forEach(x => x.classList.toggle("ativo", x === b));
+        });
+        chips.appendChild(b);
+      });
+      grupo.append(t, chips);
+      caixa.appendChild(grupo);
+    });
+    const jogar = document.createElement("button");
+    jogar.className = "chip jogar";
+    jogar.textContent = "▶️ Jogar";
+    jogar.addEventListener("click", () => {
+      try { localStorage.setItem(chave, JSON.stringify(op)); } catch (e) { /* sem armazenamento */ }
+      aoJogar({ ...op });
+    });
+    caixa.appendChild(jogar);
+    area.appendChild(caixa);
+    falar("Escolha como quer jogar e toque em jogar!");
+  }
+
   // ---------- Modos prontos ----------
 
   // Tela com ícones grandes para escolher o modo do jogo (ex.: 👆 Explorar / ❓ Cadê?).
@@ -628,6 +672,6 @@ const Motor = (() => {
     novaSessao, sessaoAtual, depois, falar, tocarSom, nota, ruido, ploc, tim,
     embaralhar, sortear, aleatorio, maiuscula, elogio, ehPequeno, opcoesNumericas,
     animar, comemorar, criarCartao, desenharTexto, botaoCanto, telaFim, arrastavel, comEmoji, comTexto,
-    escolherModo, modoExplorar, modoQuiz, modoCade, modoMontar, modoArrastar, vocabulario,
+    telaOpcoes, escolherModo, modoExplorar, modoQuiz, modoCade, modoMontar, modoArrastar, vocabulario,
   };
 })();

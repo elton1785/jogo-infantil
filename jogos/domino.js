@@ -48,8 +48,6 @@
     "rodada-numeros": "recorde de pontos 🔢", "rodada-figuras": "recorde de peças 🐶" };
   const SIMPLES = { tipo: "normal", pecas: "figuras", jogadores: "2", compra: "sim", meta: "0", nivel: "facil", dicas: "sim" };
 
-  const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } };
-  const ler = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
   // "o Urso" / "O Urso" / "você"
   const quem = (j, maiusc) => j.nome === "Você" ? (maiusc ? "Você" : "você") : `${maiusc ? j.artigo.toUpperCase() : j.artigo} ${j.nome}`;
 
@@ -61,41 +59,11 @@
     iniciar(area, faixa) {
       const id = (faixa && faixa.id) || "6-8";
       if (!PADRAO[id]) return partida(area, SIMPLES);
-      const chave = `domino-opcoes-${id}`;
-      const op = { ...PADRAO[id], ...(ler(chave) || {}) };
-
-      area.innerHTML = "";
-      const caixa = document.createElement("div");
-      caixa.className = "opcoes-jogo";
-      caixa.appendChild(Placar.painel("domino", { recordes: RECORDES, comZerar: true }));
-      OPCOES.forEach(o => {
-        const grupo = document.createElement("div");
-        grupo.className = "grupo-op";
-        const t = document.createElement("div");
-        t.className = "titulo-op";
-        t.textContent = o.titulo;
-        const chips = document.createElement("div");
-        chips.className = "chips";
-        o.valores.forEach(([valor, rotulo]) => {
-          const b = document.createElement("button");
-          b.className = "chip" + (op[o.chave] === valor ? " ativo" : "");
-          b.textContent = rotulo;
-          b.addEventListener("click", () => {
-            op[o.chave] = valor;
-            chips.querySelectorAll(".chip").forEach(x => x.classList.toggle("ativo", x === b));
-          });
-          chips.appendChild(b);
-        });
-        grupo.append(t, chips);
-        caixa.appendChild(grupo);
+      Motor.telaOpcoes(area, {
+        opcoes: OPCOES, padrao: PADRAO[id], chave: `domino-opcoes-${id}`,
+        antes: Placar.painel("domino", { recordes: RECORDES, comZerar: true }),
+        aoJogar: op => partida(area, op),
       });
-      const jogar = document.createElement("button");
-      jogar.className = "chip jogar";
-      jogar.textContent = "▶️ Jogar";
-      jogar.addEventListener("click", () => { guardar(chave, op); partida(area, { ...op }); });
-      caixa.appendChild(jogar);
-      area.appendChild(caixa);
-      Motor.falar("Escolha como quer jogar e toque em jogar!");
     },
   });
 
