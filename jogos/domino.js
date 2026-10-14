@@ -54,7 +54,7 @@
   JOGOS.push({
     id: "domino",
     nome: "Dominó",
-    icone: "🎲",
+    icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-20 32 32)"><rect x="17" y="3" width="30" height="58" rx="7" fill="#fffdf6" stroke="#3a3a3a" stroke-width="3"/><line x1="20" y1="32" x2="44" y2="32" stroke="#3a3a3a" stroke-width="2.5"/><g fill="#222"><circle cx="25" cy="10" r="3"/><circle cx="39" cy="10" r="3"/><circle cx="25" cy="17.5" r="3"/><circle cx="39" cy="17.5" r="3"/><circle cx="25" cy="25" r="3"/><circle cx="39" cy="25" r="3"/><circle cx="25" cy="39" r="3"/><circle cx="32" cy="46.5" r="3"/><circle cx="39" cy="54" r="3"/></g><circle cx="32" cy="32" r="2.2" fill="#c9a227"/></g></svg>',
     faixas: ["3-4", "4-5", "5-6", "6-8", "8-10"],
     iniciar(area, faixa) {
       const id = (faixa && faixa.id) || "6-8";

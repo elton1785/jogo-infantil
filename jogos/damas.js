@@ -162,7 +162,7 @@
   JOGOS.push({
     id: "damas",
     nome: "Damas",
-    icone: "⚫",
+    icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="1" y="1" width="62" height="62" rx="8" fill="#6b3e1f"/><rect x="4" y="4" width="28" height="28" fill="#f3dfb5"/><rect x="32" y="4" width="28" height="28" fill="#a0673a"/><rect x="4" y="32" width="28" height="28" fill="#a0673a"/><rect x="32" y="32" width="28" height="28" fill="#f3dfb5"/><circle cx="46" cy="18" r="11.5" fill="#222" stroke="#000" stroke-width="1.5"/><circle cx="42.5" cy="14.5" r="4" fill="#555"/><circle cx="18" cy="46" r="11.5" fill="#fdf8ee" stroke="#8a7a5c" stroke-width="1.5"/><path d="M10.5 51 L9.5 41 L14 45 L18 38.5 L22 45 L26.5 41 L25.5 51 Z" fill="#e0a800" stroke="#9a6c00" stroke-width="1"/></svg>',
     faixas: ["5-6", "6-8", "8-10"],
     iniciar(area, faixa) {
       const id = (faixa && faixa.id) || "6-8";

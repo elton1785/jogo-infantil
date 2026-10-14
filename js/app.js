@@ -41,7 +41,9 @@ const App = (() => {
     const b = document.createElement("button");
     b.className = "opcao" + (vazia ? " vazia" : "");
     b.innerHTML = `<span class="icone"></span><span class="rotulo"></span>`;
-    b.querySelector(".icone").textContent = icone;
+    // Ícone: emoji, ou desenho SVG do próprio jogo (para jogos que não têm emoji, como dominó e damas)
+    if (icone.startsWith("<svg")) b.querySelector(".icone").innerHTML = icone;
+    else b.querySelector(".icone").textContent = icone;
     b.querySelector(".rotulo").textContent = rotulo;
     b.addEventListener("click", aoClicar);
     return b;
