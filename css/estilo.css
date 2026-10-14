@@ -511,3 +511,26 @@ button { font-family: inherit; color: inherit; }
 .guia-texto.legenda:empty { display: none; }
 .cubo-orbita.focando .cubinho:not(.destaque) .face-cubinho { opacity: .22; }
 .cubo-orbita.focando .cubinho.destaque .face-cubinho.colorida::after { box-shadow: 0 0 0 2px #fff, 0 0 10px 2px rgba(255,255,255,.9); }
+
+/* ---------- Robô Programador ---------- */
+.robo-tela { position: absolute; inset: 10px 12px calc(30px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.robo-tela.deitado { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto 1fr; justify-items: center; align-items: start; column-gap: 16px; }
+.robo-tela.deitado .robo-topo { grid-column: 1 / -1; }
+.robo-topo { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; padding-left: 84px; min-height: 56px; }
+.robo-tabuleiro { position: relative; display: grid; background: #8bd17c; border: 6px solid #2d6a4f; border-radius: 12px; box-sizing: content-box; box-shadow: 0 6px 0 var(--sombra); flex: none; }
+.robo-casa { display: flex; align-items: center; justify-content: center; line-height: 1; border: 1px solid rgba(0,0,0,.08); }
+.robo-casa:nth-child(odd) { background: rgba(255,255,255,.12); }
+.robo-boneco { position: absolute; display: flex; align-items: center; justify-content: center; line-height: 1; z-index: 2; filter: drop-shadow(0 3px 2px rgba(0,0,0,.35)); }
+.robo-seta { position: absolute; inset: -14%; pointer-events: none; }
+.robo-frente { position: absolute; top: 0; left: 50%; transform: translateX(-50%); font-size: 38%; color: #e63946; text-shadow: 0 0 3px #fff; }
+.robo-painel { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 560px; }
+.robo-programa { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; min-height: 58px; width: 100%; background: rgba(255,255,255,.85); border-radius: 16px; padding: 8px; }
+.robo-programa.vazio { color: #777; font-weight: bold; font-size: 15px; }
+.robo-ficha { position: relative; width: 46px; height: 46px; border: none; border-radius: 12px; background: #fff3b0; box-shadow: 0 3px 0 var(--sombra); font-size: 26px; cursor: pointer; padding: 0; }
+.robo-ficha.agora { background: #ffd60a; outline: 3px solid var(--destaque); transform: translateY(-3px); }
+.robo-ficha .vezes { position: absolute; right: -6px; bottom: -6px; background: #7b2cbf; color: #fff; border-radius: 10px; font-size: 13px; font-weight: bold; padding: 1px 5px; }
+.robo-comandos { display: flex; gap: 10px; justify-content: center; }
+.robo-cmd { width: 68px; height: 68px; border: none; border-radius: 18px; background: var(--cartao); box-shadow: 0 5px 0 var(--sombra); font-size: 36px; cursor: pointer; }
+.robo-cmd:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--sombra); }
+.robo-acoes { display: flex; gap: 8px; justify-content: center; }
+.chip.executar { background: #2a9d55; color: #fff; font-size: 20px; }
