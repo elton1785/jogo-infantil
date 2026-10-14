@@ -2,7 +2,9 @@
 // Estratégia: responde do cache na hora e atualiza em segundo plano.
 // Versão nova (CACHE trocado): fica esperando até a pessoa tocar em "Atualizar" no app,
 // que manda a mensagem "atualizar" — aí ela assume e o app recarrega.
-const CACHE = "brincar-v6";
+// A cada publicação, aumente VERSAO (é o número que aparece no menu do app).
+const VERSAO = 7;
+const CACHE = `brincar-v${VERSAO}`;
 const ARQUIVOS = [
   "./",
   "index.html",
@@ -55,7 +57,10 @@ self.addEventListener("install", e => {
     .then(c => Promise.allSettled(ARQUIVOS.map(f => c.add(new Request(f, { cache: "reload" }))))));
 });
 
-self.addEventListener("message", e => { if (e.data === "atualizar") self.skipWaiting(); });
+self.addEventListener("message", e => {
+  if (e.data === "atualizar") self.skipWaiting();
+  if (e.data === "versao" && e.ports[0]) e.ports[0].postMessage(VERSAO);
+});
 
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys()

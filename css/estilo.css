@@ -373,6 +373,12 @@ button { font-family: inherit; color: inherit; }
   box-shadow: 0 6px 0 rgba(0,0,0,.25); cursor: pointer; white-space: nowrap; animation: pula 1.2s ease 3;
 }
 #btn-atualizar[hidden], #jogo.ativa ~ #btn-atualizar { display: none; }
+#rodape-versao {
+  position: fixed; z-index: 4; left: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: bold; color: #fff; text-shadow: 1px 1px 0 var(--sombra);
+}
+#rodape-versao button { border: none; border-radius: 14px; background: rgba(255,255,255,.85); color: var(--texto); font-size: 14px; font-weight: bold; padding: 6px 12px; cursor: pointer; text-shadow: none; }
+#rodape-versao[hidden], #jogo.ativa ~ #rodape-versao, #btn-atualizar:not([hidden]) ~ #rodape-versao { display: none; }
 
 /* Fim de partida com placar: troféu e botão menores para caber tudo */
 .fim:has(.placar-geral) .trofeu { font-size: 84px; }
