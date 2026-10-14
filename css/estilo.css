@@ -211,15 +211,21 @@ button { font-family: inherit; color: inherit; }
 /* ---------- Quebra-cabeça ---------- */
 .mesa { display: flex; gap: 28px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .tabuleiro { position: relative; display: grid; background: var(--cartao); border-radius: 12px; box-shadow: 0 8px 0 var(--sombra); overflow: hidden; }
-.tabuleiro[data-guia]::before {
-  content: attr(data-guia); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  font-size: var(--fs); line-height: 1; opacity: .18; filter: grayscale(1); pointer-events: none;
+.tabuleiro.com-guia::before {
+  content: ""; position: absolute; inset: 0; background: var(--guia) center / cover; opacity: .3; filter: grayscale(1); pointer-events: none;
 }
-.casa { position: relative; border: 2px dashed rgba(0,0,0,.15); background: transparent; padding: 0; cursor: pointer; overflow: hidden; }
-.tabuleiro.completo .casa { border-color: transparent; }
-.recorte { position: relative; display: block; overflow: hidden; pointer-events: none; }
-.recorte-dentro { position: absolute; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.casa { position: relative; border: none; outline: 1px dashed rgba(0,0,0,.2); outline-offset: -1px; background: transparent; padding: 0; cursor: pointer; overflow: hidden; }
+.tabuleiro.completo .casa { outline-color: transparent; }
+.recorte { position: relative; display: block; overflow: hidden; pointer-events: none; background-repeat: no-repeat; }
+.lateral-quebra { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.mini-figura { width: 84px; height: 84px; border-radius: 12px; border: 4px solid #fff; background-size: cover; box-shadow: 0 4px 0 var(--sombra); }
+.resta { font-size: 22px; font-weight: bold; color: #fff; text-shadow: 2px 2px 0 var(--sombra); }
 .bandeja { display: flex; flex-wrap: wrap; gap: 10px; max-width: 420px; justify-content: center; }
+@media (orientation: portrait) {
+  .lateral-quebra { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+  .lateral-quebra .mini-figura { width: 64px; height: 64px; }
+  .lateral-quebra .bandeja { width: 100%; }
+}
 .peca-quebra { padding: 0; border: 3px solid #fff; border-radius: 8px; background: var(--cartao); box-shadow: 0 6px 0 var(--sombra); cursor: grab; overflow: hidden; line-height: 0; }
 
 /* ---------- Juntar letras ---------- */
@@ -266,3 +272,17 @@ button { font-family: inherit; color: inherit; }
 .pedir-nome { display: flex; flex-direction: column; align-items: center; gap: 16px; background: var(--cartao); padding: 24px; border-radius: 24px; box-shadow: 0 8px 0 var(--sombra); }
 .pedir-nome label { font-size: 20px; font-weight: bold; }
 .pedir-nome input { font-size: 32px; padding: 8px 16px; border-radius: 14px; border: 3px solid #ccc; text-align: center; text-transform: uppercase; width: min(80vw, 360px); font-family: inherit; }
+
+/* ---------- Caça-palavras ---------- */
+.caca-grade { display: grid; background: var(--cartao); border-radius: 16px; box-shadow: 0 8px 0 var(--sombra); padding: 0; touch-action: none; overflow: hidden; }
+.caca-letra { display: flex; align-items: center; justify-content: center; font-weight: bold; line-height: 1; border-radius: 30%; transition: background .15s; }
+.caca-letra.marcando { background: var(--destaque) !important; color: #fff; }
+.caca-letra.achada { color: #222; }
+.caca-lista { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 360px; }
+.caca-palavra {
+  display: flex; align-items: center; gap: 8px; border: none; border-radius: 18px; background: var(--cartao);
+  box-shadow: 0 5px 0 var(--sombra); padding: 6px 14px; font-size: clamp(18px, 2.6vw, 22px); font-weight: bold; cursor: pointer;
+}
+.caca-palavra .fig { font-size: 1.6em; line-height: 1; }
+.caca-palavra.achada .txt { text-decoration: line-through; text-decoration-thickness: 3px; }
+@media (orientation: portrait) { .caca-lista { max-width: 100%; } .caca-palavra { padding: 4px 10px; } }

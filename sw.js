@@ -1,7 +1,7 @@
 // Service worker: guarda os arquivos do jogo no aparelho para funcionar sem internet.
 // Estratégia: responde do cache na hora e atualiza em segundo plano (a versão nova
 // aparece na próxima vez que o app for aberto).
-const CACHE = "brincar-v1";
+const CACHE = "brincar-v2";
 const ARQUIVOS = [
   "./",
   "index.html",
@@ -12,6 +12,7 @@ const ARQUIVOS = [
   "jogos/animais.js",
   "jogos/arrastar.js",
   "jogos/bolhas.js",
+  "jogos/cacapalavras.js",
   "jogos/brasil.js",
   "jogos/contar.js",
   "jogos/contas.js",
