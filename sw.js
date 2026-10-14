@@ -2,7 +2,7 @@
 // Estratégia: responde do cache na hora e atualiza em segundo plano.
 // Versão nova (CACHE trocado): fica esperando até a pessoa tocar em "Atualizar" no app,
 // que manda a mensagem "atualizar" — aí ela assume e o app recarrega.
-const CACHE = "brincar-v5";
+const CACHE = "brincar-v6";
 const ARQUIVOS = [
   "./",
   "index.html",
