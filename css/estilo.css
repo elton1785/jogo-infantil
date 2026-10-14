@@ -415,3 +415,29 @@ button { font-family: inherit; color: inherit; }
 .linha-conta { display: flex; justify-content: space-between; gap: 16px; font-size: clamp(16px, 3.5vw, 20px); font-weight: bold; }
 .linha-conta b { color: #2a9d55; }
 .linha-conta.total { border-top: 2px solid rgba(0,0,0,.15); padding-top: 4px; }
+
+/* Zonas na mesa onde a peça tocada/arrastada pode entrar */
+.alvo-mesa { position: absolute; z-index: 2; border: 3px dashed #ffd60a; border-radius: 6px; background: rgba(255,214,10,.35); padding: 0; cursor: pointer; animation: piscar 1s ease-in-out infinite; }
+.alvo-mesa.sobre { background: rgba(255,214,10,.8); outline: none; }
+.alvo-mesa .ganha { top: -14px; right: -12px; }
+@keyframes piscar { 50% { background: rgba(255,214,10,.7); transform: scale(1.06); } }
+
+/* Relógio da vez */
+.relogio { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.85); border-radius: 14px; padding: 4px 10px; font-weight: bold; font-size: 16px; }
+.relogio .trilho { width: 90px; height: 10px; border-radius: 5px; background: rgba(0,0,0,.12); overflow: hidden; }
+.relogio .barra { height: 100%; background: #2a9d55; border-radius: 5px; animation: esvaziar linear forwards; }
+.relogio.pouco { background: #ffd6d6; animation: balanca .5s ease infinite; }
+.relogio.pouco .barra { background: #e63946; }
+@keyframes esvaziar { to { width: 0; } }
+
+/* Pedras que sobraram no fim da rodada */
+.maos-fim { display: flex; flex-direction: column; gap: 6px; background: rgba(255,255,255,.92); border-radius: 16px; padding: 8px 12px; max-width: 94vw; }
+.maos-fim:empty { display: none; }
+.mao-fim { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 2px 6px; border-radius: 10px; font-weight: bold; font-size: 16px; }
+.mao-fim.levou { background: #fff3b0; }
+.mao-fim .nome { min-width: 86px; text-align: left; }
+.mao-fim .pecas { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; font-weight: normal; color: #666; }
+.mao-fim .soma { margin-left: auto; font-size: 18px; }
+.fim:has(.maos-fim:not(:empty)) .trofeu { font-size: 64px; }
+.fim:has(.maos-fim:not(:empty)) .modo { width: auto; aspect-ratio: auto; flex-direction: row; gap: 10px; padding: 10px 26px; }
+.fim:has(.maos-fim:not(:empty)) .modo .icone { font-size: 40px; }

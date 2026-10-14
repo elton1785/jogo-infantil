@@ -192,7 +192,8 @@ const Motor = (() => {
   // ---------- Arrastar com o dedo ----------
   // `alvos()`: elementos onde a peça pode ser solta. `aoSoltar(alvo)` devolve true se aceitou;
   // senão a peça volta ao lugar. Um toque sem arrastar continua sendo um clique normal.
-  function arrastavel(el, { alvos, aoSoltar }) {
+  // `aoComecar()` / `aoTerminar()` (opcionais): quando o arraste começa e quando termina.
+  function arrastavel(el, { alvos, aoSoltar, aoComecar, aoTerminar }) {
     el.classList.add("arrastavel");
     el.style.touchAction = "none";
     // Depois de um arraste, o navegador ainda dispara um "click": ignoramos esse.
@@ -220,6 +221,7 @@ const Motor = (() => {
           Object.assign(fantasma.style, { width: r.width + "px", height: r.height + "px" });
           document.body.appendChild(fantasma);
           el.style.opacity = "0.3";
+          if (aoComecar) aoComecar();
         }
         fantasma.style.left = r.left + e.clientX - x0 + "px";
         fantasma.style.top = r.top + e.clientY - y0 + "px";
@@ -245,6 +247,7 @@ const Motor = (() => {
           el.style.opacity = "";
           return;
         }
+        if (aoTerminar) aoTerminar();
         // Não encaixou: volta deslizando
         f.style.transition = "left .25s, top .25s";
         f.style.left = r.left + "px";
