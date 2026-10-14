@@ -21,7 +21,7 @@
   JOGOS.push({
     id: "hanoi",
     nome: "Torre de Hanói",
-    icone: "🗼",
+    icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="52" width="60" height="7" rx="3" fill="#8d5524"/><rect x="14" y="14" width="4" height="40" rx="2" fill="#a0673a"/><rect x="30" y="14" width="4" height="40" rx="2" fill="#a0673a"/><rect x="46" y="14" width="4" height="40" rx="2" fill="#a0673a"/><rect x="3" y="43" width="26" height="9" rx="4" fill="#e63946"/><rect x="6" y="34" width="20" height="9" rx="4" fill="#f77f00"/><rect x="9" y="25" width="14" height="9" rx="4" fill="#ffd60a"/><rect x="41" y="43" width="14" height="9" rx="4" fill="#2a9d55"/></svg>',
     faixas: ["5-6", "6-8", "8-10"],
     iniciar(area, faixa) {
       const opcoes = DISCOS[(faixa && faixa.id) || "6-8"] || DISCOS["6-8"];
