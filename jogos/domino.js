@@ -4,7 +4,8 @@
 // Tipo "Pontas de 5": a cada jogada, se a soma das pontas for 5, 10, 15, 20... quem jogou marca a soma.
 // Pequenos (3 a 5 anos): partida rápida com figuras, sem tela de opções.
 //
-// Jogar é por toque (tocar na peça; se couber nas duas pontas, tocar na ponta). Arrastar até
+// Pontas de 5 com carroça no centro: a mesa abre em 4 pontas (cima e baixo depois dos dois lados).
+// Jogar é por toque (tocar na peça; se couber em mais de uma ponta, tocar na seta). Arrastar até
 // os botões das pontas também funciona, mas no iPhone arrastar perto da borda de baixo fecha o app.
 (() => {
   const BICHOS = [
@@ -134,12 +135,18 @@
       jogadores.forEach(j => { j.mao = ordenar(monte.splice(0, porMao)); });
       if (op.compra !== "sim") monte.length = 0; // sem compra, o que sobra fica fora do jogo
 
-      const mesa = []; // peças viradas: { esq, dir, fe, fd, dupla }
+      // ---------- Mesa ----------
+      // A primeira peça fica no centro. Dela saem os "braços": esquerda e direita e, nas Pontas de 5
+      // quando o centro é carroça, também cima e baixo (abrem depois que os dois lados têm peça).
+      // Cada peça de um braço guarda o valor que encosta (perto) e o que fica na ponta (longe).
+      let centro = null;
+      const bracos = { esq: [], dir: [], cima: [], baixo: [] };
       const daRodada = Array(placar.length).fill(0); // pontos feitos nesta rodada (para o recorde)
       let vez, obrigatoria = null, passes = 0, selecionada = null, acabou = false;
 
-      // Primeira rodada: começa quem tem a maior carroça (ou a maior peça), jogando ela
-      if (quemComeca === null) {
+      // Começa quem tem a maior carroça, jogando ela (na primeira rodada, e sempre nas Pontas de 5,
+      // para a mesa abrir em 4 pontas). Senão, quem venceu a rodada anterior, com qualquer peça.
+      if (quemComeca === null || cinco) {
         let melhor = null;
         jogadores.forEach(j => j.mao.forEach(p => {
           const peso = (p.a === p.b ? 100 : 0) + p.a + p.b;
@@ -149,51 +156,70 @@
         obrigatoria = melhor.p;
       } else vez = quemComeca;
 
-      const pontas = () => mesa.length ? [mesa[0].esq, mesa[mesa.length - 1].dir] : null;
-      // Pontas onde a peça encaixa ("esq"/"dir"); mesa vazia → "dir"
+      const spinner = () => cinco && centro && centro.dupla;
+      const SETAS = { esq: "⬅️", dir: "➡️", cima: "⬆️", baixo: "⬇️" };
+      // Pontas onde dá para jogar agora
+      function pontasAbertas() {
+        if (!centro) return [];
+        const l = ["esq", "dir"];
+        if (spinner() && bracos.esq.length && bracos.dir.length) l.push("cima", "baixo");
+        return l;
+      }
+      const ultima = lado => bracos[lado][bracos[lado].length - 1];
+      function valorPonta(lado) {
+        if (bracos[lado].length) return ultima(lado).longe;
+        return lado === "dir" ? centro.b : centro.a;
+      }
+      function formaPonta(lado) {
+        if (bracos[lado].length) return ultima(lado).fl;
+        return lado === "dir" ? centro.fb : centro.fa;
+      }
+
+      // Pontas onde a peça encaixa; mesa vazia → "centro"
       function ladosQueCabem(p) {
-        const pt = pontas();
-        if (!pt) return !obrigatoria || obrigatoria === p ? ["dir"] : [];
-        const l = [];
-        if (p.a === pt[0] || p.b === pt[0]) l.push("esq");
-        if ((p.a === pt[1] || p.b === pt[1]) && !(pt[0] === pt[1] && l.length)) l.push("dir");
+        if (!centro) return !obrigatoria || obrigatoria === p ? ["centro"] : [];
+        const l = pontasAbertas().filter(lado => p.a === valorPonta(lado) || p.b === valorPonta(lado));
+        // No jogo tradicional, pontas iguais dão no mesmo: não precisa perguntar onde
+        if (!cinco && l.length === 2 && valorPonta("esq") === valorPonta("dir")) return [l[0]];
         return l;
       }
       const temJogada = j => j.mao.some(p => ladosQueCabem(p).length);
 
-      // Como a peça fica virada ao entrar naquela ponta
+      // Como a peça fica ao entrar naquela ponta
       function virar(p, lado) {
-        const pt = pontas();
-        const reto = { esq: p.a, dir: p.b, fe: p.fa, fd: p.fb, dupla: p.a === p.b };
-        const virado = { esq: p.b, dir: p.a, fe: p.fb, fd: p.fa, dupla: p.a === p.b };
-        if (!pt) return reto;
-        if (lado === "dir") return p.a === pt[1] ? reto : virado;
-        return p.b === pt[0] ? reto : virado;
+        const v = valorPonta(lado), reto = p.a === v;
+        return { perto: reto ? p.a : p.b, longe: reto ? p.b : p.a, fp: reto ? p.fa : p.fb, fl: reto ? p.fb : p.fa, dupla: p.a === p.b };
       }
 
-      // Pontas de 5: soma das pontas (carroça na ponta conta as duas metades)
-      function somaPontas(m) {
-        if (!m.length) return 0;
-        if (m.length === 1) return m[0].esq + m[0].dir;
-        const e = m[0], d = m[m.length - 1];
-        return (e.dupla ? 2 * e.esq : e.esq) + (d.dupla ? 2 * d.dir : d.dir);
+      // Soma das pontas (Pontas de 5). `extra`: { lado, peca } para simular uma jogada.
+      // Carroça na ponta conta as duas metades. Com o centro carroça (4 pontas), ele conta
+      // enquanto um dos lados ainda estiver vazio.
+      function somaPontas(extra) {
+        const braco = l => (extra && extra.lado === l ? [...bracos[l], extra.peca] : bracos[l]);
+        const ponta = l => { const b = braco(l), t = b[b.length - 1]; return t.dupla ? 2 * t.longe : t.longe; };
+        if (spinner()) {
+          const e = braco("esq").length, d = braco("dir").length;
+          if (!e && !d) return 2 * centro.a;
+          if (!e || !d) return 2 * centro.a + ponta(e ? "esq" : "dir");
+          return ["esq", "dir", "cima", "baixo"].reduce((s, l) => s + (braco(l).length ? ponta(l) : 0), 0);
+        }
+        const lado = (l, v) => (braco(l).length ? ponta(l) : centro.dupla ? 2 * v : v);
+        return lado("esq", centro.a) + lado("dir", centro.b);
       }
       // Quantos pontos a jogada faria (0 se a soma não for múltiplo de 5)
       function pontosDaJogada(p, lado) {
         if (!cinco) return 0;
-        const peca = virar(p, lado);
-        const s = somaPontas(lado === "esq" ? [peca, ...mesa] : [...mesa, peca]);
+        const s = lado === "centro" ? p.a + p.b : somaPontas({ lado, peca: virar(p, lado) });
         return s && s % 5 === 0 ? s : 0;
       }
       const melhoresPontos = p => Math.max(0, ...ladosQueCabem(p).map(l => pontosDaJogada(p, l)));
 
-      // Coloca a peça; devolve os pontos marcados nas pontas (pontas de 5)
+      // Coloca a peça; devolve os pontos marcados nas pontas (Pontas de 5)
       function colocar(j, p, lado) {
         const ganhou = pontosDaJogada(p, lado);
         j.mao.splice(j.mao.indexOf(p), 1);
-        const peca = virar(p, lado);
-        peca.nova = true;
-        if (lado === "esq") mesa.unshift(peca); else mesa.push(peca);
+        if (lado === "centro") centro = { a: p.a, b: p.b, fa: p.fa, fb: p.fb, dupla: p.a === p.b, nova: true };
+        else bracos[lado].push({ ...virar(p, lado), nova: true });
         obrigatoria = null;
         passes = 0;
         Motor.ploc();
@@ -206,27 +232,31 @@
       }
 
       // ---------- Desenho ----------
-      function metade(valor, forma) {
+      // Bolinhas: o desenho padrão é da metade em pé; na pedra deitada, gira (a sena fica em 2 fileiras de 3)
+      const girar = i => (i % 3) * 3 + (2 - Math.floor(i / 3));
+      function metade(valor, forma, deitada) {
         const m = document.createElement("span");
         m.className = "meia";
         if (forma === "figura") m.textContent = BICHOS[valor].emoji;
         else if (forma === "numero") { m.textContent = valor; m.classList.add("num"); }
         else {
           m.classList.add("pontos");
+          const pos = PONTOS[valor].map(i => (deitada ? girar(i) : i));
           for (let i = 0; i < 9; i++) {
             const d = document.createElement("i");
-            if (PONTOS[valor].includes(i)) d.className = "on";
+            if (pos.includes(i)) d.className = "on";
             m.appendChild(d);
           }
         }
         return m;
       }
 
-      function desenharPeca(esq, dir, fe, fd, t, { tag = "div", emPe = false } = {}) {
+      // Pedra com as metades na ordem da tela (esquerda→direita ou cima→baixo)
+      function desenharPeca(v1, v2, f1, f2, t, { tag = "div", emPe = false } = {}) {
         const el = document.createElement(tag);
         el.className = "domino" + (emPe ? " em-pe" : "");
         el.style.setProperty("--t", t + "px");
-        el.append(metade(esq, fe), metade(dir, fd));
+        el.append(metade(v1, f1, !emPe), metade(v2, f2, !emPe));
         return el;
       }
 
@@ -238,8 +268,8 @@
         const tela = document.createElement("div");
         tela.className = "domino-jogo";
         area.appendChild(tela);
-        const larg = tela.clientWidth, alt = tela.clientHeight;
-        const deitado = larg > alt;
+        const larg = tela.clientWidth;
+        const deitado = larg > tela.clientHeight;
 
         // Topo: os outros jogadores (peças na mão; quem está pensando pula), o monte e o placar
         const topo = document.createElement("div");
@@ -271,7 +301,6 @@
           topo.appendChild(pl);
         }
 
-        // Mesa (a fileira de peças), as duas pontas e a mão
         const mesaEl = document.createElement("div");
         mesaEl.className = "domino-mesa";
 
@@ -279,21 +308,17 @@
         const barra = document.createElement("div");
         barra.className = "domino-pontas";
         const minhaVez = vez === 0 && !acabou;
-        const pt = pontas();
         const botaoPonta = lado => {
           const b = document.createElement("button");
           b.className = "ponta-alvo";
           b.dataset.lado = lado;
-          const valor = pt ? (lado === "esq" ? pt[0] : pt[1]) : null;
-          const forma = pt ? (lado === "esq" ? mesa[0].fe : mesa[mesa.length - 1].fd) : null;
-          if (pt) {
+          if (lado === "centro") b.textContent = "🎯 Jogue aqui";
+          else {
             const seta = document.createElement("span");
             seta.className = "seta";
-            seta.textContent = lado === "esq" ? "⬅️" : "➡️";
-            const m = metade(valor, forma);
-            m.classList.add("valor-ponta");
-            if (lado === "esq") b.append(seta, m); else b.append(m, seta);
-          } else b.textContent = "⬇️ Jogue aqui";
+            seta.textContent = SETAS[lado];
+            b.append(seta, metade(valorPonta(lado), formaPonta(lado), true));
+          }
           if (selecionada) {
             const cabe = ladosQueCabem(selecionada).includes(lado);
             b.classList.toggle("escolher", cabe);
@@ -306,8 +331,8 @@
         };
         const meio = document.createElement("div");
         meio.className = "info-pontas";
-        if (cinco && pt) {
-          const s = somaPontas(mesa);
+        if (cinco && centro) {
+          const s = somaPontas();
           meio.textContent = `Soma ${s}` + (s && s % 5 === 0 ? " ✨" : "");
         }
         if (ultimoPonto) {
@@ -316,15 +341,16 @@
           f.textContent = `${ultimoPonto.j.icone} +${ultimoPonto.pontos}`;
           meio.appendChild(f);
         }
-        alvos = pt ? [botaoPonta("esq"), botaoPonta("dir")] : [botaoPonta("dir")];
-        if (pt) barra.append(alvos[0], meio, alvos[1]);
-        else barra.append(meio, alvos[0]);
+        const lados = centro ? pontasAbertas() : ["centro"];
+        alvos = lados.map(botaoPonta);
+        const porLado = Object.fromEntries(lados.map((l, i) => [l, alvos[i]]));
+        const deLado = ls => ls.filter(l => porLado[l]).map(l => porLado[l]);
 
-        // Mão da criança: tamanho fixo e confortável (não encolhe ao comprar)
+        // Mão da criança: tamanho fixo (não encolhe ao comprar)
         const mao = document.createElement("div");
         mao.className = "domino-mao" + (minhaVez ? " minha-vez" : "");
-        const porFila = deitado ? 7 : 4;
-        const tMao = Math.max(36, Math.min(deitado ? 50 : 64, (larg - 10 * porFila) / (2 * porFila + 0.4)));
+        const porFila = deitado ? 8 : 5;
+        const tMao = Math.max(30, Math.min(deitado ? 40 : 44, (larg - 10 * porFila) / (2 * porFila + 0.4)));
         voce.mao.forEach(p => {
           const el = desenharPeca(p.a, p.b, p.fa, p.fb, tMao, { tag: "button" });
           el.setAttribute("aria-label", `${nomeValor(p.a)} e ${nomeValor(p.b)}`);
@@ -340,46 +366,100 @@
           mao.appendChild(el);
         });
 
-        tela.append(topo, mesaEl, barra, mao);
-        desenharMesa(mesaEl);
+        if (deitado) {
+          // Celular deitado: pontas nas laterais da mesa (⬅️⬆️ | mesa | ⬇️➡️) e a soma em cima da mesa
+          const meioTela = document.createElement("div");
+          meioTela.className = "domino-meio";
+          const colEsq = document.createElement("div"), colDir = document.createElement("div");
+          colEsq.className = colDir.className = "domino-coluna";
+          colEsq.append(...deLado(["esq", "cima"]));
+          colDir.append(...deLado(["baixo", "dir", "centro"]));
+          meio.classList.add("sobre-mesa");
+          meioTela.append(colEsq, mesaEl, colDir);
+          tela.append(topo, meioTela, mao);
+          desenharMesa(mesaEl);
+          mesaEl.appendChild(meio);
+        } else {
+          // Em pé: fileira embaixo da mesa: ⬅️ ⬆️ [soma] ⬇️ ➡️
+          barra.append(...deLado(["esq", "cima"]), meio, ...deLado(["baixo", "dir", "centro"]));
+          tela.append(topo, mesaEl, barra, mao);
+          desenharMesa(mesaEl);
+        }
       }
 
-      // Peças da mesa em "cobrinha": uma fileira vai para a direita, a seguinte volta.
-      // Carroças ficam atravessadas. Usa o maior tamanho que cabe, sem passar de T_MIN;
-      // se nem assim couber, a mesa rola e mostra a última peça jogada.
-      function desenharMesa(mesaEl) {
-        const larg = mesaEl.clientWidth - 16, alt = mesaEl.clientHeight - 16;
-        const largura = (item, t) => (item.dupla ? t : 2 * t) + 4;
-        const montar = t => {
-          const filas = [[]];
-          let usado = 0;
-          mesa.forEach(item => {
-            const w = largura(item, t);
-            if (usado + w > larg && filas[filas.length - 1].length) { filas.push([]); usado = 0; }
-            filas[filas.length - 1].push(item);
-            usado += w;
-          });
-          const h = filas.reduce((s, f) => s + (f.some(x => x.dupla) ? 2 * t : t) + 6, 0);
-          return { filas, h };
+      // ---------- Mesa no formato do dominó ----------
+      // A carroça do centro fica atravessada; os braços seguem reto e, ao chegar na borda,
+      // dobram (sempre no sentido do relógio). Escolhe o maior tamanho de pedra em que tudo cabe.
+      function montarMesa(u, W, H) {
+        const rects = [];
+        const livre = r => r.x >= -W / 2 && r.x + r.w <= W / 2 && r.y >= -H / 2 && r.y + r.h <= H / 2 &&
+          !rects.some(o => r.x < o.x + o.w - 0.5 && o.x < r.x + r.w - 0.5 && r.y < o.y + o.h - 0.5 && o.y < r.y + r.h - 0.5);
+        // Retângulo pelo centro (cx, cy): deitado (2u × u) ou em pé (u × 2u)
+        const ret = (cx, cy, deitado) => {
+          const w = deitado ? 2 * u : u, h = deitado ? u : 2 * u;
+          return { x: cx - w / 2, y: cy - h / 2, w, h };
         };
-        let t = 64, arranjo = montar(t);
-        while (t > T_MIN && arranjo.h > alt) { t -= 2; arranjo = montar(t); }
-        let nova = null;
-        arranjo.filas.forEach((f, i) => {
-          const fila = document.createElement("div");
-          fila.className = "domino-fila" + (i % 2 ? " volta" : "");
-          f.forEach(item => {
-            // Nas fileiras de volta, a peça aparece invertida para continuar encostando
-            const el = i % 2 && !item.dupla
-              ? desenharPeca(item.dir, item.esq, item.fd, item.fe, t)
-              : desenharPeca(item.esq, item.dir, item.fe, item.fd, t, { emPe: item.dupla });
-            if (item === mesa[0] || item === mesa[mesa.length - 1]) el.classList.add("na-ponta");
-            if (item.nova) { el.classList.add("chegou"); item.nova = false; nova = el; }
-            fila.appendChild(el);
-          });
-          mesaEl.appendChild(fila);
+
+        // Carroça no centro fica em pé (atravessada); outra peça no centro fica deitada
+        const rc = { ...ret(0, 0, !centro.dupla), peca: centro, d: [1, 0] };
+        rects.push(rc);
+        const inicio = {
+          esq: { H: [-rc.w / 2, 0], d: [-1, 0] }, dir: { H: [rc.w / 2, 0], d: [1, 0] },
+          cima: { H: [0, -rc.h / 2], d: [0, -1] }, baixo: { H: [0, rc.h / 2], d: [0, 1] },
+        };
+        for (const lado of ["esq", "dir", "cima", "baixo"]) {
+          let [hx, hy] = inicio[lado].H, [dx, dy] = inicio[lado].d;
+          for (const peca of bracos[lado]) {
+            const horiz = dx !== 0;
+            // Reto: carroça atravessada (ocupa u no sentido do braço), as outras ao comprido (2u)
+            const passo = peca.dupla ? u : 2 * u;
+            const deitada = peca.dupla ? !horiz : horiz;
+            let r = { ...ret(hx + dx * passo / 2, hy + dy * passo / 2, deitada), peca, d: [dx, dy] };
+            // Segue reto se, depois desta pedra, ainda sobrar espaço para fazer a curva
+            const folga = { x: r.x + Math.min(0, dx) * u, y: r.y + Math.min(0, dy) * u, w: r.w + Math.abs(dx) * u, h: r.h + Math.abs(dy) * u };
+            if (livre(r) && livre(folga)) { hx += dx * passo; hy += dy * passo; }
+            else {
+              // Dobra: a 1ª metade continua na linha e a pedra segue na nova direção
+              // (tenta no sentido do relógio; se não der, no outro)
+              const qx = hx + dx * u / 2, qy = hy + dy * u / 2;
+              const curva = (ex, ey) => ({ ...ret(qx + ex * u / 2, qy + ey * u / 2, ex !== 0), peca, d: [ex, ey] });
+              r = [curva(-dy, dx), curva(dy, -dx)].find(livre);
+              if (!r) return null;
+              [dx, dy] = r.d;
+              hx = qx + dx * 1.5 * u; hy = qy + dy * 1.5 * u;
+            }
+            rects.push(r);
+          }
+        }
+        return rects;
+      }
+
+      function desenharMesa(mesaEl) {
+        if (!centro) return;
+        const W = mesaEl.clientWidth - 12, H = mesaEl.clientHeight - 12;
+        let u = Math.min(30, Math.floor(H / 2.2)), rects = null;
+        for (; u >= 9 && !(rects = montarMesa(u, W, H)); u--);
+        if (!rects) { u = 9; rects = montarMesa(u, 1e6, 1e6); } // não coube: desenha assim mesmo
+        // Centraliza o desenho na mesa
+        const minX = Math.min(...rects.map(r => r.x)), maxX = Math.max(...rects.map(r => r.x + r.w));
+        const minY = Math.min(...rects.map(r => r.y)), maxY = Math.max(...rects.map(r => r.y + r.h));
+        const ox = mesaEl.clientWidth / 2 - (minX + maxX) / 2, oy = mesaEl.clientHeight / 2 - (minY + maxY) / 2;
+        const pontasAtuais = new Set(pontasAbertas().map(l => (bracos[l].length ? ultima(l) : centro)));
+        rects.forEach(r => {
+          const p = r.peca, emPe = r.h > r.w;
+          let el;
+          if (p === centro) el = desenharPeca(p.a, p.b, p.fa, p.fb, u, { emPe });
+          else {
+            // Metades na ordem da tela: o "perto" vem primeiro no sentido do braço
+            const ida = r.d[0] + r.d[1] > 0;
+            el = ida ? desenharPeca(p.perto, p.longe, p.fp, p.fl, u, { emPe }) : desenharPeca(p.longe, p.perto, p.fl, p.fp, u, { emPe });
+          }
+          el.classList.add("na-mesa");
+          Object.assign(el.style, { left: ox + r.x + "px", top: oy + r.y + "px" });
+          if (pontasAtuais.has(p)) el.classList.add("na-ponta");
+          if (p.nova) { el.classList.add("chegou"); p.nova = false; }
+          mesaEl.appendChild(el);
         });
-        if (nova && arranjo.h > alt) nova.scrollIntoView({ block: "nearest" });
       }
 
       // ---------- Vez da criança ----------
@@ -392,7 +472,7 @@
           return;
         }
         if (cabe.length === 1) { jogar(p, cabe[0], el); return; }
-        selecionada = p; // cabe nas duas pontas: a criança escolhe onde
+        selecionada = p; // cabe em mais de uma ponta: a criança escolhe onde
         desenhar();
         Motor.falar("Em qual ponta? Toque na seta.");
       }
@@ -404,7 +484,7 @@
         const ganhou = colocar(voce, p, lado);
         ultimoPonto = ganhou ? { pontos: ganhou, j: voce } : null;
         if (ganhou) Motor.falar(`${ganhou} pontos!`);
-        else if (op.pecas === "figuras") Motor.falar(Motor.maiuscula(nomeValor(lado === "esq" ? mesa[0].esq : mesa[mesa.length - 1].dir)));
+        else if (op.pecas === "figuras") Motor.falar(Motor.maiuscula(nomeValor(lado === "centro" ? p.b : valorPonta(lado))));
         if (bateuMeta(voce)) return true;
         if (!voce.mao.length) fimRodada(voce);
         else proximaVez(ganhou ? 1600 : 900);
@@ -437,10 +517,10 @@
           // Esperto: marca pontos quando dá, livra-se das peças pesadas e das carroças,
           // e guarda peças que combinem com as pontas
           const nota = ({ p, lado }) => {
-            const peca = virar(p, lado), pt = pontas();
-            const fica = lado === "esq" ? peca.esq : peca.dir;
-            const outra = !pt ? (lado === "esq" ? peca.dir : peca.esq) : lado === "dir" ? pt[0] : pt[1];
-            const combinam = j.mao.filter(x => x !== p && [fica, outra].some(v => x.a === v || x.b === v)).length;
+            const novaPonta = lado === "centro" ? [p.a, p.b] : [virar(p, lado).longe];
+            const outras = pontasAbertas().filter(l => l !== lado).map(valorPonta);
+            const valores = [...novaPonta, ...outras];
+            const combinam = j.mao.filter(x => x !== p && valores.some(v => x.a === v || x.b === v)).length;
             return 4 * pontosDaJogada(p, lado) + p.a + p.b + (p.a === p.b ? 4 : 0) + 2 * combinam;
           };
           escolha = jogadas.reduce((m, x) => (nota(x) > nota(m) ? x : m));
@@ -476,10 +556,10 @@
           return;
         }
         if (obrigatoria) return Motor.falar(`Você começa! Toque na carroça de ${NOMES_CARROCA[obrigatoria.a]}.`);
-        if (!mesa.length) return Motor.falar("Você começa! Toque numa peça.");
+        if (!centro) return Motor.falar("Você começa! Toque numa peça.");
         if (!dicas) return Motor.falar("Sua vez!");
-        const [e, d] = pontas();
-        Motor.falar(e === d ? `Sua vez! Precisa de ${nomeValor(e)}.` : `Sua vez! Precisa de ${nomeValor(e)} ou ${nomeValor(d)}.`);
+        const valores = [...new Set(pontasAbertas().map(valorPonta))].map(nomeValor);
+        Motor.falar(`Sua vez! Precisa de ${valores.length > 1 ? valores.slice(0, -1).join(", ") + " ou " + valores[valores.length - 1] : valores[0]}.`);
       }
 
       // ---------- Fim da rodada e da partida ----------
@@ -588,6 +668,16 @@
         const m = Math.max(...placar);
         return placar.filter(p => p === m).length > 1 ? -1 : placar.indexOf(m);
       }
+
+      // Girou o celular ou mudou o tamanho da tela: desenha de novo (até a rodada acabar)
+      let espera = null;
+      const sessao = Motor.sessaoAtual();
+      const aoRedimensionar = () => {
+        if (acabou || sessao !== Motor.sessaoAtual()) { window.removeEventListener("resize", aoRedimensionar); return; }
+        clearTimeout(espera);
+        espera = setTimeout(() => { if (!acabou && area.querySelector(".domino-jogo")) desenhar(); }, 200);
+      };
+      window.addEventListener("resize", aoRedimensionar);
 
       desenhar();
       if (vez === 0) avisarVez();
