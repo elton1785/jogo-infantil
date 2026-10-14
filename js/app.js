@@ -1,4 +1,6 @@
-// Navegação: escolha da idade → menu de jogos da faixa → jogo.
+// Navegação: escolha da idade (ou ⭐ Favoritos) → menu de jogos → jogo.
+// Favoritos: a estrelinha de cada card guarda o jogo junto com a idade em que foi marcado
+// (o mesmo jogo muda conforme a idade); ficam no aparelho.
 //
 // Para criar um jogo novo: crie jogos/<nome>.js chamando JOGOS.push({...}) e
 // inclua o <script> no index.html antes do app.js. Formato:
@@ -18,6 +20,7 @@ const App = (() => {
 
   let telaAtual = "idades";
   let faixaAtual = null;
+  let noFavoritos = false; // o menu aberto é o de favoritos (para o "voltar" do jogo)
 
   function lembrar(chave, valor) {
     try { localStorage.setItem(chave, valor); } catch (e) {}
@@ -51,9 +54,47 @@ const App = (() => {
 
   function jogosDa(faixa) { return JOGOS.filter(j => j.faixas.includes(faixa.id)); }
 
+  // ---------- Favoritos: lista de "idDoJogo|idDaFaixa" ----------
+  function favoritos() {
+    try { return JSON.parse(localStorage.getItem("favoritos")) || []; } catch (e) { return []; }
+  }
+  const chaveFav = (jogo, faixa) => `${jogo.id}|${faixa.id}`;
+  function alternarFavorito(jogo, faixa) {
+    const lista = favoritos(), k = chaveFav(jogo, faixa);
+    const nova = lista.includes(k) ? lista.filter(x => x !== k) : [...lista, k];
+    lembrar("favoritos", JSON.stringify(nova));
+    return nova.includes(k);
+  }
+
+  // Estrelinha no canto do card: tocar marca/desmarca sem abrir o jogo
+  function comEstrela(card, jogo, faixa, aoMudar) {
+    const estrela = document.createElement("span");
+    estrela.className = "estrela-fav";
+    estrela.setAttribute("role", "button");
+    const pintar = on => {
+      estrela.textContent = "⭐";
+      estrela.classList.toggle("ativa", on);
+      estrela.setAttribute("aria-label", on ? "Tirar dos favoritos" : "Guardar nos favoritos");
+    };
+    pintar(favoritos().includes(chaveFav(jogo, faixa)));
+    estrela.addEventListener("click", e => {
+      e.stopPropagation();
+      const on = alternarFavorito(jogo, faixa);
+      pintar(on);
+      Motor.animar(estrela, "pula");
+      Motor.falar(on ? `${jogo.nome} nos favoritos!` : "Tirei dos favoritos.");
+      if (aoMudar) aoMudar(on);
+    });
+    card.appendChild(estrela);
+    return card;
+  }
+
   function abrirIdades() {
     Motor.novaSessao();
     listaIdades.innerHTML = "";
+    const fav = criarOpcao("⭐", "Favoritos", () => { telaCheia(); abrirFavoritos(); });
+    fav.classList.add("favoritos");
+    listaIdades.appendChild(fav);
     FAIXAS.forEach(f => {
       const vazia = jogosDa(f).length === 0;
       listaIdades.appendChild(criarOpcao(f.icone, f.nome, () => { telaCheia(); abrirMenu(f); }, vazia));
@@ -66,6 +107,7 @@ const App = (() => {
     if (telaAtual === "idades") history.pushState({ tela: "menu" }, "");
     Motor.novaSessao();
     faixaAtual = faixa;
+    noFavoritos = false;
     lembrar("faixa", faixa.id);
     tituloMenu.textContent = `${faixa.icone} ${faixa.nome}`;
     listaJogos.innerHTML = "";
@@ -76,7 +118,36 @@ const App = (() => {
       aviso.textContent = "🚧 Jogos desta idade em breve!";
       listaJogos.appendChild(aviso);
     }
-    jogos.forEach(j => listaJogos.appendChild(criarOpcao(j.icone, j.nome, () => abrirJogo(j))));
+    jogos.forEach(j => listaJogos.appendChild(comEstrela(criarOpcao(j.icone, j.nome, () => abrirJogo(j)), j, faixa)));
+    mostrar("menu");
+  }
+
+  function abrirFavoritos() {
+    if (telaAtual === "idades") history.pushState({ tela: "menu" }, "");
+    Motor.novaSessao();
+    noFavoritos = true;
+    lembrar("faixa", "favoritos");
+    tituloMenu.textContent = "⭐ Favoritos";
+    listaJogos.innerHTML = "";
+    const itens = favoritos().map(k => {
+      const [id, fid] = k.split("|");
+      return { jogo: JOGOS.find(j => j.id === id), faixa: FAIXAS.find(f => f.id === fid) };
+    }).filter(x => x.jogo && x.faixa);
+    if (!itens.length) {
+      const aviso = document.createElement("div");
+      aviso.className = "aviso";
+      aviso.textContent = "Toque na ⭐ de um jogo para guardar ele aqui!";
+      listaJogos.appendChild(aviso);
+    }
+    itens.forEach(({ jogo, faixa }) => {
+      const card = criarOpcao(jogo.icone, jogo.nome, () => { faixaAtual = faixa; abrirJogo(jogo); });
+      const sub = document.createElement("span");
+      sub.className = "sub";
+      sub.textContent = `${faixa.icone} ${faixa.nome}`;
+      card.appendChild(sub);
+      // Desmarcou aqui: o card sai da lista
+      listaJogos.appendChild(comEstrela(card, jogo, faixa, on => { if (!on) abrirFavoritos(); }));
+    });
     mostrar("menu");
   }
 
@@ -90,7 +161,7 @@ const App = (() => {
   }
 
   function voltar() {
-    if (telaAtual === "jogo") abrirMenu(faixaAtual);
+    if (telaAtual === "jogo") noFavoritos ? abrirFavoritos() : abrirMenu(faixaAtual);
     else abrirIdades();
   }
 
@@ -103,7 +174,8 @@ const App = (() => {
 
   abrirIdades();
   const ultima = FAIXAS.find(f => f.id === lembrado("faixa"));
-  if (ultima) abrirMenu(ultima);
+  if (lembrado("faixa") === "favoritos") abrirFavoritos();
+  else if (ultima) abrirMenu(ultima);
 })();
 
 // App instalável e offline (PWA). Só funciona em https ou localhost — abrindo o
