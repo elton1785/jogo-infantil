@@ -441,3 +441,8 @@ button { font-family: inherit; color: inherit; }
 .fim:has(.maos-fim:not(:empty)) .trofeu { font-size: 64px; }
 .fim:has(.maos-fim:not(:empty)) .modo { width: auto; aspect-ratio: auto; flex-direction: row; gap: 10px; padding: 10px 26px; }
 .fim:has(.maos-fim:not(:empty)) .modo .icone { font-size: 40px; }
+.domino.na-mesa.ultima-jogada { box-shadow: 0 0 0 3px #ff8a5b, 0 2px 0 rgba(0,0,0,.35); }
+/* Mão do computador: pedras emborcadas */
+.domino-urso .costas-mao { display: flex; flex-wrap: wrap; gap: 2px; max-width: 130px; }
+.costa { display: block; width: 10px; height: 19px; border-radius: 3px; background: linear-gradient(135deg, #b5793f, #6b3e1f); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.7); }
+.costa.voando { position: fixed; z-index: 30; pointer-events: none; }

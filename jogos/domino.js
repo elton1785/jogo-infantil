@@ -14,7 +14,6 @@
   ];
   // Posições das bolinhas numa grade 3×3 (0 a 8)
   const PONTOS = [[], [4], [0, 8], [0, 4, 8], [0, 2, 6, 8], [0, 2, 4, 6, 8], [0, 2, 3, 5, 6, 8]];
-  const NOMES_CARROCA = ["branco", "ás", "duque", "terno", "quadra", "quina", "sena"];
   const T_MIN = 26; // menor tamanho das peças na mesa; abaixo disso a mesa rola em vez de encolher
 
   // Jogadores em volta da mesa; nas duplas, quem senta de frente é parceiro (lugares 0+2 e 1+3)
@@ -117,19 +116,22 @@
       let centro = null;
       const bracos = { esq: [], dir: [], cima: [], baixo: [] };
       const daRodada = Array(placar.length).fill(0); // pontos feitos nesta rodada (para o recorde)
-      let vez, obrigatoria = null, passes = 0, selecionada = null, acabou = false;
+      let vez, passes = 0, selecionada = null, acabou = false;
 
-      // Começa quem tem a maior carroça, jogando ela (na primeira rodada, e sempre nas Pontas de 5,
-      // para a mesa abrir em 4 pontas). Senão, quem venceu a rodada anterior, com qualquer peça.
-      if (quemComeca === null || cinco) {
+      // Quem começa: na primeira rodada, quem tem a maior carroça; depois, quem venceu a anterior.
+      // A saída é com uma carroça (qualquer uma, de preferência a do número de que se tem mais pedras)
+      // na primeira rodada e sempre nas Pontas de 5 — se quem começa tiver carroça.
+      if (quemComeca === null) {
         let melhor = null;
         jogadores.forEach(j => j.mao.forEach(p => {
           const peso = (p.a === p.b ? 100 : 0) + p.a + p.b;
-          if (!melhor || peso > melhor.peso) melhor = { j, p, peso };
+          if (!melhor || peso > melhor.peso) melhor = { j, peso };
         }));
         vez = melhor.j.lugar;
-        obrigatoria = melhor.p;
       } else vez = quemComeca;
+      let saidaCarroca = (quemComeca === null || cinco) && jogadores[vez].mao.some(p => p.a === p.b);
+      // Quantas pedras da mão têm o número v (para escolher a carroça da saída)
+      const quantasCom = (mao, v) => mao.filter(x => x.a === v || x.b === v).length;
 
       const spinner = () => cinco && centro && centro.dupla;
       // Pontas onde dá para jogar agora
@@ -147,7 +149,7 @@
 
       // Pontas onde a peça encaixa; mesa vazia → "centro"
       function ladosQueCabem(p) {
-        if (!centro) return !obrigatoria || obrigatoria === p ? ["centro"] : [];
+        if (!centro) return !saidaCarroca || p.a === p.b ? ["centro"] : [];
         const l = pontasAbertas().filter(lado => p.a === valorPonta(lado) || p.b === valorPonta(lado));
         // No jogo tradicional, pontas iguais dão no mesmo: não precisa perguntar onde
         if (!cinco && l.length === 2 && valorPonta("esq") === valorPonta("dir")) return [l[0]];
@@ -190,8 +192,9 @@
         j.mao.splice(j.mao.indexOf(p), 1);
         if (lado === "centro") centro = { a: p.a, b: p.b, fa: p.fa, fb: p.fb, dupla: p.a === p.b, nova: true };
         else bracos[lado].push({ ...virar(p, lado), nova: true });
-        obrigatoria = null;
+        saidaCarroca = false;
         passes = 0;
+        ultimaJogada = { j, peca: lado === "centro" ? centro : ultima(lado) };
         Motor.ploc();
         if (ganhou) {
           placar[time(j)] += ganhou;
@@ -234,6 +237,8 @@
       let zonas = {};         // lado → retângulo (na mesa) onde a próxima peça daquela ponta ficaria
       let mesaAtual = null;
       let ultimoPonto = null; // { pontos, j } para mostrar o "+10" na tela
+      let ultimaJogada = null; // { j, peca }: quem jogou por último e qual peça (fica marcada na mesa)
+      let fichasAtuais = new Map(), monteEl = null, comprou = 0;
 
       function desenhar() {
         area.innerHTML = "";
@@ -247,14 +252,21 @@
         // Topo: os outros jogadores (peças na mão; quem está pensando pula), o monte e o placar
         const topo = document.createElement("div");
         topo.className = "domino-topo";
+        const fichas = new Map(); // lugar → ficha do jogador no topo (de onde a peça dele sai voando)
+        fichasAtuais = fichas;
+        monteEl = null;
         jogadores.slice(1).forEach(j => {
           const el = document.createElement("div");
+          fichas.set(j.lugar, el);
           el.className = "domino-urso" + (vez === j.lugar ? " pensando" : "") + (duplas && time(j) === 0 ? " parceiro" : "");
           el.textContent = j.icone;
           const qt = document.createElement("span");
           qt.className = "qt";
           qt.textContent = j.mao.length;
-          el.appendChild(qt);
+          const costas = document.createElement("span");
+          costas.className = "costas-mao";
+          j.mao.forEach(() => { const c = document.createElement("i"); c.className = "costa"; costas.appendChild(c); });
+          el.append(costas, qt);
           topo.appendChild(el);
         });
         if (op.compra === "sim") {
@@ -265,6 +277,7 @@
           comprar.disabled = !monte.length || !minhaVez;
           if (minhaVez && monte.length && !temJogada(voce)) comprar.classList.add("chama");
           comprar.addEventListener("click", comprarPeca);
+          monteEl = comprar;
           topo.appendChild(comprar);
         }
         if (meta || cinco) {
@@ -309,7 +322,7 @@
           const el = desenharPeca(p.a, p.b, p.fa, p.fb, tMao, { tag: "button" });
           el.setAttribute("aria-label", `${nomeValor(p.a)} e ${nomeValor(p.b)}`);
           const cabe = minhaVez && ladosQueCabem(p).length;
-          if (cabe && (dicas || obrigatoria === p)) {
+          if (cabe && (dicas || (saidaCarroca && !centro))) {
             el.classList.add("cabe");
             const ganha = cinco && melhoresPontos(p);
             if (ganha) { const g = document.createElement("span"); g.className = "ganha"; g.textContent = `+${ganha}`; el.appendChild(g); }
@@ -330,8 +343,9 @@
         // Pontas onde dá para jogar agora: as da peça tocada, ou (com dicas) as de qualquer peça da mão
         const jogaveis = new Set(!minhaVez ? [] : selecionada ? ladosQueCabem(selecionada)
           : dicas ? voce.mao.flatMap(ladosQueCabem) : []);
-        desenharMesa(mesaEl, jogaveis);
+        const nova = desenharMesa(mesaEl, jogaveis);
         mesaEl.appendChild(info);
+        if (nova && ultimaJogada && ultimaJogada.j !== voce) voar(nova, fichas.get(ultimaJogada.j.lugar));
         mesaAtual = mesaEl;
         mostrarZonas(minhaVez ? selecionada : null);
       }
@@ -415,7 +429,7 @@
           // Mesa vazia: a zona é o meio da mesa
           const u = Math.min(30, Math.floor(MH / 2.5));
           zonas.centro = { x: MW / 2 - u, y: MH / 2 - u / 2, w: 2 * u, h: u };
-          return;
+          return null;
         }
         const W = MW - 12, H = MH - 12;
         let u = Math.min(30, Math.floor(H / 2.2)), rects = null;
@@ -425,6 +439,7 @@
         const minX = Math.min(...rects.map(r => r.x)), maxX = Math.max(...rects.map(r => r.x + r.w));
         const minY = Math.min(...rects.map(r => r.y)), maxY = Math.max(...rects.map(r => r.y + r.h));
         const ox = MW / 2 - (minX + maxX) / 2, oy = MH / 2 - (minY + maxY) / 2;
+        let nova = null;
         // Destaca na mesa só as pontas onde dá para jogar agora
         const pontasAtuais = new Set([...jogaveis].filter(l => l !== "centro").map(l => (bracos[l].length ? ultima(l) : centro)));
         rects.forEach(r => {
@@ -440,9 +455,39 @@
           el.classList.add("na-mesa");
           Object.assign(el.style, { left: ox + r.x + "px", top: oy + r.y + "px" });
           if (pontasAtuais.has(p)) el.classList.add("na-ponta");
-          if (p.nova) { el.classList.add("chegou"); p.nova = false; }
+          if (ultimaJogada && ultimaJogada.peca === p) el.classList.add("ultima-jogada");
+          if (p.nova) { el.classList.add("chegou"); p.nova = false; nova = el; }
           mesaEl.appendChild(el);
         });
+        return nova;
+      }
+
+      // Pedra comprada pelo computador: sai do monte, emborcada, e voa até a mão dele
+      function voarCompra(j) {
+        const ficha = fichasAtuais.get(j.lugar);
+        const destino = ficha && ficha.querySelector(".costa:last-child");
+        if (!monteEl || !destino || !document.body.animate) return;
+        const a = monteEl.getBoundingClientRect(), b = destino.getBoundingClientRect();
+        const voando = document.createElement("i");
+        voando.className = "costa voando";
+        Object.assign(voando.style, { left: b.left + "px", top: b.top + "px" });
+        document.body.appendChild(voando);
+        destino.style.visibility = "hidden";
+        voando.animate([
+          { transform: `translate(${a.left + a.width / 2 - b.left}px, ${a.top + a.height / 2 - b.top}px) scale(1.6)` },
+          { transform: "none" },
+        ], { duration: 600, easing: "ease-out" }).onfinish = () => { voando.remove(); destino.style.visibility = ""; };
+      }
+
+      // A peça jogada pelo computador sai da ficha dele (no topo) e voa até o lugar na mesa
+      function voar(el, origem) {
+        if (!origem || !el.animate) return;
+        const a = origem.getBoundingClientRect(), b = el.getBoundingClientRect();
+        el.classList.remove("chegou");
+        el.animate([
+          { transform: `translate(${a.left + a.width / 2 - b.left - b.width / 2}px, ${a.top + a.height / 2 - b.top - b.height / 2}px) scale(.6) rotate(-25deg)`, opacity: 0.4 },
+          { transform: "none", opacity: 1 },
+        ], { duration: 750, easing: "cubic-bezier(.2,.8,.3,1)" });
       }
 
       // ---------- Tempo para jogar ----------
@@ -478,7 +523,7 @@
         voce.mao.forEach(p => ladosQueCabem(p).forEach(lado => jogadas.push({ p, lado })));
         Motor.falar("Acabou o tempo! Joguei por você.");
         if (!jogadas.length) { Motor.depois(() => passar(voce), 1200); desenhar(); return; }
-        const valor = ({ p, lado }) => 100 * pontosDaJogada(p, lado) + p.a + p.b;
+        const valor = ({ p, lado }) => 100 * pontosDaJogada(p, lado) + (lado === "centro" ? 10 * Math.max(quantasCom(voce.mao, p.a), quantasCom(voce.mao, p.b)) : 0) + p.a + p.b;
         const j = jogadas.reduce((m, x) => (valor(x) > valor(m) ? x : m));
         Motor.depois(() => jogar(j.p, j.lado, null), 1200);
       }
@@ -489,7 +534,7 @@
         const cabe = ladosQueCabem(p);
         if (!cabe.length) {
           Motor.animar(el, "balanca");
-          if (obrigatoria) Motor.falar(`Comece com a carroça de ${NOMES_CARROCA[obrigatoria.a]}!`);
+          if (saidaCarroca && !centro) Motor.falar("Comece com uma carroça!");
           return;
         }
         if (cabe.length === 1) { jogar(p, cabe[0], el); return; }
@@ -508,7 +553,7 @@
         if (ganhou) Motor.falar(`${ganhou} pontos!`);
         else if (op.pecas === "figuras") Motor.falar(Motor.maiuscula(nomeValor(lado === "centro" ? p.b : valorPonta(lado))));
         if (!voce.mao.length) fimRodada(voce);
-        else proximaVez(ganhou ? 1600 : 900);
+        else proximaVez(ganhou ? 2000 : 1400);
         return true;
       }
 
@@ -528,12 +573,22 @@
       function jogadaBot() {
         if (acabou) return;
         const j = jogadores[vez];
-        while (!temJogada(j) && monte.length) j.mao.push(monte.shift());
+        if (!temJogada(j) && monte.length) {
+          j.mao.push(monte.shift());
+          if (!comprou++) Motor.falar(`${quem(j, true)} está comprando.`);
+          desenhar();
+          voarCompra(j);
+          Motor.nota(600, { dur: 0.12, vol: 0.2 });
+          Motor.depois(jogadaBot, 750);
+          return;
+        }
         const jogadas = [];
         j.mao.forEach(p => ladosQueCabem(p).forEach(lado => jogadas.push({ p, lado })));
         if (!jogadas.length) { passar(j); return; }
         let escolha;
+        const saida = ({ p }) => 10 * Math.max(quantasCom(j.mao, p.a), quantasCom(j.mao, p.b)) + p.a + p.b;
         if (op.nivel === "facil") escolha = Motor.sortear(jogadas);
+        else if (!centro) escolha = jogadas.reduce((m, x) => (saida(x) > saida(m) ? x : m));
         else {
           // Esperto: marca pontos quando dá, livra-se das peças pesadas e das carroças,
           // e guarda peças que combinem com as pontas
@@ -550,7 +605,7 @@
         ultimoPonto = ganhou ? { pontos: ganhou, j } : null;
         if (ganhou) Motor.falar(`${quem(j, true)} fez ${ganhou}!`);
         if (!j.mao.length) fimRodada(j);
-        else proximaVez(ganhou ? 1600 : 900);
+        else proximaVez(ganhou ? 2000 : 1400);
       }
 
       function passar(j) {
@@ -561,8 +616,9 @@
         proximaVez(1500);
       }
 
-      function proximaVez(espera = 900) {
+      function proximaVez(espera = 1400) {
         vez = (vez + 1) % n;
+        comprou = 0;
         desenhar();
         if (vez === 0) Motor.depois(avisarVez, ultimoPonto ? 900 : 0);
         else Motor.depois(jogadaBot, espera);
@@ -576,7 +632,7 @@
           else Motor.depois(() => passar(voce), 900);
           return;
         }
-        if (obrigatoria) return Motor.falar(`Você começa! Toque na carroça de ${NOMES_CARROCA[obrigatoria.a]}.`);
+        if (saidaCarroca && !centro) return Motor.falar("Você começa! Jogue uma carroça, de preferência do número que você mais tem.");
         if (!centro) return Motor.falar("Você começa! Toque numa peça.");
         if (!dicas) return Motor.falar("Sua vez!");
         const valores = [...new Set(pontasAbertas().map(valorPonta))].map(nomeValor);
@@ -752,7 +808,7 @@
       if (vez === 0) avisarVez();
       else {
         const j = jogadores[vez];
-        Motor.falar(obrigatoria ? `${quem(j, true)} tem a carroça de ${NOMES_CARROCA[obrigatoria.a]} e começa!` : `${quem(j, true)} começa!`);
+        Motor.falar(saidaCarroca ? `${quem(j, true)} começa com uma carroça!` : `${quem(j, true)} começa!`);
         Motor.depois(jogadaBot, 2200);
       }
     }

@@ -4,8 +4,8 @@
 //   (pode ser desligada nas opções, para as crianças que estão aprendendo).
 // - Pedra que termina a jogada na última fileira vira dama; a dama é "voadora": anda e captura
 //   em qualquer distância na diagonal.
-// Contra o computador (3 níveis) ou 2 jogadores no mesmo aparelho. Joga-se por toque:
-// toca na peça, depois na casa (nas capturas em sequência, casa por casa).
+// Contra o computador (3 níveis) ou 2 jogadores no mesmo aparelho. Joga-se tocando (na peça e
+// depois na casa) ou arrastando a peça até a casa; nas capturas em sequência, casa por casa.
 (() => {
   const OPCOES = [
     { chave: "modo", titulo: "Jogar contra", valores: [["robo", "🤖 Computador"], ["dois", "👥 2 jogadores"]] },
@@ -231,16 +231,19 @@
       // O que destacar: peças que podem jogar, casas de destino, peças já capturadas na sequência
       const js = daVez() ? legais() : [];
       const podem = new Set(js.map(j => j.de.join()));
-      const destinos = new Set(sel ? sel.candidatas.map(j => j.caminho[sel.passo].join()) : []);
+      const destinos = new Set(sel && daVez() ? sel.candidatas.map(j => j.caminho[sel.passo].join()) : []);
       const capturadas = new Set(sel ? sel.candidatas[0].capt.slice(0, sel.passo).map(x => x.join()) : []);
       const posSel = sel ? (sel.passo ? sel.candidatas[0].caminho[sel.passo - 1] : sel.de) : null;
       const marcadas = new Set(ultima ? [ultima.de, ...ultima.caminho].map(x => x.join()) : []);
 
+      casasAtuais = new Map();
       for (let vr = 0; vr < 8; vr++) for (let vc = 0; vc < 8; vc++) {
         const r = virado ? 7 - vr : vr, c = virado ? 7 - vc : vc;
         const casa = document.createElement("button");
         casa.className = "damas-casa " + ((r + c) % 2 ? "escura" : "clara");
         const k = `${r},${c}`;
+        casa.dataset.pos = k;
+        casasAtuais.set(k, casa);
         if (marcadas.has(k)) casa.classList.add("ultima");
         if (destinos.has(k)) casa.classList.add("destino");
         // Durante a captura em sequência, a peça aparece na casa onde já pousou
@@ -253,6 +256,15 @@
           if (capturadas.has(k)) el.classList.add("capturada");
           if (posSel && igual(posSel, [r, c])) el.classList.add("selecionada");
           else if (!sel && podem.has(k) && (dicas || (obrig && js[0].capt.length))) el.classList.add("pode");
+          // Dá para arrastar a peça que pode jogar (ou, no meio de uma captura em sequência, a que está capturando)
+          const meioCaptura = sel && sel.passo;
+          if (daVez() && (meioCaptura ? igual(posSel, [r, c]) : podem.has(k))) {
+            Motor.arrastavel(el, {
+              alvos: () => [...tab.querySelectorAll(".damas-casa.destino")],
+              aoComecar: () => comecarArraste(r, c),
+              aoSoltar: alvo => avancar(...alvo.dataset.pos.split(",").map(Number)),
+            });
+          }
           casa.appendChild(el);
         }
         casa.addEventListener("click", () => tocar(r, c, casa));
@@ -263,20 +275,34 @@
       tela.append(info, tab);
     }
 
-    // ---------- Toques ----------
+    // ---------- Toques e arrastes ----------
+    let casasAtuais = new Map();
+
+    // Leva a peça escolhida para (r, c), se for uma casa possível. Devolve true se andou.
+    function avancar(r, c) {
+      if (!daVez() || !sel || !sel.candidatas.some(j => igual(j.caminho[sel.passo], [r, c]))) return false;
+      const cand = sel.candidatas.filter(j => igual(j.caminho[sel.passo], [r, c]));
+      sel = { de: sel.de, passo: sel.passo + 1, candidatas: cand };
+      const pronta = cand.find(j => j.caminho.length === sel.passo);
+      if (pronta) fazer(pronta);
+      else { Motor.ploc(); desenhar(); } // captura em sequência: continua da casa onde pousou
+      return true;
+    }
+
+    // Começou a arrastar a peça em (r, c): ela fica escolhida e as casas possíveis acendem
+    function comecarArraste(r, c) {
+      if (!daVez()) return;
+      if (!(sel && sel.passo) && !(sel && igual(sel.de, [r, c]))) {
+        sel = { de: [r, c], passo: 0, candidatas: legais().filter(j => igual(j.de, [r, c])) };
+      }
+      const destinos = new Set(sel.candidatas.map(j => j.caminho[sel.passo].join()));
+      casasAtuais.forEach((casa, k) => casa.classList.toggle("destino", destinos.has(k)));
+    }
+
     function tocar(r, c, casa) {
       if (!daVez()) return;
       const js = legais();
-      if (sel && sel.candidatas.some(j => igual(j.caminho[sel.passo], [r, c]))) {
-        // Avança para a casa tocada
-        const cand = sel.candidatas.filter(j => igual(j.caminho[sel.passo], [r, c]));
-        sel = { de: sel.de, passo: sel.passo + 1, candidatas: cand };
-        const pronta = cand.find(j => j.caminho.length === sel.passo);
-        if (pronta) return fazer(pronta);
-        Motor.ploc();
-        desenhar();
-        return;
-      }
+      if (avancar(r, c)) return;
       if (sel && sel.passo) { Motor.animar(casa, "balanca"); return; } // no meio de uma captura em sequência
       const minhas = js.filter(j => igual(j.de, [r, c]));
       if (minhas.length) {
@@ -292,6 +318,10 @@
     function fazer(j) {
       const peca = t[j.de[0]][j.de[1]];
       const viraDama = !peca.dama && j.caminho[j.caminho.length - 1][0] === ultimaFileira(peca.cor);
+      // De onde a peça sai no último passo (para deslizar até o destino)
+      const antes = j.caminho.length > 1 ? j.caminho[j.caminho.length - 2] : j.de;
+      const jaAnimada = animando;
+      animando = false;
       t = aplicar(t, j);
       ultima = j;
       sel = null;
@@ -306,17 +336,45 @@
       if (!legais().length) return fim(outra(vez));
       if (semCaptura >= LIMITE_EMPATE) return fim(null);
       desenhar();
-      if (contraRobo && vez !== minhaCor) Motor.depois(jogadaRobo, 700);
+      if (!jaAnimada) deslizar(antes, j.caminho[j.caminho.length - 1]);
+      if (contraRobo && vez !== minhaCor) Motor.depois(jogadaRobo, 900);
       else if (!contraRobo) Motor.depois(() => Motor.falar(`Vez das ${NOME_COR[vez]}!`), viraDama ? 1200 : 300);
     }
 
+    // Peça desliza da casa `de` até a casa `para` (as duas já desenhadas)
+    function deslizar(de, para) {
+      const a = casasAtuais.get(de.join()), b = casasAtuais.get(para.join());
+      const el = b && b.querySelector(".peca-dama");
+      if (!a || !el) return;
+      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      el.animate([{ transform: `translate(${ra.left - rb.left}px, ${ra.top - rb.top}px) scale(1.1)` }, { transform: "none" }],
+        { duration: 380, easing: "ease-in-out" });
+    }
+
+    // Jogada do computador, mostrada devagar: a peça acende, desliza casa por casa
+    // (as capturadas vão ficando apagadas) e só então a jogada acontece
+    let animando = false;
     function jogadaRobo() {
       if (acabou) return;
-      // Deixa a tela mostrar "pensando" antes do cálculo
-      setTimeout(() => {
+      setTimeout(() => { // deixa a tela mostrar a vez antes do cálculo
         if (acabou) return;
         const j = escolherJogada(t, vez, op.nivel, obrig);
-        Motor.depois(() => fazer(j), 300);
+        animando = true;
+        sel = { de: j.de, passo: 0, candidatas: [j] };
+        desenhar();
+        let passo = 0;
+        const proximo = () => {
+          if (acabou) return;
+          if (passo === j.caminho.length) { fazer(j); return; }
+          const de = passo ? j.caminho[passo - 1] : j.de;
+          passo++;
+          sel = { de: j.de, passo, candidatas: [j] };
+          desenhar();
+          deslizar(de, j.caminho[passo - 1]);
+          if (j.capt.length) Motor.nota(520, { dur: 0.1, vol: 0.2 }); else Motor.ploc();
+          Motor.depois(proximo, passo === j.caminho.length ? 450 : 550);
+        };
+        Motor.depois(proximo, 600);
       }, 30);
     }
 
