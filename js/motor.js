@@ -270,7 +270,8 @@ const Motor = (() => {
   // ---------- Tela de opções (jogos de mesa) ----------
   // `opcoes`: [{ chave, titulo, valores: [[valor, rotulo], ...] }]. A escolha fica guardada no
   // aparelho em `chave`. `antes`: elemento mostrado no topo (ex.: placar). `aoJogar(op)` ao tocar em Jogar.
-  function telaOpcoes(area, { opcoes, padrao, chave, antes, aoJogar }) {
+  // `aoMudar(op, chave)`: pode ajustar outras opções que não combinam com a escolhida.
+  function telaOpcoes(area, { opcoes, padrao, chave, antes, aoJogar, aoMudar }) {
     let salvo = null;
     try { salvo = JSON.parse(localStorage.getItem(chave)); } catch (e) { /* sem armazenamento */ }
     const op = { ...padrao, ...(salvo || {}) };
@@ -278,6 +279,8 @@ const Motor = (() => {
     const caixa = document.createElement("div");
     caixa.className = "opcoes-jogo";
     if (antes) caixa.appendChild(antes);
+    const botoes = []; // [chave, valor, botão]
+    const marcar = () => botoes.forEach(([k, v, b]) => b.classList.toggle("ativo", op[k] === v));
     opcoes.forEach(o => {
       const grupo = document.createElement("div");
       grupo.className = "grupo-op";
@@ -292,8 +295,10 @@ const Motor = (() => {
         b.textContent = rotulo;
         b.addEventListener("click", () => {
           op[o.chave] = valor;
-          chips.querySelectorAll(".chip").forEach(x => x.classList.toggle("ativo", x === b));
+          if (aoMudar) aoMudar(op, o.chave);
+          marcar();
         });
+        botoes.push([o.chave, valor, b]);
         chips.appendChild(b);
       });
       grupo.append(t, chips);

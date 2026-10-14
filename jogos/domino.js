@@ -31,7 +31,7 @@
   // Opções da tela inicial e a escolha padrão de cada faixa
   const OPCOES = [
     { chave: "tipo", titulo: "Tipo de jogo", valores: [["normal", "🎯 Tradicional"], ["cinco", "5️⃣ Pontas de 5"]] },
-    { chave: "pecas", titulo: "Peças", valores: [["figuras", "🐶 Figuras"], ["numeros", "🔢 Números"], ["pontos", "⚫ Bolinhas"]] },
+    { chave: "pecas", titulo: "Peças", valores: [["figuras", "🐶 Bichinhos"], ["numeros", "🔢 Números"], ["pontos", "⚫ Bolinhas"]] },
     { chave: "jogadores", titulo: "Jogadores", valores: [["2", "👤 2"], ["3", "👥 3"], ["4", "👥 4"], ["duplas", "🤝 Duplas"]] },
     { chave: "compra", titulo: "Comprar no monte", valores: [["sim", "🛒 Sim"], ["nao", "🚫 Não"]] },
     { chave: "meta", titulo: "Partida", valores: [["0", "1 rodada"], ["50", "50 pontos"], ["100", "100 pontos"], ["200", "200 pontos"]] },
@@ -63,6 +63,11 @@
         opcoes: OPCOES, padrao: PADRAO[id], chave: `domino-opcoes-${id}`,
         antes: Placar.painel("domino", { recordes: RECORDES, comZerar: true }),
         aoJogar: op => partida(area, op),
+        // Bichinhos não têm valor para somar: com eles o jogo é o tradicional
+        aoMudar: (op, mudou) => {
+          if (mudou === "pecas" && op.pecas === "figuras") op.tipo = "normal";
+          if (mudou === "tipo" && op.tipo === "cinco" && op.pecas === "figuras") op.pecas = "pontos";
+        },
       });
     },
   });
@@ -70,8 +75,8 @@
   // ---------- Uma partida (uma ou mais rodadas, até a meta de pontos) ----------
   function partida(area, opcoes) {
     const op = { ...opcoes };
-    const cinco = op.tipo === "cinco";
-    if (cinco && op.pecas === "figuras") op.pecas = "numeros"; // pontas de 5 precisa ver os valores
+    // Bichinhos não têm valor para somar: com eles o jogo é sempre o tradicional
+    const cinco = op.tipo === "cinco" && op.pecas !== "figuras";
     const jogadores = MESAS[op.jogadores].map((j, i) => ({ ...j, lugar: i, mao: [] }));
     const n = jogadores.length;
     const voce = jogadores[0];
