@@ -497,3 +497,17 @@ button { font-family: inherit; color: inherit; }
   .cubo-botoes { grid-template-columns: repeat(2, 64px); align-content: center; max-width: none; }
   .botao-face { padding: 6px 0 10px; font-size: 18px; }
 }
+
+/* Ícones desenhados (SVG) na tela de modos */
+.modo .icone svg { display: block; width: min(14vw, 96px); height: min(14vw, 96px); }
+.modos.pequenos .modo .icone svg { width: min(10vw, 56px); height: min(10vw, 56px); }
+
+/* Cubo: guia de resolução e demonstrações */
+.cubo-guia { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; max-width: 640px; background: rgba(255,255,255,.88); border-radius: 16px; padding: 6px 10px; }
+.cubo-guia .cubo-alg { background: #fff; }
+.guia-titulo { font-weight: bold; font-size: 17px; }
+.guia-texto { font-size: 14px; text-align: center; color: #444; }
+.guia-texto.legenda { background: rgba(255,255,255,.88); border-radius: 12px; padding: 6px 10px; max-width: 640px; font-size: 15px; }
+.guia-texto.legenda:empty { display: none; }
+.cubo-orbita.focando .cubinho:not(.destaque) .face-cubinho { opacity: .22; }
+.cubo-orbita.focando .cubinho.destaque .face-cubinho.colorida::after { box-shadow: 0 0 0 2px #fff, 0 0 10px 2px rgba(255,255,255,.9); }

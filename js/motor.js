@@ -332,7 +332,9 @@ const Motor = (() => {
       const b = document.createElement("button");
       b.className = "modo";
       b.innerHTML = `<span class="icone"></span><span class="rotulo"></span>`;
-      b.querySelector(".icone").textContent = m.icone;
+      const icone = String(m.icone);
+      if (icone.startsWith("<svg")) b.querySelector(".icone").innerHTML = icone; // desenho do próprio jogo
+      else b.querySelector(".icone").textContent = icone;
       b.querySelector(".rotulo").textContent = m.rotulo;
       b.addEventListener("click", () => { area.innerHTML = ""; m.iniciar(); });
       caixa.appendChild(b);
