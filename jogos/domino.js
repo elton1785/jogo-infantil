@@ -567,20 +567,35 @@
           placar[time(vencedor)] += pontos;
           daRodada[time(vencedor)] += pontos;
         }
-        terminarRodada(vencedor, frase, pontos);
+
+        // A conta da rodada, separada: o que a batida fez na mesa (Pontas de 5, já marcado na hora)
+        // e o que veio das pedras que ficaram na mão
+        const conta = [];
+        const naMesa = bateu && cinco && ultimoPonto && ultimoPonto.j === bateu ? ultimoPonto.pontos : 0;
+        if (naMesa) conta.push(["🎯 Batida na mesa", naMesa]);
+        if (vencedor) {
+          const adv = jogadores.filter(j => time(j) !== time(vencedor));
+          const deQuem = duplas ? `de ${nomesTime[time(adv[0])]}` : adv.length === 1 ? `${adv[0] === voce ? "da sua mão" : (adv[0].artigo === "a" ? "da " : "do ") + adv[0].nome}` : "dos adversários";
+          const coisa = op.pecas === "figuras" ? "Peças" : "Pedras";
+          conta.push([bateu ? `✋ ${coisa} ${deQuem}` : `✋ Diferença das ${coisa.toLowerCase()} na mão`, pontos]);
+        }
+        let fala = frase;
+        if (vencedor && naMesa) fala += ` Fez ${naMesa} na mesa e ganhou mais ${pontos} das pedras!`;
+        else if (vencedor && pontos) fala += ` Ganhou ${pontos} ${op.pecas === "figuras" ? (pontos === 1 ? "ponto" : "pontos") : "das pedras"}!`;
+        terminarRodada(vencedor, frase, conta, fala);
       }
 
-      function terminarRodada(vencedor, frase, pontos) {
+      function terminarRodada(vencedor, frase, conta, fala) {
         acabou = true;
         vez = -1;
         if (vencedor) quemComeca = vencedor.lugar;
         const novoRecorde = Placar.recorde("domino", recordeChave, daRodada[0]);
         desenhar();
-        Motor.falar(frase);
-        Motor.depois(() => telaResultado(vencedor, frase, pontos, novoRecorde), 2600);
+        Motor.falar(fala);
+        Motor.depois(() => telaResultado(vencedor, frase, conta, novoRecorde), 3200);
       }
 
-      function telaResultado(vencedor, frase, pontos, novoRecorde) {
+      function telaResultado(vencedor, frase, conta, novoRecorde) {
         area.innerHTML = "";
         // Time que ganhou a partida (-1: ninguém ainda / empate). Com meta, a partida acaba no fim
         // da rodada em que alguém chegou nela, e ganha quem estiver na frente (empatados: mais uma rodada).
@@ -592,12 +607,23 @@
         const nos = vencedor && time(vencedor) === 0;
         const caixa = document.createElement("div");
         caixa.className = "fim";
-        caixa.innerHTML = `<div class="trofeu"></div><div class="resumo"></div><div class="placar-fim"></div>`;
+        caixa.innerHTML = `<div class="trofeu"></div><div class="resumo"></div><div class="conta-rodada"></div><div class="placar-fim"></div>`;
         const iconeTime = tm => jogadores.find(j => time(j) === tm && j !== voce).icone;
         caixa.querySelector(".trofeu").textContent = terminou
           ? (campeao < 0 ? "🤝" : campeao === 0 ? "🏆" : iconeTime(campeao))
           : (!vencedor ? "🤝" : nos ? "⭐" : vencedor.icone);
-        caixa.querySelector(".resumo").textContent = frase + (pontos ? ` +${pontos} ${pontos === 1 ? "ponto" : "pontos"}` : "");
+        caixa.querySelector(".resumo").textContent = frase;
+        const contaEl = caixa.querySelector(".conta-rodada");
+        const linha = (rotulo, valor, classe = "") => {
+          const l = document.createElement("div");
+          l.className = "linha-conta " + classe;
+          l.innerHTML = `<span></span><b></b>`;
+          l.querySelector("span").textContent = rotulo;
+          l.querySelector("b").textContent = `+${valor}`;
+          contaEl.appendChild(l);
+        };
+        conta.forEach(([r, v]) => linha(r, v));
+        if (conta.length > 1) linha("Total", conta.reduce((s, [, v]) => s + v, 0), "total");
         if (meta || cinco) caixa.querySelector(".placar-fim").textContent = placar.map((p, i) => `${nomesTime[i]}: ${p}`).join(" · ");
         const botao = document.createElement("button");
         botao.className = "modo";

@@ -408,3 +408,10 @@ button { font-family: inherit; color: inherit; }
 .peca-dama.pode { outline: 3px solid #ffd60a; outline-offset: 2px; }
 .peca-dama.selecionada { outline: 4px solid var(--destaque); outline-offset: 2px; transform: scale(1.1); }
 .peca-dama.capturada { opacity: .3; }
+
+/* Conta da rodada no fim (dominó) */
+.conta-rodada { display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,.9); border-radius: 16px; padding: 8px 16px; min-width: 240px; }
+.conta-rodada:empty { display: none; }
+.linha-conta { display: flex; justify-content: space-between; gap: 16px; font-size: clamp(16px, 3.5vw, 20px); font-weight: bold; }
+.linha-conta b { color: #2a9d55; }
+.linha-conta.total { border-top: 2px solid rgba(0,0,0,.15); padding-top: 4px; }
