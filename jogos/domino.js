@@ -286,6 +286,7 @@
           pl.textContent = placar.map((p, i) => `${duplas ? (i ? "🐻🦊" : "🧒🐼") : jogadores[i].icone} ${p}`).join(" · ") + (meta ? ` / ${meta}` : "");
           topo.appendChild(pl);
         }
+        topo.appendChild(Motor.botaoSom());
         // Relógio da vez da criança: barra que esvazia
         if (minhaVez && prazo) {
           const resta = Math.max(0, prazo - Date.now());
@@ -575,7 +576,7 @@
         const j = jogadores[vez];
         if (!temJogada(j) && monte.length) {
           j.mao.push(monte.shift());
-          if (!comprou++) Motor.falar(`${quem(j, true)} está comprando.`);
+          if (!comprou++) Motor.falar(`${quem(j, true)} está comprando.`, { naFila: true });
           desenhar();
           voarCompra(j);
           Motor.nota(600, { dur: 0.12, vol: 0.2 });
@@ -603,7 +604,7 @@
         }
         const ganhou = colocar(j, escolha.p, escolha.lado);
         ultimoPonto = ganhou ? { pontos: ganhou, j } : null;
-        if (ganhou) Motor.falar(`${quem(j, true)} fez ${ganhou}!`);
+        if (ganhou) Motor.falar(`${quem(j, true)} fez ${ganhou}!`, { naFila: true });
         if (!j.mao.length) fimRodada(j);
         else proximaVez(ganhou ? 2000 : 1400);
       }
@@ -612,7 +613,7 @@
         passes++;
         if (passes >= n) { fimRodada(null); return; }
         ultimoPonto = null;
-        Motor.falar(j === voce ? "Você não tem peça. Passa a vez!" : `${quem(j, true)} passou!`);
+        Motor.falar(j === voce ? "Você não tem peça. Passa a vez!" : `${quem(j, true)} passou!`, { naFila: true });
         proximaVez(1500);
       }
 
@@ -628,15 +629,15 @@
         if (vez !== 0 || acabou) return;
         if (temJogada(voce) || monte.length) { iniciarRelogio(); desenhar(); }
         if (!temJogada(voce)) {
-          if (monte.length) Motor.falar("Nenhuma peça encaixa. Toque no carrinho para comprar!");
+          if (monte.length) Motor.falar("Nenhuma peça encaixa. Toque no carrinho para comprar!", { naFila: true });
           else Motor.depois(() => passar(voce), 900);
           return;
         }
-        if (saidaCarroca && !centro) return Motor.falar("Você começa! Jogue uma carroça, de preferência do número que você mais tem.");
-        if (!centro) return Motor.falar("Você começa! Toque numa peça.");
-        if (!dicas) return Motor.falar("Sua vez!");
+        if (saidaCarroca && !centro) return Motor.falar("Você começa! Jogue uma carroça, de preferência do número que você mais tem.", { naFila: true });
+        if (!centro) return Motor.falar("Você começa! Toque numa peça.", { naFila: true });
+        if (!dicas) return Motor.falar("Sua vez!", { naFila: true });
         const valores = [...new Set(pontasAbertas().map(valorPonta))].map(nomeValor);
-        Motor.falar(`Sua vez! Precisa de ${valores.length > 1 ? valores.slice(0, -1).join(", ") + " ou " + valores[valores.length - 1] : valores[0]}.`);
+        Motor.falar(`Sua vez! Precisa de ${valores.length > 1 ? valores.slice(0, -1).join(", ") + " ou " + valores[valores.length - 1] : valores[0]}.`, { naFila: true });
       }
 
       // ---------- Fim da rodada e da partida ----------
@@ -692,7 +693,7 @@
         if (vencedor) quemComeca = vencedor.lugar;
         const novoRecorde = Placar.recorde("domino", recordeChave, daRodada[0]);
         desenhar();
-        Motor.falar(fala);
+        Motor.falar(fala, { naFila: true });
         Motor.depois(() => telaResultado(vencedor, frase, conta, novoRecorde), 3200);
       }
 

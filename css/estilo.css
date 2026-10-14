@@ -90,7 +90,6 @@ button { font-family: inherit; color: inherit; }
   display: flex; align-items: center; justify-content: center;
   font-size: min(20vw, 20vh, 170px); line-height: 1; min-height: 0;
 }
-.cartao.certo { background: #fff3b0; }
 .cartao.numero { font-size: min(14vw, 14vh, 110px); font-weight: bold; }
 .cartao.letra { font-size: min(16vw, 16vh, 140px); font-weight: bold; flex-direction: column; gap: 4px; }
 .cartao.letra .mini { font-size: .4em; }
@@ -534,3 +533,9 @@ button { font-family: inherit; color: inherit; }
 .robo-cmd:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--sombra); }
 .robo-acoes { display: flex; gap: 8px; justify-content: center; }
 .chip.executar { background: #2a9d55; color: #fff; font-size: 20px; }
+
+/* ---------- Acerto e erro (todos os jogos de perguntas) ---------- */
+.cartao.certo { background: #e3f9e9; color: #1b7f3b; box-shadow: 0 0 0 6px #2a9d55, 0 10px 0 var(--sombra); }
+.cartao.errado { background: #ffe1e4; color: #c1121f; box-shadow: 0 0 0 5px #f28b96, 0 10px 0 var(--sombra); }
+.cartao.palavra { overflow-wrap: normal; word-break: normal; hyphens: none; min-width: 0; overflow: hidden; }
+.botao-som { font-size: 20px; padding: 6px 10px; }

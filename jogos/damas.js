@@ -221,6 +221,7 @@
         el.append(peca, nome, qt);
         info.appendChild(el);
       });
+      info.appendChild(Motor.botaoSom());
 
       // Tabuleiro
       const lado = Math.floor(Math.min(deitado ? larg - 230 : larg, deitado ? alt : alt - 130) / 8) * 8;

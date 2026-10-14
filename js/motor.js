@@ -43,8 +43,41 @@ const Motor = (() => {
     setTimeout(() => { if (s === sessao) fn(); }, ms);
   }
 
-  function falar(texto) {
+  // Som ligado/desligado (voz e efeitos), guardado no aparelho
+  let mudo = false;
+  try { mudo = localStorage.getItem("som") === "desligado"; } catch (e) { /* ok */ }
+  const somLigado = () => !mudo;
+  function alternarSom() {
+    mudo = !mudo;
+    try { localStorage.setItem("som", mudo ? "desligado" : "ligado"); } catch (e) { /* ok */ }
+    if (mudo && "speechSynthesis" in window) speechSynthesis.cancel();
+    return !mudo;
+  }
+  // Botão 🔊/🔇 para pôr nos jogos
+  function botaoSom() {
+    const b = document.createElement("button");
+    b.className = "chip botao-som";
+    const pintar = () => { b.textContent = mudo ? "🔇" : "🔊"; b.setAttribute("aria-label", mudo ? "Ligar o som" : "Desligar o som"); };
+    pintar();
+    b.addEventListener("click", () => { alternarSom(); pintar(); if (!mudo) falar("Som ligado!"); });
+    return b;
+  }
+
+  // Fala o texto. `naFila: true` espera a fala anterior terminar em vez de cortá-la
+  // (ex.: o computador anunciando pontos e logo em seguida "sua vez").
+  let ultimaFala = Promise.resolve();
+  function falar(texto, { naFila = false } = {}) {
+    if (naFila) {
+      const s = sessao;
+      ultimaFala = ultimaFala.then(() => (s === sessao ? falarAgora(texto) : null));
+      return ultimaFala;
+    }
+    ultimaFala = falarAgora(texto);
+    return ultimaFala;
+  }
+  function falarAgora(texto) {
     return new Promise(resolve => {
+      if (mudo) return setTimeout(resolve, 250);
       if (!("speechSynthesis" in window)) return resolve();
       speechSynthesis.cancel();
       const f = new SpeechSynthesisUtterance(texto);
@@ -63,6 +96,7 @@ const Motor = (() => {
   function tocarSom(arquivo, textoReserva) {
     return new Promise(resolve => {
       if (audioAtual) audioAtual.pause();
+      if (mudo) return setTimeout(resolve, 250);
       const a = new Audio(`sons/${arquivo}`);
       audioAtual = a;
       a.onended = resolve;
@@ -84,6 +118,7 @@ const Motor = (() => {
 
   // Uma nota. `ate`: frequência final (para efeitos como o tambor que "cai").
   function nota(freq, { dur = 0.5, tipo = "sine", vol = 0.3, inicio = 0, ate } = {}) {
+    if (mudo) return;
     const a = audio();
     if (!a) return;
     const t = a.currentTime + inicio;
@@ -100,6 +135,7 @@ const Motor = (() => {
   }
 
   function ruido({ dur = 0.2, vol = 0.3, filtro = "lowpass", freq = 1000, inicio = 0 } = {}) {
+    if (mudo) return;
     const a = audio();
     if (!a) return;
     const t = a.currentTime + inicio;
@@ -183,6 +219,35 @@ const Motor = (() => {
     else b.textContent = item.emoji;
     return b;
   }
+
+  // Texto do cartão do maior tamanho que cabe nele (nomes longos, como "Rio de Janeiro",
+  // quebram linha entre as palavras, sem cortar palavra no meio)
+  function ajustarTexto(el) {
+    const w = el.clientWidth, h = el.clientHeight;
+    if (!w || !h) return;
+    let lo = 14, hi = Math.min(120, h * 0.55, w * 0.4);
+    while (hi - lo > 1) {
+      const meio = (lo + hi) / 2;
+      el.style.fontSize = meio + "px";
+      if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) hi = meio; else lo = meio;
+    }
+    el.style.fontSize = Math.max(14, lo * 0.9) + "px"; // uma folguinha para não encostar na borda
+  }
+  // Os cartões de uma mesma grade ficam todos com o mesmo tamanho (o do texto mais comprido)
+  function ajustarTextos(raiz) {
+    requestAnimationFrame(() => {
+      const grades = new Set([...raiz.querySelectorAll(".cartao.palavra")].map(c => c.parentElement));
+      grades.forEach(g => {
+        const cs = [...g.querySelectorAll(":scope > .cartao.palavra")];
+        cs.forEach(ajustarTexto);
+        const menor = Math.min(...cs.map(c => parseFloat(c.style.fontSize) || 99));
+        cs.forEach(c => { c.style.fontSize = menor + "px"; });
+      });
+    });
+  }
+  // Girou a tela: ajusta de novo
+  let esperaAjuste = null;
+  window.addEventListener("resize", () => { clearTimeout(esperaAjuste); esperaAjuste = setTimeout(() => ajustarTextos(document), 200); });
 
   // Desenho de cartão só com texto (números, sílabas, nomes). `classe`: numero | palavra | letra
   function desenharTexto(classe) {
@@ -357,6 +422,7 @@ const Motor = (() => {
         c.addEventListener("click", () => { animar(c, "pula"); aoTocar(item, c); });
         grade.appendChild(c);
       });
+      ajustarTextos(grade);
     }
 
     area.appendChild(grade);
@@ -426,6 +492,7 @@ const Motor = (() => {
         c.addEventListener("click", () => responder(item, c));
         grade.appendChild(c);
       });
+      ajustarTextos(grade);
       perguntar();
     }
 
@@ -447,6 +514,7 @@ const Motor = (() => {
         else depois(nova, 600);
       } else {
         errou = true;
+        cartao.classList.add("errado");
         animar(cartao, "balanca");
         perguntar();
       }
@@ -679,7 +747,7 @@ const Motor = (() => {
   }
 
   return {
-    novaSessao, sessaoAtual, depois, falar, tocarSom, nota, ruido, ploc, tim,
+    novaSessao, sessaoAtual, depois, falar, tocarSom, somLigado, alternarSom, botaoSom, ajustarTextos, nota, ruido, ploc, tim,
     embaralhar, sortear, aleatorio, maiuscula, elogio, ehPequeno, opcoesNumericas,
     animar, comemorar, criarCartao, desenharTexto, botaoCanto, telaFim, arrastavel, comEmoji, comTexto,
     telaOpcoes, escolherModo, modoExplorar, modoQuiz, modoCade, modoMontar, modoArrastar, vocabulario,
