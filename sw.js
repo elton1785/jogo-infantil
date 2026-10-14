@@ -1,7 +1,8 @@
 // Service worker: guarda os arquivos do jogo no aparelho para funcionar sem internet.
-// Estratégia: responde do cache na hora e atualiza em segundo plano (a versão nova
-// aparece na próxima vez que o app for aberto).
-const CACHE = "brincar-v3";
+// Estratégia: responde do cache na hora e atualiza em segundo plano.
+// Versão nova (CACHE trocado): fica esperando até a pessoa tocar em "Atualizar" no app,
+// que manda a mensagem "atualizar" — aí ela assume e o app recarrega.
+const CACHE = "brincar-v5";
 const ARQUIVOS = [
   "./",
   "index.html",
@@ -44,15 +45,17 @@ const ARQUIVOS = [
   "js/app.js",
   "js/dados.js",
   "js/motor.js",
+  "js/placar.js",
 ];
 
 // Guarda arquivo por arquivo: se um falhar (internet instável), os outros ficam guardados
 // e ele é baixado depois, quando for usado.
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE)
-    .then(c => Promise.allSettled(ARQUIVOS.map(f => c.add(f))))
-    .then(() => self.skipWaiting()));
+    .then(c => Promise.allSettled(ARQUIVOS.map(f => c.add(new Request(f, { cache: "reload" }))))));
 });
+
+self.addEventListener("message", e => { if (e.data === "atualizar") self.skipWaiting(); });
 
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys()

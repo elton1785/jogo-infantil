@@ -12,9 +12,9 @@
   const NOMES_CARROCA = ["branco", "ás", "duque", "terno", "quadra", "quina", "sena"];
 
   // Jogadores em volta da mesa; nas duplas, quem senta de frente é parceiro (lugares 0+2 e 1+3)
-  const VOCE = { nome: "Você", icone: "🧒" };
-  const BOTS = { urso: { nome: "Urso", artigo: "o", icone: "🐻" }, raposa: { nome: "Raposa", artigo: "a", icone: "🦊" },
-    panda: { nome: "Panda", artigo: "o", icone: "🐼" } };
+  const VOCE = { id: "voce", nome: "Você", icone: "🧒" };
+  const BOTS = { urso: { id: "urso", nome: "Urso", artigo: "o", icone: "🐻" }, raposa: { id: "raposa", nome: "Raposa", artigo: "a", icone: "🦊" },
+    panda: { id: "panda", nome: "Panda", artigo: "o", icone: "🐼" } };
   const MESAS = {
     "2": [VOCE, BOTS.urso],
     "3": [VOCE, BOTS.urso, BOTS.raposa],
@@ -36,6 +36,8 @@
     "6-8":  { pecas: "pontos", jogadores: "2", compra: "sim", meta: "0", nivel: "facil", dicas: "sim" },
     "8-10": { pecas: "pontos", jogadores: "4", compra: "sim", meta: "50", nivel: "esperto", dicas: "nao" },
   };
+  // Recordes de pontos numa rodada, um para cada tipo de peça (os pontos não se comparam entre tipos)
+  const RECORDES = { "rodada-pontos": "recorde de pontos ⚫", "rodada-numeros": "recorde de pontos 🔢", "rodada-figuras": "recorde de peças 🐶" };
   const SIMPLES = { pecas: "figuras", jogadores: "2", compra: "sim", meta: "0", nivel: "facil", dicas: "sim" };
 
   const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } };
@@ -57,6 +59,7 @@
       area.innerHTML = "";
       const caixa = document.createElement("div");
       caixa.className = "opcoes-jogo";
+      caixa.appendChild(Placar.painel("domino", { recordes: RECORDES, comZerar: true }));
       OPCOES.forEach(o => {
         const grupo = document.createElement("div");
         grupo.className = "grupo-op";
@@ -398,18 +401,19 @@
           else if (duplas) frase = `O jogo trancou! ${nomesTime[time(vencedor)]} têm menos pontos.`;
           else frase = `O jogo trancou! ${quem(vencedor, true)} tem menos pontos.`;
         }
-        let pontos = 0;
+        let pontos = 0, novoRecorde = false;
         if (vencedor) {
           pontos = jogadores.filter(j => time(j) !== time(vencedor)).reduce((s, j) => s + soma(j), 0);
           placar[time(vencedor)] += pontos;
           quemComeca = vencedor.lugar;
+          if (time(vencedor) === 0) novoRecorde = Placar.recorde("domino", `rodada-${op.pecas}`, pontos);
         }
         desenhar();
         Motor.falar(frase);
-        Motor.depois(() => telaResultado(vencedor, frase, pontos), 2600);
+        Motor.depois(() => telaResultado(vencedor, frase, pontos, novoRecorde), 2600);
       }
 
-      function telaResultado(vencedor, frase, pontos) {
+      function telaResultado(vencedor, frase, pontos, novoRecorde) {
         area.innerHTML = "";
         // Time que ganhou a partida (-1: ninguém ainda / empate)
         const campeao = meta ? placar.findIndex(p => p >= meta) : vencedor ? time(vencedor) : -1;
@@ -430,6 +434,23 @@
         botao.querySelector(".icone").textContent = terminou ? "🔁" : "▶️";
         botao.querySelector(".rotulo").textContent = terminou ? "Jogar de novo" : "Próxima rodada";
         botao.addEventListener("click", () => (terminou ? partida(area, op) : rodada()));
+        if (novoRecorde) {
+          const r = document.createElement("div");
+          r.className = "novo-recorde";
+          r.textContent = `⭐ Novo recorde: ${pontos}!`;
+          caixa.appendChild(r);
+        }
+
+        // Fim da partida: conta no placar geral
+        let seq = null;
+        if (terminou) {
+          const ganhador = campeao < 0 ? null
+            : campeao === 0 ? { id: "voce", rotulo: "🧒 Você" }
+            : duplas ? { id: "urso-raposa", rotulo: "🐻🦊 Urso e Raposa" }
+            : { id: jogadores[campeao].id, rotulo: `${jogadores[campeao].icone} ${jogadores[campeao].nome}` };
+          seq = Placar.resultado("domino", ganhador);
+          caixa.appendChild(Placar.painel("domino", { recordes: RECORDES }));
+        }
         caixa.appendChild(botao);
         area.appendChild(caixa);
 
@@ -438,6 +459,9 @@
         else if (campeao === 0) fala = duplas ? "Você e o Panda ganharam a partida!" : "Você ganhou a partida!";
         else if (campeao < 0) fala = "Empatou! Vamos jogar de novo?";
         else fala = `${duplas ? "Urso e Raposa ganharam" : quem(jogadores[campeao], true) + " ganhou"} desta vez! Vamos jogar de novo?`;
+        if (novoRecorde) fala += ` Novo recorde: ${pontos} ${op.pecas === "figuras" ? "peças" : "pontos"}!`;
+        if (seq && seq.novaMelhorSequencia) fala += ` ${seq.sequencia} vitórias seguidas! É o seu recorde!`;
+        else if (seq && seq.sequencia > 1) fala += ` São ${seq.sequencia} vitórias seguidas!`;
         if (terminou && campeao === 0) { Motor.comemorar(caixa.querySelector(".trofeu")); Motor.tim(); }
         else if (nos) Motor.tim();
         Motor.falar(fala);

@@ -331,3 +331,25 @@ button { font-family: inherit; color: inherit; }
 .chip { border: none; border-radius: 18px; background: var(--cartao); box-shadow: 0 4px 0 var(--sombra); font-size: clamp(15px, 2.6vw, 18px); font-weight: bold; padding: 7px 12px; cursor: pointer; }
 .chip.ativo { background: var(--destaque); color: #fff; }
 .chip.jogar { grid-column: 1 / -1; justify-self: center; font-size: clamp(22px, 5vw, 30px); padding: 10px 48px; background: #2a9d55; color: #fff; }
+
+/* ---------- Placar geral ---------- */
+.placar-geral { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; justify-content: center; background: rgba(255,255,255,.8); border-radius: 20px; padding: 8px 12px; max-width: 760px; }
+.item-placar { font-size: clamp(14px, 2.6vw, 18px); font-weight: bold; background: var(--cartao); border-radius: 12px; padding: 3px 10px; }
+.item-placar.titulo-placar { background: none; }
+.item-placar.voce { background: #ffd60a; }
+.zerar-placar { border: none; border-radius: 12px; background: #eee; font-size: 14px; padding: 4px 10px; cursor: pointer; }
+.novo-recorde { font-size: clamp(20px, 4vw, 28px); font-weight: bold; color: #fff; background: #f77f00; border-radius: 18px; padding: 4px 16px; animation: pula 1s ease infinite; }
+.fim { max-height: 100%; overflow-y: auto; }
+
+/* ---------- Aviso de versão nova ---------- */
+#btn-atualizar {
+  position: fixed; z-index: 20; left: 50%; bottom: 16px; transform: translateX(-50%); border: none; border-radius: 24px;
+  background: #2a9d55; color: #fff; font-size: clamp(16px, 3.5vw, 22px); font-weight: bold; padding: 12px 22px;
+  box-shadow: 0 6px 0 rgba(0,0,0,.25); cursor: pointer; white-space: nowrap; animation: pula 1.2s ease 3;
+}
+#btn-atualizar[hidden], #jogo.ativa ~ #btn-atualizar { display: none; }
+
+/* Fim de partida com placar: troféu e botão menores para caber tudo */
+.fim:has(.placar-geral) .trofeu { font-size: 84px; }
+.fim:has(.placar-geral) .modo { width: auto; aspect-ratio: auto; flex-direction: row; gap: 10px; padding: 10px 26px; }
+.fim:has(.placar-geral) .modo .icone { font-size: 40px; }

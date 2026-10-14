@@ -45,4 +45,5 @@ JOGOS.push({
 ```
 
 Ao adicionar arquivos, inclua-os também na lista `ARQUIVOS` do `sw.js` e troque a versão do `CACHE`
-(ex.: `brincar-v2`) para os aparelhos baixarem a versão nova.
+(ex.: `brincar-v2`) para os aparelhos baixarem a versão nova. No aparelho aparece o botão
+**"🆕 Nova versão! Toque para atualizar"** (nos menus, nunca no meio de um jogo); tocando, o app recarrega já atualizado.

@@ -106,6 +106,30 @@ const App = (() => {
 
 // App instalável e offline (PWA). Só funciona em https ou localhost — abrindo o
 // arquivo direto ou por http na rede local, o jogo roda normal, só não instala.
+// Quando há versão nova, aparece o botão "Atualizar" (só fora dos jogos).
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(() => {});
+  const botao = document.getElementById("btn-atualizar");
+  let atualizando = false;
+
+  navigator.serviceWorker.register("sw.js").then(reg => {
+    // Só é atualização se já havia uma versão rodando (na 1ª instalação não há o que avisar)
+    const avisar = () => { if (reg.waiting && navigator.serviceWorker.controller) botao.hidden = false; };
+    avisar();
+    reg.addEventListener("updatefound", () => {
+      const nova = reg.installing;
+      if (nova) nova.addEventListener("statechange", () => { if (nova.state === "installed") avisar(); });
+    });
+    botao.addEventListener("click", () => {
+      if (!reg.waiting) return location.reload();
+      atualizando = true;
+      botao.textContent = "⏳ Atualizando...";
+      reg.waiting.postMessage("atualizar");
+    });
+    // Procura versão nova ao voltar para o app e a cada 30 minutos
+    const procurar = () => reg.update().catch(() => {});
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") procurar(); });
+    setInterval(procurar, 30 * 60 * 1000);
+  }).catch(() => {});
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (atualizando) location.reload(); });
 }
