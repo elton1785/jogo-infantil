@@ -117,6 +117,15 @@
       { figura: "✏️💡", texto: "Anotar escreve números pequenininhos de rascunho. Desfazer volta a jogada, e Dica mostra uma casa." },
     ],
 
+    carros: [
+      { figura: "🏁🏙️", texto: "Escolha: corrida contra outros carros, ou passear pela cidade fazendo entregas." },
+      { figura: "⬅️➡️", texto: "Os botões da esquerda viram o carro. No controle de videogame, use o direcional." },
+      { figura: "⛽🛑", texto: "Os botões da direita aceleram e freiam (segurando o freio, dá ré). No modo fácil o carro acelera sozinho." },
+      { figura: "🥇", texto: "Na corrida são 3 voltas: passe os outros carros e não saia da pista, que na grama o carro fica lento." },
+      { figura: "📦➜🏠", texto: "Na cidade, siga a seta: busque a encomenda e leve até a casinha. Pegue as estrelas pelo caminho!" },
+      { figura: "🚦", texto: "Respeite os semáforos: no vermelho a gente para e espera o verde, como os outros carros." },
+    ],
+
     corredor: [
       { figura: "🦖🐆🐕", texto: "Escolha quem vai correr: o dino, a onça, o caramelo ou a capivara. Ele corre sozinho!" },
       { figura: "👆🌵", texto: "Toque na tela para pular os cactos. Segure o dedo para pular mais alto." },

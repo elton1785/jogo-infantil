@@ -49,6 +49,7 @@ const CATALOGO = {
   minado: ["raciocinio", "Ache as abelhas escondidas"],
   sudoku: ["raciocinio", "Cada número uma vez só"],
   corredor: ["acao", "Pule os cactos correndo"],
+  carros: ["acao", "Corrida e passeio de carro"],
   plataforma: ["acao", "Pule, pegue moedas, chegue lá"],
   voador: ["acao", "Voe entre os troncos"],
   cobrinha: ["acao", "Coma e cresça sem bater"],
@@ -83,6 +84,7 @@ const CATALOGO = {
 const ORDEM_CATEGORIAS = ["descobrir", "leitura", "numeros", "raciocinio", "arte", "mesa", "acao"];
 
 const IDADES = {
+  livre: { cor: "#f4a300", texto: "Todos os jogos, para qualquer idade" },
   "1-2": { cor: "#ff8fab", texto: "Sons, bichos, bolhas e cores" },
   "2-3": { cor: "#ffb703", texto: "Primeiras palavras e formas" },
   "3-4": { cor: "#8ac926", texto: "Cores, vogais e quebra-cabeças" },

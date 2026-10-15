@@ -26,6 +26,11 @@ const App = (() => {
   let telaAtual = "idades";
   let faixaAtual = null;
   let noFavoritos = false; // o menu aberto é o de favoritos (para o "voltar" do jogo)
+  // "Livre": todos os jogos, sem escolher idade. Cada jogo abre na idade mais alta dele
+  // (a versão mais completa); o "voltar" do jogo volta para o menu Livre.
+  const LIVRE = { id: "livre", nome: "Livre", icone: "🌟" };
+  let noLivre = false;
+  const faixaDoJogo = j => FAIXAS.find(f => f.id === j.faixas[j.faixas.length - 1]);
   let jogoAtual = null;
   // Controle da TV: a partida de um jogo com `teclas` usa as setas (fora das telas de escolha)
   Controle.usarTeclasDoJogo(() => telaAtual === "jogo" && !!(jogoAtual && jogoAtual.teclas) &&
@@ -62,7 +67,7 @@ const App = (() => {
     return b;
   }
 
-  function jogosDa(faixa) { return JOGOS.filter(j => j.faixas.includes(faixa.id)); }
+  function jogosDa(faixa) { return faixa === LIVRE ? JOGOS.slice() : JOGOS.filter(j => j.faixas.includes(faixa.id)); }
 
   // ---------- Cartões do catálogo (cor da categoria, ícone num círculo, nome e frase) ----------
   const catDe = jogo => CATEGORIAS[(CATALOGO[jogo.id] || [])[0]] || CATEGORIAS.descobrir;
@@ -144,10 +149,10 @@ const App = (() => {
     atalhos.appendChild(fav);
 
     listaIdades.innerHTML = "";
-    FAIXAS.forEach(f => {
+    [LIVRE, ...FAIXAS].forEach(f => {
       const n = jogosDa(f).length, info = IDADES[f.id] || {};
       const b = document.createElement("button");
-      b.className = "cartao-idade" + (n ? "" : " vazia");
+      b.className = "cartao-idade" + (n ? "" : " vazia") + (f === LIVRE ? " livre" : "");
       b.style.setProperty("--cor", info.cor || "#4895ef");
       b.innerHTML = `<span class="icone"></span><span class="rotulo"></span><span class="desc"></span><span class="conta"></span>`;
       b.querySelector(".icone").textContent = f.icone;
@@ -187,12 +192,16 @@ const App = (() => {
     Motor.novaSessao();
     faixaAtual = faixa;
     noFavoritos = false;
+    noLivre = faixa === LIVRE;
     lembrar("faixa", faixa.id);
-    tituloMenu.textContent = `${faixa.icone} ${faixa.nome}`;
+    tituloMenu.textContent = `${faixa.icone} ${faixa === LIVRE ? "Livre: todos os jogos" : faixa.nome}`;
     const jogos = jogosDa(faixa);
     subMenu.textContent = jogos.length ? `${jogos.length} jogos · ${(IDADES[faixa.id] || {}).texto || ""}` : "";
     document.getElementById("menu").style.setProperty("--cor-idade", (IDADES[faixa.id] || {}).cor || "#4895ef");
-    porCategoria(jogos, j => comEstrela(cartaoJogo(j, () => abrirJogo(j)), j, faixa));
+    porCategoria(jogos, j => {
+      const fx = faixa === LIVRE ? faixaDoJogo(j) : faixa;
+      return comEstrela(cartaoJogo(j, () => { faixaAtual = fx; abrirJogo(j); }), j, fx);
+    });
     if (jogos.length === 0) {
       const aviso = document.createElement("div");
       aviso.className = "aviso";
@@ -207,6 +216,7 @@ const App = (() => {
     if (telaAtual === "idades") history.pushState({ tela: "menu" }, "");
     Motor.novaSessao();
     noFavoritos = true;
+    noLivre = false;
     lembrar("faixa", "favoritos");
     tituloMenu.textContent = "⭐ Favoritos";
     subMenu.textContent = "Os jogos que você guardou";
@@ -279,7 +289,7 @@ const App = (() => {
   }
 
   function voltar() {
-    if (telaAtual === "jogo") noFavoritos ? abrirFavoritos() : abrirMenu(faixaAtual);
+    if (telaAtual === "jogo") noFavoritos ? abrirFavoritos() : abrirMenu(noLivre ? LIVRE : faixaAtual);
     else abrirIdades();
   }
 
@@ -293,6 +303,7 @@ const App = (() => {
   abrirIdades();
   const ultima = FAIXAS.find(f => f.id === lembrado("faixa"));
   if (lembrado("faixa") === "favoritos") abrirFavoritos();
+  else if (lembrado("faixa") === "livre") abrirMenu(LIVRE);
   else if (ultima) abrirMenu(ultima);
 })();
 

@@ -1185,3 +1185,21 @@ button { font-family: inherit; }
 /* Quebra-cabeça no celular deitado: a mesa usa a altura toda (desvia do 🏠 pela esquerda) */
 #area-jogo:has(> .mesa.curta) { padding-top: 16px; padding-bottom: 16px; }
 .info-lateral { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+/* ---------- Pé na Estrada ---------- */
+.carros-tela .arcade-palco { touch-action: none; }
+.carros-pad { position: absolute; bottom: 12px; display: flex; gap: 10px; z-index: 2; }
+.carros-pad.volante { left: 12px; }
+.carros-pad.pedais { right: 12px; }
+.carros-botao { width: 78px; height: 78px; border: none; border-radius: 22px; background: rgba(255,255,255,.82); box-shadow: 0 5px 0 rgba(0,0,0,.25);
+  font-size: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; }
+.carros-botao small { font-size: 12px; font-weight: 700; margin-top: 2px; }
+.carros-botao.acel { width: 92px; height: 92px; background: rgba(160, 240, 170, .9); }
+.carros-botao.freio { background: rgba(255, 190, 190, .9); }
+.carros-botao.apertado { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+@media (orientation: portrait) { .carros-botao { width: 70px; height: 70px; } .carros-botao.acel { width: 84px; height: 84px; } }
+/* Cartão "Livre" (todos os jogos, qualquer idade): dourado e mais largo */
+.cartao-idade.livre { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; column-gap: 16px; row-gap: 2px; align-items: center; justify-items: start; text-align: left; padding: 14px 20px;
+  background: linear-gradient(165deg, rgba(255,255,255,.3), rgba(255,255,255,0) 60%), linear-gradient(90deg, #f4a300, #ff7a45); }
+.cartao-idade.livre .icone { grid-row: 1 / 4; }
+.cartao-idade.livre .desc { min-height: 0; }
