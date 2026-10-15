@@ -14,8 +14,19 @@
   };
   const COMANDOS = {
     setas: [0, 1, 2, 3].map(d => ({ id: `s${d}`, icone: SETA[d], nome: ["cima", "direita", "baixo", "esquerda"][d] })),
-    robo: [{ id: "andar", icone: "⬆️", nome: "andar" }, { id: "esq", icone: "↩️", nome: "virar à esquerda" }, { id: "dir", icone: "↪️", nome: "virar à direita" }],
+    robo: [{ id: "andar", icone: svgCmd("andar"), nome: "andar", rotulo: "andar" }, { id: "esq", icone: svgCmd("esq"), nome: "virar à esquerda", rotulo: "esquerda" }, { id: "dir", icone: svgCmd("dir"), nome: "virar à direita", rotulo: "direita" }],
   };
+  // Ícones do modo "robô": andar para a frente e virar no lugar. Virar à esquerda é girar ao
+  // contrário do relógio (seta azul que termina apontando para a esquerda); à direita, no
+  // sentido do relógio (laranja). Não usamos ↩️ ↪️, que parecem "desfazer".
+  function svgCmd(tipo) {
+    if (tipo === "andar") return '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 42V14" stroke="#2a9d55" stroke-width="7" stroke-linecap="round"/><path d="M11 20 24 5 37 20Z" fill="#2a9d55" stroke="#2a9d55" stroke-width="3" stroke-linejoin="round"/></svg>';
+    const esq = tipo === "esq", cor = esq ? "#277da1" : "#f77f00";
+    const arco = esq ? "M11 26A13 13 0 1 0 24 13" : "M37 26A13 13 0 1 1 24 13";
+    const ponta = esq ? "15,13 26,4.5 26,21.5" : "33,13 22,4.5 22,21.5";
+    return `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="${arco}" fill="none" stroke="${cor}" stroke-width="6" stroke-linecap="round"/><polygon points="${ponta}" fill="${cor}" stroke="${cor}" stroke-width="2" stroke-linejoin="round"/><text x="24" y="31" font-size="13" text-anchor="middle">🤖</text></svg>`;
+  }
+  const pintarIcone = (el, c) => { if (c.icone.startsWith("<svg")) el.innerHTML = c.icone; else el.textContent = c.icone; };
   const MAX_VEZES = 4;
   const nivelSalvo = id => { try { return +localStorage.getItem(`robo-nivel-${id}`) || 1; } catch (e) { return 1; } };
   const salvarNivel = (id, n) => { try { localStorage.setItem(`robo-nivel-${id}`, n); } catch (e) { /* ok */ } };
@@ -164,7 +175,8 @@
         COMANDOS[cfg.modo].forEach(c => {
           const b = document.createElement("button");
           b.className = "robo-cmd";
-          b.textContent = c.icone;
+          pintarIcone(b, c);
+          if (c.rotulo) { b.classList.add("com-rotulo"); b.appendChild(Object.assign(document.createElement("small"), { textContent: c.rotulo })); }
           b.setAttribute("aria-label", c.nome);
           b.addEventListener("click", () => {
             if (rodando) return;
@@ -181,7 +193,8 @@
         acoes.append(
           botao("⌫", "Apagar o último", () => { if (rodando) return; programa.pop(); desenharPrograma(); }),
           botao("🗑️", "Limpar", () => { if (rodando) return; programa = []; reiniciarRobo(); desenhar(); }),
-          botao("▶️ Executar", "Executar", executar, "executar"));
+          botao("▶️ Executar", "Executar", executar, "executar"),
+          botao("❓", "Como jogar", () => { const j = JOGOS.find(x => x.id === "robo"); const p = Ajuda.passosDe(j, faixa); if (p) Ajuda.abrir(j, p); }));
         painel.append(progEl, cmds, acoes);
         tela.append(topo, tab, painel);
       }
@@ -197,7 +210,7 @@
         programa.forEach((p, i) => {
           const b = document.createElement("button");
           b.className = "robo-ficha" + (i === atual ? " agora" : "");
-          b.textContent = COMANDOS[cfg.modo].find(c => c.id === p.cmd).icone;
+          pintarIcone(b, COMANDOS[cfg.modo].find(c => c.id === p.cmd));
           if (p.vezes > 1) { const v = document.createElement("span"); v.className = "vezes"; v.textContent = `×${p.vezes}`; b.appendChild(v); }
           b.setAttribute("aria-label", "Tocar para repetir mais vezes");
           b.addEventListener("click", () => {
@@ -211,11 +224,17 @@
         });
       }
 
+      // O ângulo da setinha é acumulado (+90 ou -90 a cada giro): assim, de "esquerda" para
+      // "cima" ela gira 90° no sentido do relógio, e não 270° para o lado contrário.
+      let angulo = 0, dVisto = 0;
       function posicionarRobo(animar = true) {
         roboEl.style.transition = animar ? "left .35s ease, top .35s ease, transform .3s ease" : "none";
         Object.assign(roboEl.style, { left: robo.x * celula + "px", top: robo.y * celula + "px" });
+        const giro = (robo.d - dVisto + 4) % 4;
+        angulo = animar ? angulo + (giro === 3 ? -90 : giro * 90) : robo.d * 90;
+        dVisto = robo.d;
         const seta = roboEl.querySelector(".robo-seta");
-        if (seta) { seta.style.transition = roboEl.style.transition; seta.style.transform = `rotate(${robo.d * 90}deg)`; }
+        if (seta) { seta.style.transition = roboEl.style.transition; seta.style.transform = `rotate(${angulo}deg)`; }
       }
 
       async function executar() {

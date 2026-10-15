@@ -1,4 +1,5 @@
-// Dino Corredor: o dinossauro corre sozinho e a criança faz ele pular os cactos (segurar = pulo
+// Corrida dos Bichos: o bicho escolhido (dino, onça, caramelo ou capivara — desenhados em
+// jogos/corredor-personagens.js) corre sozinho e a criança faz ele pular os cactos (segurar = pulo
 // mais alto) e abaixar para passar por baixo dos pássaros. Os pontos são os metros corridos mais
 // as estrelas pegas no ar; a velocidade aumenta aos poucos. Tem dia e noite.
 // Controles: tocar em qualquer lugar da pista pula; botões ⬆️ Pular e ⬇️ Abaixar; no computador,
@@ -16,19 +17,58 @@
 
   JOGOS.push({
     id: "corredor",
-    nome: "Dino Corredor",
+    nome: "Corrida dos Bichos",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="50" cy="13" r="7" fill="#ffd166"/><rect x="0" y="50" width="64" height="14" fill="#e9c46a"/><path d="M0 50h64" stroke="#8d6e3f" stroke-width="2"/><g fill="#2a9d55" stroke="#1b6b3a" stroke-width="1.5"><rect x="47" y="30" width="8" height="21" rx="4"/><rect x="41" y="34" width="5" height="10" rx="2.5"/><rect x="56" y="31" width="5" height="9" rx="2.5"/></g><g fill="#43aa8b" stroke="#1d5c4a" stroke-width="1.5"><path d="M8 40c2-9 9-13 16-13h4v-9c0-5 4-8 9-8h4c4 0 6 3 6 6v3c0 2-2 3-4 3h-6v4l4 2-2 3-3-1v7c0 6-4 10-9 11l2 6h-5l-2-5-4 0 1 5h-5l-1-6c-3-1-5-4-6-6z"/></g><circle cx="38" cy="15" r="1.8" fill="#151515"/></svg>',
     faixas: ["5-6", "6-8", "8-10"],
-    iniciar(area) {
-      Motor.escolherModo(area, [
-        { icone: "🐢", rotulo: "Calmo", iniciar: () => jogo(area, "calmo") },
-        { icone: "🐇", rotulo: "Normal", iniciar: () => jogo(area, "normal") },
-        { icone: "🚀", rotulo: "Rápido", iniciar: () => jogo(area, "rapido") },
-      ]);
-    },
+    iniciar(area) { opcoes(area); },
   });
 
-  function jogo(area, modo) {
+  // ---------- Escolha do personagem e da velocidade (com o bicho correndo na prévia) ----------
+  const CHAVE = "corredor-opcoes", PADRAO = { personagem: "dino", modo: "normal" };
+  function opcoes(area) {
+    let salvo = {};
+    try { salvo = JSON.parse(localStorage.getItem(CHAVE)) || {}; } catch (e) { /* ok */ }
+    let escolhido = (CORREDORES[salvo.personagem] && salvo.personagem) || PADRAO.personagem;
+    const previa = document.createElement("canvas");
+    previa.className = "corredor-previa";
+    const LW = 150, LH = 70, dpr = window.devicePixelRatio || 1;
+    Object.assign(previa, { width: LW * 2 * dpr, height: LH * 2 * dpr });
+    const pc = previa.getContext("2d");
+    const t0 = performance.now();
+    (function animar() {
+      if (!document.contains(previa) && performance.now() - t0 > 1000) return;
+      const t = (performance.now() - t0) / 1000;
+      pc.setTransform(2 * dpr, 0, 0, 2 * dpr, 0, 0);
+      pc.clearRect(0, 0, LW, LH);
+      pc.fillStyle = "#e9c46a"; pc.fillRect(0, LH - 10, LW, 10);
+      pc.fillStyle = "#8d6e3f"; pc.fillRect(0, LH - 10, LW, 1.5);
+      for (let i = 0; i < 6; i++) pc.fillRect(((i * 31 - t * 90) % LW + LW) % LW, LH - 5 + (i % 2) * 2, 4, 1.5);
+      pc.save(); pc.translate(LW / 2 + 4, LH - 10);
+      sombra(pc, 0);
+      CORREDORES[escolhido].desenhar(pc, { fi: t * 20, correndo: true, t, piscando: t % 3 < 0.12 });
+      pc.restore();
+      requestAnimationFrame(animar);
+    })();
+    Motor.telaOpcoes(area, {
+      chave: CHAVE, padrao: PADRAO, antes: previa,
+      opcoes: [
+        { chave: "personagem", titulo: "Quem vai correr?", valores: Object.entries(CORREDORES).map(([id, c]) => [id, c.nome]) },
+        { chave: "modo", titulo: "Velocidade", valores: [["calmo", "🐢 Calmo"], ["normal", "🐇 Normal"], ["rapido", "🚀 Rápido"]] },
+      ],
+      aoMudar: (op, chave) => { if (chave === "personagem") { escolhido = op.personagem; Motor.falar(`Vai correr ${CORREDORES[escolhido].fala}!`); } },
+      aoJogar: op => jogo(area, op.modo, CORREDORES[op.personagem] ? op.personagem : "dino"),
+    });
+  }
+  // Sombra no chão: menor e mais clara quanto mais alto o bicho está
+  function sombra(c, h) {
+    const f = Math.max(0.35, 1 - h / 90);
+    c.fillStyle = `rgba(0,0,0,${0.22 * f})`;
+    c.beginPath(); c.ellipse(-3, 0, 20 * f, 3 * f, 0, 0, Math.PI * 2); c.fill();
+  }
+
+  function jogo(area, modo, personagem = "dino") {
+    const bicho = CORREDORES[personagem];
+    let fi = 0; // fase da passada
     const sessao = Motor.sessaoAtual();
     const vivo = () => sessao === Motor.sessaoAtual() && document.contains(tela);
     let fase, dino, obst, estrelinhas, nuvens, metros, estrelas, distProx, ultimoT, pausado, segurando, abaixar,
@@ -135,6 +175,7 @@
       metros += dx / UNID_POR_METRO;
       // Dino
       dino.abaixado = abaixar;
+      fi += dt * velocidade() * 0.1; // a passada acompanha a velocidade
       if (!noChao() || dino.vy > 0) {
         dino.noPulo += dt;
         let g = segurando && dino.vy > 0 && dino.noPulo < 0.4 ? G_SEGURA : G;
@@ -276,11 +317,14 @@
           emoji("🦅", o.x + o.w / 2, yc(o.base + o.a / 2), 38, false, 1, asa);
         }
       });
-      // Dino (o emoji olha para a esquerda; viramos para correr para a direita)
-      const correndo = fase === "correndo" && noChao();
-      const pulinho = correndo ? Math.abs(Math.sin(tempo * 18)) * 2 : 0;
-      if (dino.abaixado && noChao()) emoji("🦖", DINO_X + DINO_L / 2 + 4, yc(DINO_A_BAIXO / 2 + pulinho / 2), 52, true, 1.15, 0.58);
-      else emoji("🦖", DINO_X + DINO_L / 2, yc(dino.h + DINO_A / 2 + pulinho), 52, true, 1, 1, correndo ? Math.sin(tempo * 18) * 0.04 : 0);
+      // O bicho escolhido (desenhado com as pernas animadas) e a sombra dele no chão
+      ctx.save();
+      ctx.translate(DINO_X + DINO_L / 2, CHAO);
+      sombra(ctx, dino.h);
+      ctx.translate(0, -dino.h);
+      const pisca = fase !== "fim" && tempo % 3.4 > 3.28;
+      bicho.desenhar(ctx, { fi, t: tempo, correndo: fase === "correndo", noAr: !noChao(), abaixado: dino.abaixado && noChao(), morto: fase === "fim", piscando: pisca });
+      ctx.restore();
       if (fase === "fim") emoji("💥", DINO_X + DINO_L + 2, yc(dino.h + 30), 30);
       // Mensagens
       if (fase === "pronto") faixa("👆 Toque para começar!");
@@ -420,6 +464,6 @@
 
     medir();
     comecar();
-    Motor.falar("Toque para pular os cactos!");
+    Motor.falar(`Toque para ${bicho.fala} pular os cactos!`);
   }
 })();

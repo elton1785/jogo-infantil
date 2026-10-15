@@ -17,6 +17,7 @@ const App = (() => {
   const tituloMenu = document.getElementById("titulo-menu");
   const areaJogo = document.getElementById("area-jogo");
   const btnVoltar = document.getElementById("btn-voltar");
+  const btnAjuda = document.getElementById("btn-ajuda");
 
   let telaAtual = "idades";
   let faixaAtual = null;
@@ -38,6 +39,7 @@ const App = (() => {
     telaAtual = id;
     telas.forEach(t => t.classList.toggle("ativa", t.id === id));
     btnVoltar.style.display = id === "idades" ? "none" : "block";
+    if (id !== "jogo") { Ajuda.fechar(); btnAjuda.hidden = true; }
   }
 
   function criarOpcao(icone, rotulo, aoClicar, vazia) {
@@ -158,6 +160,27 @@ const App = (() => {
     mostrar("jogo");
     Motor.falar(jogo.nome);
     jogo.iniciar(areaJogo, faixaAtual);
+    prepararAjuda(jogo, faixaAtual);
+  }
+
+  // ---------- ❓ Como jogar ----------
+  // O botão ❓ aparece na tela inicial do jogo (escolha de modo ou de opções), onde o canto de
+  // cima está livre; `ajudaSempre` nos jogos sem tela inicial. Na 1ª vez a explicação abre sozinha.
+  let observador = null;
+  function prepararAjuda(jogo, faixa) {
+    if (observador) observador.disconnect();
+    const passos = Ajuda.passosDe(jogo, faixa);
+    btnAjuda.hidden = true;
+    btnAjuda.onclick = () => Ajuda.abrir(jogo, passos);
+    if (!passos) return;
+    const conferir = () => {
+      btnAjuda.hidden = telaAtual !== "jogo" ||
+        !(jogo.ajudaSempre || areaJogo.querySelector(":scope > .modos, :scope > .opcoes-jogo, :scope > .plat-menu"));
+    };
+    observador = new MutationObserver(conferir);
+    observador.observe(areaJogo, { childList: true });
+    conferir();
+    if (!Ajuda.jaViu(jogo)) Motor.depois(() => Ajuda.abrir(jogo, passos), 900);
   }
 
   function voltar() {

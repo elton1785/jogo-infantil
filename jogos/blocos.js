@@ -242,12 +242,20 @@
       ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, parar));
       return b;
     };
-    controles.append(
+    // Como nos jogos de celular: polegar esquerdo move (⬅️ ⬇️ ➡️), polegar direito gira e derruba.
+    // Em pé ficam nos cantos de baixo; deitado, um de cada lado do tabuleiro.
+    const padEsq = document.createElement("div"), padDir = document.createElement("div");
+    padEsq.className = "blocos-pad esquerdo";
+    padDir.className = "blocos-pad direito";
+    const bGirar = botao("", "Girar", girar);
+    bGirar.classList.add("girar");
+    bGirar.innerHTML = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M37 26A13 13 0 1 1 24 13" fill="none" stroke="#9b5de5" stroke-width="6" stroke-linecap="round"/><polygon points="33,13 22,4.5 22,21.5" fill="#9b5de5" stroke="#9b5de5" stroke-width="2" stroke-linejoin="round"/></svg>';
+    padEsq.append(
       botao("⬅️", "Esquerda", () => mover(-1), true),
-      botao("🔄", "Girar", girar),
-      botao("➡️", "Direita", () => mover(1), true),
       botao("⬇️", "Descer", () => { if (descer()) { pontos++; desenhar(); } }, true),
-      botao("⏬", "Derrubar", derrubar));
+      botao("➡️", "Direita", () => mover(1), true));
+    padDir.append(botao("⏬", "Derrubar", derrubar), bGirar);
+    controles.append(padEsq, padDir);
 
     // Gestos no tabuleiro: tocar gira, arrastar para o lado move, arrastar para baixo derruba
     let toque = null;

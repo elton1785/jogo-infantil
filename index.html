@@ -34,6 +34,8 @@
 
 <!-- Voltar uma tela (o "voltar" do celular faz o mesmo) -->
 <button class="canto voltar" id="btn-voltar" aria-label="Voltar" style="display:none">🏠</button>
+<!-- Como jogar (só nos jogos que têm explicação, na tela inicial do jogo) -->
+<button class="canto ajuda" id="btn-ajuda" aria-label="Como jogar" hidden>❓</button>
 
 <!-- Aparece quando há uma versão nova do app (não aparece durante os jogos) -->
 <button id="btn-atualizar" hidden>🆕 Nova versão! Toque para atualizar</button>
@@ -43,6 +45,7 @@
 <script src="js/motor.js"></script>
 <script src="js/dados.js"></script>
 <script src="js/placar.js"></script>
+<script src="js/ajuda.js"></script>
 <!-- Jogos: cada arquivo registra um jogo em JOGOS (a ordem aqui é a ordem no menu) -->
 <!-- Pequenos -->
 <script src="jogos/animais.js"></script>
@@ -68,6 +71,7 @@
 <!-- Raciocínio e algoritmos -->
 <script src="jogos/hanoi.js"></script>
 <script src="jogos/cubo-resolver.js"></script>
+<script src="jogos/cubo-algoritmos.js"></script>
 <script src="jogos/cubo.js"></script>
 <script src="jogos/robo.js"></script>
 <script src="jogos/blocos.js"></script>
@@ -75,6 +79,7 @@
 <script src="jogos/minado.js"></script>
 <script src="jogos/sudoku.js"></script>
 <!-- Jogos de ação -->
+<script src="jogos/corredor-personagens.js"></script>
 <script src="jogos/corredor.js"></script>
 <script src="jogos/plataforma.js"></script>
 <script src="jogos/voador.js"></script>
@@ -103,6 +108,8 @@
 <script src="jogos/fracoes.js"></script>
 <!-- Conhecimentos -->
 <script src="jogos/brasil.js"></script>
+<!-- Explicações "❓ Como jogar" (depois de todos os jogos) -->
+<script src="jogos/como-jogar.js"></script>
 <!-- App por último: monta os menus com os jogos registrados -->
 <script src="js/app.js"></script>
 </body>

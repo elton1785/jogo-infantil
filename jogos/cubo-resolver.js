@@ -29,7 +29,43 @@ const CuboMat = (() => {
   const aplicarV = (M, v) => M.map(l => l[0] * v[0] + l[1] * v[1] + l[2] * v[2]);
   const transposta = M => M[0].map((_, j) => M.map(l => l[j]));
   const I = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-  const grausDe = mv => FACES[mv.face].ang * (mv.vezes === -1 ? -1 : 1) * (mv.vezes === 2 ? 2 : 1);
+  // Todos os giros que a notação conhece. `pega(c, m)`: a camada com coordenada c entra no giro.
+  // Faces (R L U D F B), duas camadas (r l u d f b: a face + a do meio), camadas do meio
+  // (M segue o L, E segue o D, S segue o F) e o cubo inteiro (x segue o R, y o U, z o F).
+  const GIROS = {};
+  Object.entries(FACES).forEach(([f, d]) => {
+    GIROS[f] = { eixo: d.eixo, ang: d.ang, pega: (c, m) => c === d.lado * m };
+    GIROS[f.toLowerCase()] = { eixo: d.eixo, ang: d.ang, pega: (c, m) => c * d.lado > -m };
+  });
+  GIROS.M = { eixo: "x", ang: -90, pega: (c, m) => Math.abs(c) < m };
+  GIROS.E = { eixo: "y", ang: 90, pega: (c, m) => Math.abs(c) < m };
+  GIROS.S = { eixo: "z", ang: 90, pega: (c, m) => Math.abs(c) < m };
+  GIROS.x = { eixo: "x", ang: 90, pega: () => true };
+  GIROS.y = { eixo: "y", ang: -90, pega: () => true };
+  GIROS.z = { eixo: "z", ang: 90, pega: () => true };
+  const grausDe = mv => GIROS[mv.face].ang * (mv.vezes === -1 ? -1 : 1) * (mv.vezes === 2 ? 2 : 1);
+
+  // Peças (home + rotação) depois de uma sequência de giros, a partir do cubo pronto
+  function estadoApos(N, movs) {
+    const m = (N - 1) / 2, pecas = [];
+    for (let x = -m; x <= m; x++) for (let y = -m; y <= m; y++) for (let z = -m; z <= m; z++) {
+      if (Math.max(Math.abs(x), Math.abs(y), Math.abs(z)) === m) pecas.push({ home: [x, y, z], pos: [x, y, z], rot: I });
+    }
+    for (const mv of movs) {
+      const g = GIROS[mv.face], k = "xyz".indexOf(g.eixo), M = matriz(g.eixo, grausDe(mv));
+      pecas.forEach(p => { if (g.pega(p.pos[k], m)) { p.pos = aplicarV(M, p.pos); p.rot = mult(M, p.rot); } });
+    }
+    return pecas;
+  }
+  // Adesivos visíveis: [{ cor (face de origem), pos, dir }] — a cor é a letra da face no cubo pronto
+  function adesivos(N, pecas) {
+    const m = (N - 1) / 2, lista = [];
+    pecas.forEach(p => LISTA_FACES.forEach(f => {
+      const n = FACES[f].n, k = n.findIndex(v => v);
+      if (p.home[k] === n[k] * m) lista.push({ cor: f, pos: aplicarV(p.rot, p.home), dir: aplicarV(p.rot, n) });
+    }));
+    return lista;
+  }
 
   // "R U R' U2" → [{ face, vezes: 1 | -1 | 2 }]
   const ler = alg => alg.trim().split(/\s+/).filter(Boolean).map(m => ({ face: m[0], vezes: m.endsWith("2") ? 2 : m.endsWith("'") ? -1 : 1 }));
@@ -253,5 +289,5 @@ const CuboMat = (() => {
     return { ok: true, etapas };
   }
 
-  return { FACES, LISTA_FACES, matriz, mult, aplicarV, I, ler, texto, inverso, simplificar, grausDe, resolver };
+  return { FACES, GIROS, LISTA_FACES, matriz, mult, aplicarV, I, ler, texto, inverso, simplificar, grausDe, estadoApos, adesivos, resolver };
 })();

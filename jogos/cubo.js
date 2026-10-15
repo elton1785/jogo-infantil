@@ -9,19 +9,23 @@
 // - Demonstrações: conheça o cubo, os movimentos, cada algoritmo em ação e a resolução
 //   completa (3×3 e 2×2), com a voz explicando.
 (() => {
-  const { FACES, LISTA_FACES, matriz, mult, aplicarV, I, ler, texto, inverso, grausDe, resolver } = CuboMat;
+  const { FACES, GIROS, LISTA_FACES, matriz, mult, aplicarV, I, ler, texto, inverso, grausDe, estadoApos, adesivos, resolver } = CuboMat;
   // Cores (branco embaixo, amarelo em cima, verde na frente — como no método das camadas)
   const COR = { U: "#ffd500", D: "#ffffff", F: "#009b48", B: "#0046ad", R: "#ff5800", L: "#b71234" };
-  const NOME = { U: "cima", D: "baixo", L: "esquerda", R: "direita", F: "frente", B: "trás" };
+  const NOME = { U: "cima", D: "baixo", L: "esquerda", R: "direita", F: "frente", B: "trás",
+    u: "duas de cima", d: "duas de baixo", l: "duas da esquerda", r: "duas da direita", f: "duas da frente", b: "duas de trás",
+    M: "meio, como o L", E: "meio, como o D", S: "meio, como o F", x: "o cubo todo, como o R", y: "o cubo todo, como o U", z: "o cubo todo, como o F" };
   const falarMov = mv => `${NOME[mv.face]}${mv.vezes === -1 ? " ao contrário" : mv.vezes === 2 ? " duas vezes" : ""}`;
   const dizer = mv => texto(mv).replace("'", " linha"); // "R'" → "R linha" (para a voz)
   const esperar = ms => new Promise(r => setTimeout(r, ms));
 
   // Ícone: cubo em perspectiva (n × n adesivos), topo amarelo, frente verde, lado laranja
-  function svgCubo(n) {
-    const face = (o, u, v, cor) => {
+  // `cor(face, i, j)`: cor de cada adesivo (padrão: o cubo pronto)
+  function svgCubo(n, corDe = f => COR[f]) {
+    const face = (o, u, v, f) => {
       let s = "";
       for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+        const cor = corDe(f, i, j);
         const g = 0.1 / n;
         const [a0, a1, b0, b1] = [i / n + g, (i + 1) / n - g, j / n + g, (j + 1) / n - g];
         const pts = [[a0, b0], [a1, b0], [a1, b1], [a0, b1]].map(([a, b]) => `${(o[0] + a * u[0] + b * v[0]).toFixed(1)},${(o[1] + a * u[1] + b * v[1]).toFixed(1)}`);
@@ -30,7 +34,41 @@
       return s;
     };
     return '<svg viewBox="0 0 64 64" aria-hidden="true"><polygon points="32,3 59,17.5 59,46.5 32,61 5,46.5 5,17.5" fill="#151515" stroke="#151515" stroke-width="2" stroke-linejoin="round"/>' +
-      face([5, 17.5], [27, -14.5], [27, 14.5], COR.U) + face([5, 17.5], [27, 14.5], [0, 29], COR.F) + face([32, 32], [27, -14.5], [0, 29], COR.R) + "</svg>";
+      face([5, 17.5], [27, -14.5], [27, 14.5], "U") + face([5, 17.5], [27, 14.5], [0, 29], "F") + face([32, 32], [27, -14.5], [0, 29], "R") + "</svg>";
+  }
+
+  // ---------- Desenho de um caso (estado do 3×3 depois de `movs`) ----------
+  // Adesivo na posição `pos` olhando para a direção `dir`
+  function adesivosDe(movs) {
+    const lista = adesivos(3, estadoApos(3, movs));
+    return (pos, dir) => { const a = lista.find(s => s.pos.every((v, i) => v === pos[i]) && s.dir.every((v, i) => v === dir[i])); return a ? a.cor : "U"; };
+  }
+  // Perspectiva (frente-direita-cima), com as cores de verdade
+  function svg3D(movs) {
+    const em = adesivosDe(movs);
+    return svgCubo(3, (f, i, j) => COR[f === "U" ? em([j - 1, -1, 1 - i], [0, -1, 0]) : f === "F" ? em([i - 1, j - 1, 1], [0, 0, 1]) : em([1, j - 1, 1 - i], [1, 0, 0])]);
+  }
+  // Vista de cima, como nos guias de OLL e PLL: a face de cima e, em volta, a fileira de cima
+  // de cada lado. "pll": todas as cores; "oll": amarelo × cinza; "meios": só os meios contam.
+  function svgTopo(movs, vista) {
+    const em = adesivosDe(movs), CINZA = "#c9c9c9";
+    const cor = (c, ehCanto) => vista === "pll" ? COR[c] : (c === "U" && !(vista === "meios" && ehCanto) ? COR.U : CINZA);
+    let s = '<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="15" y="15" width="70" height="70" rx="5" fill="#151515"/>';
+    const q = (x, y, w, h, c) => { s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${c}"/>`; };
+    for (let a = -1; a <= 1; a++) {
+      const k = 18 + (a + 1) * 22, canto = a !== 0;
+      for (let b = -1; b <= 1; b++) q(k, 18 + (b + 1) * 22, 20, 20, cor(em([a, -1, b], [0, -1, 0]), canto && b !== 0));
+      q(k, 3, 20, 10, cor(em([a, -1, -1], [0, 0, -1]), canto)); // atrás
+      q(k, 87, 20, 10, cor(em([a, -1, 1], [0, 0, 1]), canto)); // frente
+      q(3, k, 10, 20, cor(em([-1, -1, a], [-1, 0, 0]), canto)); // esquerda
+      q(87, k, 10, 20, cor(em([1, -1, a], [1, 0, 0]), canto)); // direita
+    }
+    return s + "</svg>";
+  }
+  // Desenho de um item do modo Avançado: o caso que o algoritmo resolve (ou o desenho que ele faz)
+  function desenhoCaso(grupo, item) {
+    const movs = grupo.padrao ? ler(item.alg) : inverso(ler(item.alg));
+    return grupo.vista === "3d" ? svg3D(movs) : svgTopo(movs, grupo.vista);
   }
 
   // ---------- Lições ----------
@@ -77,7 +115,8 @@
       const m3 = { icone: svgCubo(3), rotulo: "3×3 livre", iniciar: () => livre(area, 3) };
       const aprender = { icone: "📘", rotulo: "Aprender", iniciar: () => listaLicoes(area) };
       const demos = { icone: "🎬", rotulo: "Demonstrações", iniciar: () => listaDemos(area) };
-      Motor.escolherModo(area, id === "6-8" ? [m2, demos, aprender, m3] : [m3, demos, aprender, m2]);
+      const avancado = { icone: "🚀", rotulo: "Avançado", iniciar: () => listaAvancado(area) };
+      Motor.escolherModo(area, id === "6-8" ? [m2, demos, aprender, m3, avancado] : [m3, demos, aprender, avancado, m2]);
     },
   });
 
@@ -155,10 +194,10 @@
       const item = fila.shift();
       if (!item) { rodando = false; return; }
       rodando = true;
-      const { mv, ms, resolve } = item, f = FACES[mv.face];
+      const { mv, ms, resolve } = item, f = GIROS[mv.face];
       const graus = grausDe(mv);
       const k = f.eixo === "x" ? 0 : f.eixo === "y" ? 1 : 2;
-      const daCamada = cubinhos.filter(c => c.pos[k] === f.lado * m);
+      const daCamada = cubinhos.filter(c => f.pega(c.pos[k], m));
       const camada = document.createElement("div");
       camada.className = "cubo-camada";
       const fim = () => {
@@ -212,16 +251,17 @@
     return { N, medir, girar, pronto, ocupado, girarVista, destacar, zerar, estado };
   }
 
-  // Botões das faces: U U' D D' ... (com a cor da face)
-  function botoesFaces(aoTocar) {
+  // Botões das faces: U U' D D' ... (com a cor da face). `extras`: outros giros que o
+  // algoritmo usa (r, f, M...), que ganham botões cinza no fim.
+  function botoesFaces(aoTocar, extras = []) {
     const caixa = document.createElement("div");
     caixa.className = "cubo-botoes";
     const porTexto = {};
-    LISTA_FACES.forEach(f => [1, -1].forEach(v => {
+    [...LISTA_FACES, ...extras].forEach(f => [1, -1].forEach(v => {
       const mv = { face: f, vezes: v };
       const b = document.createElement("button");
       b.className = "botao-face";
-      b.style.setProperty("--cor", COR[f]);
+      b.style.setProperty("--cor", COR[f] || "#9a9a9a");
       b.textContent = texto(mv);
       b.setAttribute("aria-label", falarMov(mv));
       b.addEventListener("click", () => aoTocar(mv, b));
@@ -231,7 +271,8 @@
     const marcarProximo = mv => {
       Object.values(porTexto).forEach(b => b.classList.remove("proximo"));
       // Giro duplo (U2) se faz com dois giros simples
-      if (mv) porTexto[texto({ face: mv.face, vezes: mv.vezes === -1 ? -1 : 1 })].classList.add("proximo");
+      const b = mv && porTexto[texto({ face: mv.face, vezes: mv.vezes === -1 ? -1 : 1 })];
+      if (b) b.classList.add("proximo");
     };
     return { caixa, porTexto, marcarProximo };
   }
@@ -528,12 +569,20 @@
     Motor.falar("Escolha uma lição!");
   }
 
-  function licao(area, i) {
-    const L = LICOES[i];
+  // `lista`: as lições (as do Aprender ou as de um grupo do Avançado); `voltar`: { rotulo, ir }
+  function licao(area, i, lista = LICOES, voltar = { rotulo: "📘 Lições", ir: () => listaLicoes(area) }) {
+    const L = lista[i];
     const { tela, topo, cubo } = montarTela(area, 3);
     const titulo = document.createElement("div");
     titulo.className = "cubo-info";
     titulo.textContent = `${L.icone} ${i + 1}. ${L.titulo}`;
+    // Lição avançada: o desenho do caso e como reconhecer
+    if (L.grupo) {
+      titulo.classList.add("com-caso");
+      titulo.innerHTML = desenhoCaso(L.grupo, L);
+      titulo.append(Object.assign(document.createElement("span"), { textContent: `${i + 1}. ${L.titulo}` }));
+      titulo.title = L.reconhecer;
+    }
     const algEl = document.createElement("div");
     algEl.className = "cubo-alg";
     const acoes = document.createElement("div");
@@ -541,6 +590,7 @@
     topo.append(titulo, algEl, acoes);
 
     let esperados = [], passo = 0, livreAqui = false, demo = false;
+    const extras = L.alg ? [...new Set(ler(L.alg).map(mv => mv.face).filter(f => !LISTA_FACES.includes(f)))] : [];
     const { caixa, porTexto } = botoesFaces((mv, botao) => {
       if (cubo.ocupado() || demo) return;
       if (!livreAqui) {
@@ -554,7 +604,7 @@
         marcar();
       }
       cubo.girar(mv).then(depoisDoMovimento);
-    });
+    }, extras);
     tela.appendChild(caixa);
     cubo.medir();
 
@@ -603,12 +653,17 @@
         esperados = simples(Array.from({ length: L.vezes }, () => ler(L.alg)).flat());
         marcar();
         Motor.falar(L.texto);
+      } else if (L.padrao) {
+        // Desenho: o cubo começa pronto e o algoritmo faz o desenho
+        esperados = simples(ler(L.alg));
+        marcar();
+        Motor.falar(`${L.titulo}! ${L.texto} Siga o algoritmo!`);
       } else {
         // Bagunça só o que o algoritmo arruma (o inverso dele), sem animação
         for (const mv of inverso(ler(L.alg))) await cubo.girar(mv, 0);
         esperados = simples(ler(L.alg));
         marcar();
-        Motor.falar(L.texto + " Siga o algoritmo!");
+        Motor.falar((L.reconhecer ? L.reconhecer + " " : "") + L.texto + " Siga o algoritmo!");
       }
     }
 
@@ -629,7 +684,11 @@
       if (L.tipo === "repetir" && passo % ler(L.alg).length === 0 && passo < esperados.length) {
         Motor.falar(`Volta ${passo / ler(L.alg).length} pronta!`);
       }
-      if (passo === esperados.length) concluir(cubo.pronto() ? "Pronto! O cubo voltou ao começo. É assim que um algoritmo funciona!" : "Algoritmo completo!");
+      if (passo === esperados.length) {
+        if (L.padrao) concluir(`Olha o desenho! ${L.reconhecer}`);
+        else if (L.grupo) concluir(cubo.pronto() ? `Pronto! Você fez o ${L.titulo}!` : "Algoritmo completo!");
+        else concluir(cubo.pronto() ? "Pronto! O cubo voltou ao começo. É assim que um algoritmo funciona!" : "Algoritmo completo!");
+      }
     }
 
     function concluir(fala) {
@@ -638,9 +697,9 @@
       Motor.tim();
       Motor.falar(fala);
       acoes.innerHTML = "";
-      acoes.append(chip("🔁 De novo", () => licao(area, i)),
-        ...(i + 1 < LICOES.length ? [chip("➡️ Próxima lição", () => licao(area, i + 1))] : []),
-        chip("📘 Lições", () => listaLicoes(area)));
+      acoes.append(chip("🔁 De novo", () => licao(area, i, lista, voltar)),
+        ...(i + 1 < lista.length ? [chip(L.grupo ? "➡️ Próximo caso" : "➡️ Próxima lição", () => licao(area, i + 1, lista, voltar))] : []),
+        chip(voltar.rotulo, voltar.ir));
     }
 
     // Assistir: o cubo faz o algoritmo sozinho, devagar, e depois volta para a criança tentar
@@ -660,9 +719,144 @@
       Motor.falar("Agora é a sua vez!");
     }
 
-    acoes.append(chip("👀 Assistir", assistir), chip("🔁 Recomeçar", () => licao(area, i)), chip("📘 Lições", () => listaLicoes(area)));
+    acoes.append(chip("👀 Assistir", assistir), chip("🔁 Recomeçar", () => licao(area, i, lista, voltar)), chip(voltar.rotulo, voltar.ir));
     if (L.tipo === "notacao" || L.tipo === "desfazer") Motor.falar(L.texto);
     Motor.depois(comecar, L.tipo === "notacao" || L.tipo === "desfazer" ? 4500 : 300);
+  }
+
+  // ---------- Avançado (para quem já resolve pelo método das camadas) ----------
+  // Grupos de jogos/cubo-algoritmos.js. Cada caso vira uma lição: o cubo começa no caso e a
+  // criança segue o algoritmo; o desenho do caso fica no título.
+  function botaoModo(icone, rotulo, aoTocar) {
+    const b = document.createElement("button");
+    b.className = "modo";
+    b.innerHTML = `<span class="icone"></span><span class="rotulo"></span>`;
+    if (String(icone).startsWith("<svg")) b.querySelector(".icone").innerHTML = icone;
+    else b.querySelector(".icone").textContent = icone;
+    b.querySelector(".rotulo").textContent = rotulo;
+    b.addEventListener("click", aoTocar);
+    return b;
+  }
+
+  function listaAvancado(area) {
+    area.innerHTML = "";
+    const caixa = document.createElement("div");
+    caixa.className = "modos pequenos";
+    caixa.append(
+      botaoModo("🗺️", "Conheça os métodos", () => telaMetodos(area)),
+      botaoModo("🔤", "Notação dos avançados", () => demoNotacaoAvancada(area)),
+      ...CUBO_AVANCADO.map(g => botaoModo(g.icone, g.titulo, () => listaGrupo(area, g))),
+      botaoModo("🎯", "Qual é o caso?", () => quizCasos(area)));
+    area.appendChild(caixa);
+    Motor.falar("Avançado! Aqui estão o método CFOP, que os mais rápidos usam, e desenhos bonitos no cubo. Comece por Conheça os métodos.");
+  }
+
+  const itensDo = g => g.itens.map(it => ({ ...it, titulo: it.nome, icone: g.icone, grupo: g, padrao: !!g.padrao }));
+
+  function listaGrupo(area, g) {
+    area.innerHTML = "";
+    const tela = document.createElement("div");
+    tela.className = "cubo-grupo";
+    const intro = document.createElement("div");
+    intro.className = "guia-texto legenda";
+    intro.textContent = g.intro;
+    const caixa = document.createElement("div");
+    caixa.className = "modos pequenos casos";
+    const lista = itensDo(g);
+    const voltar = { rotulo: `${g.icone} ${g.titulo}`, ir: () => listaGrupo(area, g) };
+    lista.forEach((it, i) => caixa.appendChild(botaoModo(desenhoCaso(g, it), it.nome, () => licao(area, i, lista, voltar))));
+    const acoes = document.createElement("div");
+    acoes.className = "cubo-acoes";
+    acoes.append(chip("🚀 Avançado", () => listaAvancado(area)));
+    tela.append(intro, caixa, acoes);
+    area.appendChild(tela);
+    Motor.falar(g.intro);
+  }
+
+  function telaMetodos(area) {
+    area.innerHTML = "";
+    const tela = document.createElement("div");
+    tela.className = "cubo-grupo";
+    const lista = document.createElement("div");
+    lista.className = "cubo-metodos";
+    CUBO_METODOS.forEach(m => {
+      const c = document.createElement("button");
+      c.className = "cubo-metodo";
+      c.innerHTML = `<span class="icone"></span><span><b></b><span class="txt"></span></span>`;
+      c.querySelector(".icone").textContent = m.icone;
+      c.querySelector("b").textContent = m.nome;
+      c.querySelector(".txt").textContent = m.texto;
+      c.addEventListener("click", () => Motor.falar(`${m.nome}. ${m.texto}`));
+      lista.appendChild(c);
+    });
+    const acoes = document.createElement("div");
+    acoes.className = "cubo-acoes";
+    acoes.append(chip("🚀 Avançado", () => listaAvancado(area)));
+    tela.append(lista, acoes);
+    area.appendChild(tela);
+    Motor.falar("Existem vários jeitos de resolver o cubo. Toque num método para eu ler sobre ele.");
+  }
+
+  // Treino de reconhecimento: aparece o desenho de um caso e a criança escolhe o nome
+  function quizCasos(area) {
+    area.innerHTML = "";
+    const grupos = CUBO_AVANCADO.filter(g => !g.padrao);
+    let ultimo = null;
+    Motor.modoQuiz({
+      area, rodada: 8, classeEnunciado: "cubo-caso",
+      desenhar: Motor.desenharTexto("palavra"),
+      gerar() {
+        const g = Motor.sortear(grupos);
+        const itens = itensDo(g);
+        let certa;
+        do certa = Motor.sortear(itens); while (itens.length > 1 && ultimo && certa.alg === ultimo);
+        ultimo = certa.alg;
+        // Alternativas: do mesmo grupo e, se faltar, da mesma família (OLL com OLL, PLL com PLL)
+        const familia = v => (v === "meios" ? "oll" : v);
+        const parecidos = grupos.filter(x => x !== g && familia(x.vista) === familia(g.vista)).flatMap(itensDo);
+        const outros = [...Motor.embaralhar(itens.filter(it => it !== certa)), ...Motor.embaralhar(parecidos)].slice(0, 2);
+        return {
+          pergunta: `${g.titulo}. Qual é este caso?`,
+          opcoes: [certa, ...outros], certa,
+          mostrar: el => { el.innerHTML = desenhoCaso(g, certa); },
+        };
+      },
+      aoAcertar: async (item) => { await Motor.falar(`${item.nome}: ${item.alg.split(" ").map(t => dizer(ler(t)[0])).join(", ")}.`); },
+    });
+    area.appendChild(Object.assign(chip("🚀 Avançado", () => listaAvancado(area)), { className: "chip cubo-sair-quiz" }));
+  }
+
+  // Movimentos novos: duas camadas (r, f), camada do meio (M, E, S) e o cubo todo (x, y, z)
+  async function demoNotacaoAvancada(area) {
+    const d = telaDemo(area, 3, "🔤 Notação dos avançados");
+    const { cubo, narrar, vivo, algEl, acoes } = d;
+    acoes.innerHTML = "";
+    acoes.append(chip("🚀 Avançado", () => listaAvancado(area)));
+    const passos = [
+      ["r", "Letra minúscula gira duas camadas juntas. r é a direita e a camada do meio, no mesmo sentido do R."],
+      ["f", "f é a frente com a camada do meio de trás dela."],
+      ["M", "M é a camada do meio, entre a esquerda e a direita. Ela gira no mesmo sentido do L."],
+      ["E", "E é a camada do meio deitada, entre cima e baixo. Gira como o D."],
+      ["S", "S é a camada do meio entre a frente e trás. Gira como o F."],
+      ["x", "x, y e z giram o cubo inteiro, sem bagunçar nada. x gira como o R."],
+      ["y", "y gira o cubo inteiro como o U. É muito usado para trocar a face da frente."],
+    ];
+    const k = f => "xyz".indexOf(GIROS[f].eixo);
+    for (const [f, fala] of passos) {
+      if (!vivo()) return;
+      cubo.destacar(c => GIROS[f].pega(c.pos[k(f)], 1));
+      mostrarAlg(algEl, [{ face: f, vezes: 1 }, { face: f, vezes: -1 }], 0);
+      await narrar(fala);
+      await cubo.girar({ face: f, vezes: 1 }, 900);
+      mostrarAlg(algEl, [{ face: f, vezes: 1 }, { face: f, vezes: -1 }], 1);
+      await esperar(300);
+      await cubo.girar({ face: f, vezes: -1 }, 900);
+      await esperar(300);
+    }
+    cubo.destacar(null);
+    algEl.innerHTML = "";
+    await narrar("Com o tracinho, todos giram ao contrário, e com o 2, duas vezes. Agora você já pode ler os algoritmos do CFOP!");
+    if (vivo()) { acoes.innerHTML = ""; acoes.append(chip("🔁 De novo", () => demoNotacaoAvancada(area)), chip("🚀 Avançado", () => listaAvancado(area))); }
   }
 
   // ---------- Demonstrações ----------

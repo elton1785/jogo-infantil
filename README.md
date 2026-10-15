@@ -44,6 +44,9 @@ JOGOS.push({
 });
 ```
 
+Jogo com regras? Escreva a explicação "❓ Como jogar" em `jogos/como-jogar.js` (passos com figura e texto,
+lidos em voz). O botão ❓ aparece na tela inicial do jogo e a explicação abre sozinha na primeira vez.
+
 Ao adicionar arquivos, inclua-os também na lista `ARQUIVOS` do `sw.js`. **A cada publicação, aumente `VERSAO`** no `sw.js`
 (é o número que aparece no menu) para os aparelhos baixarem a versão nova. No aparelho aparece o botão
 **"🆕 Nova versão! Toque para atualizar"** (nos menus, nunca no meio de um jogo); tocando, o app recarrega já atualizado.
