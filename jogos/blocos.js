@@ -19,7 +19,7 @@
   const recorde = () => { try { return +localStorage.getItem("blocos-recorde") || 0; } catch (e) { return 0; } };
 
   JOGOS.push({
-    id: "blocos",
+    id: "blocos", teclas: true,
     nome: "Encaixa Blocos",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><g stroke="#151515" stroke-width="2"><rect x="8" y="40" width="12" height="12" rx="2" fill="#2a9d55"/><rect x="20" y="40" width="12" height="12" rx="2" fill="#2a9d55"/><rect x="20" y="28" width="12" height="12" rx="2" fill="#2a9d55"/><rect x="32" y="28" width="12" height="12" rx="2" fill="#2a9d55"/><rect x="32" y="40" width="12" height="12" rx="2" fill="#f77f00"/><rect x="44" y="40" width="12" height="12" rx="2" fill="#f77f00"/><rect x="44" y="28" width="12" height="12" rx="2" fill="#f77f00"/><rect x="44" y="16" width="12" height="12" rx="2" fill="#f77f00"/><rect x="14" y="4" width="12" height="12" rx="2" fill="#9b5de5"/><rect x="26" y="4" width="12" height="12" rx="2" fill="#9b5de5"/><rect x="38" y="4" width="12" height="12" rx="2" fill="#9b5de5"/><rect x="26" y="16" width="12" height="12" rx="2" fill="#9b5de5"/></g></svg>',
     faixas: ["6-8", "8-10"],
@@ -279,7 +279,7 @@
     // Teclado (computador)
     const teclas = e => {
       if (!vivo()) { document.removeEventListener("keydown", teclas); return; }
-      const acoes = { ArrowLeft: () => mover(-1), ArrowRight: () => mover(1), ArrowUp: girar, ArrowDown: () => { if (descer()) { pontos++; desenhar(); } }, " ": derrubar };
+      const acoes = { ArrowLeft: () => mover(-1), ArrowRight: () => mover(1), ArrowUp: girar, Enter: girar, ArrowDown: () => { if (descer()) { pontos++; desenhar(); } }, " ": derrubar };
       if (acoes[e.key]) { e.preventDefault(); acoes[e.key](); }
     };
     document.addEventListener("keydown", teclas);

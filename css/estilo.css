@@ -214,24 +214,31 @@ button { font-family: inherit; color: inherit; }
 .cesto { display: flex; align-items: center; justify-content: center; width: 1.6em; height: 1.6em; border-radius: 50%; border: 10px solid; }
 
 /* ---------- Quebra-cabeça ---------- */
-.mesa { display: flex; gap: 28px; align-items: center; justify-content: center; flex-wrap: wrap; }
-.tabuleiro { position: relative; display: grid; background: var(--cartao); border-radius: 12px; box-shadow: 0 8px 0 var(--sombra); overflow: hidden; }
+.mesa { display: flex; gap: 24px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.tabuleiro { position: relative; display: grid; background: #fff; border-radius: 10px; box-shadow: 0 0 0 6px #fff, 0 10px 0 6px var(--sombra); flex: none; }
 .tabuleiro.com-guia::before {
-  content: ""; position: absolute; inset: 0; background: var(--guia) center / cover; opacity: .3; filter: grayscale(1); pointer-events: none;
+  content: ""; position: absolute; inset: 0; border-radius: 10px; background: var(--guia) center / cover; opacity: .28; filter: grayscale(1); pointer-events: none;
 }
-.casa { position: relative; border: none; outline: 1px dashed rgba(0,0,0,.2); outline-offset: -1px; background: transparent; padding: 0; cursor: pointer; overflow: hidden; }
-.tabuleiro.completo .casa { outline-color: transparent; }
-.recorte { position: relative; display: block; overflow: hidden; pointer-events: none; background-repeat: no-repeat; }
+.tabuleiro > .guia-pecas, .tabuleiro > .encaixadas { position: absolute; inset: 0; pointer-events: none; }
+.tabuleiro.completo > .guia-pecas { opacity: 0; transition: opacity .6s; }
+.peca-encaixada { position: absolute; pointer-events: none; animation: assenta .25s ease-out; }
+@keyframes assenta { from { transform: scale(1.06); filter: drop-shadow(0 6px 6px rgba(0,0,0,.3)); } to { transform: scale(1); } }
+.casa { position: relative; z-index: 2; border: none; background: transparent; padding: 0; cursor: pointer; border-radius: 4px; }
+.tabuleiro.escolhendo .casa:not(:disabled):hover, .casa.foco-tv { background: rgba(255, 214, 10, .28); }
 .lateral-quebra { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.mini-figura { width: 84px; height: 84px; border-radius: 12px; border: 4px solid #fff; background-size: cover; box-shadow: 0 4px 0 var(--sombra); }
-.resta { font-size: 22px; font-weight: bold; color: #fff; text-shadow: 2px 2px 0 var(--sombra); }
-.bandeja { display: flex; flex-wrap: wrap; gap: 10px; max-width: 420px; justify-content: center; }
+.topo-lateral { display: flex; align-items: center; gap: 12px; }
+.mini-figura { padding: 0; border-radius: 14px; border: 5px solid #fff; background-size: cover; box-shadow: 0 5px 0 var(--sombra); cursor: zoom-in; flex: none; }
+.figura-grande { position: fixed; z-index: 20; inset: 0; margin: auto; width: min(86vw, 80vh); height: min(86vw, 80vh); background-size: cover; border-radius: 22px;
+  border: 8px solid #fff; box-shadow: 0 0 0 100vmax rgba(0,0,0,.5), 0 14px 30px rgba(0,0,0,.4); cursor: zoom-out; }
+.resta { font-size: 22px; font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.25); }
+.bandeja { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
 @media (orientation: portrait) {
-  .lateral-quebra { flex-direction: row; flex-wrap: wrap; justify-content: center; }
-  .lateral-quebra .mini-figura { width: 64px; height: 64px; }
-  .lateral-quebra .bandeja { width: 100%; }
+  .lateral-quebra { width: 100%; }
 }
-.peca-quebra { padding: 0; border: 3px solid #fff; border-radius: 8px; background: var(--cartao); box-shadow: 0 6px 0 var(--sombra); cursor: grab; overflow: hidden; line-height: 0; }
+.peca-quebra { padding: 4px; border: none; border-radius: 10px; background: rgba(255,255,255,.55); box-shadow: 0 4px 0 rgba(0,0,0,.12); cursor: grab; line-height: 0; touch-action: none; }
+.peca-quebra.encaixe { background: transparent; box-shadow: none; filter: drop-shadow(0 4px 3px rgba(0,0,0,.28)); }
+.peca-quebra.selecionada { background: #ffd60a; filter: drop-shadow(0 0 6px #ffb703); transform: translateY(-4px); }
+.peca-voando { position: fixed; z-index: 30; pointer-events: none; filter: drop-shadow(0 12px 10px rgba(0,0,0,.35)); transform: scale(1.04); }
 
 /* ---------- Juntar letras ---------- */
 .letra-arrastar {
@@ -949,3 +956,232 @@ button { font-family: inherit; color: inherit; }
   .mundo-botoes { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); right: 24px; }
   .mundo-slot { width: 44px; height: 44px; }
 }
+
+/* Cartão com letra + figura (Vogais, Letras): a figura fica quase do tamanho da letra.
+   Cartão largo e baixo: letra e figura lado a lado; cartão alto: uma em cima da outra. */
+.cartao.letra.com-figura { gap: .25em; line-height: 1; }
+.cartao.letra.com-figura .mini { font-size: .85em; }
+.grade.g5 .cartao.letra.com-figura { font-size: min(12vw, 24vh, 120px); }
+.grade.g4 .cartao.letra.com-figura { flex-direction: row; font-size: min(10vw, 20vh, 140px); }
+@media (orientation: portrait) {
+  .grade.g5 .cartao.letra.com-figura { flex-direction: row; font-size: min(18vw, 9vh, 120px); }
+  .grade.g4 .cartao.letra.com-figura { flex-direction: column; font-size: min(20vw, 14vh, 140px); }
+}
+
+/* ---------- Controle da TV: destaque do item escolhido ---------- */
+.foco-tv { outline: 6px solid #ff8a5b !important; outline-offset: 4px; box-shadow: 0 0 0 12px rgba(255, 138, 91, .35), 0 8px 0 var(--sombra) !important; }
+.foco-tv:focus { outline: 6px solid #ff8a5b !important; }
+:focus:not(.foco-tv) { outline: none; }
+
+/* =====================================================================
+   Visual novo: fonte arredondada, céu com nuvens e morros, cartões coloridos
+   ===================================================================== */
+@font-face {
+  font-family: "Fredoka"; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url(../fontes/fredoka.woff2) format("woff2");
+}
+body {
+  font-family: "Fredoka", "Comic Sans MS", "Chalkboard SE", "Segoe UI Rounded", system-ui, sans-serif;
+  background:
+    radial-gradient(70% 22% at 18% 104%, #6cc35a 0 60%, transparent 61%),
+    radial-gradient(80% 26% at 88% 108%, #84d46f 0 60%, transparent 61%),
+    radial-gradient(130% 30% at 50% 115%, #9be08a 0 60%, transparent 61%),
+    radial-gradient(40px 15px at 7% 52px, rgba(255,255,255,.9) 97%, transparent),
+    radial-gradient(28px 19px at 10% 40px, rgba(255,255,255,.9) 97%, transparent),
+    radial-gradient(50px 17px at 92% 30px, rgba(255,255,255,.85) 97%, transparent),
+    radial-gradient(32px 21px at 95% 18px, rgba(255,255,255,.85) 97%, transparent),
+    radial-gradient(40px 14px at 60% 48%, rgba(255,255,255,.55) 97%, transparent),
+    linear-gradient(#5db4f5 0%, #9fd6fb 55%, #cdeeff 100%);
+  background-attachment: fixed;
+}
+button { font-family: inherit; }
+
+/* Telas com rolagem (início e menu) */
+#idades, #menu { justify-content: flex-start; padding: 0; }
+.rolagem { width: 100%; height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 18px 16px calc(84px + env(safe-area-inset-bottom, 0px)); -webkit-overflow-scrolling: touch; }
+.rolagem > * { width: 100%; max-width: 1000px; }
+
+/* Início */
+.inicio-topo { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding-top: 4px; }
+.titulo { font-weight: 700; letter-spacing: .5px; margin: 0; color: #fff;
+  text-shadow: 0 3px 0 #2b7fc4, 0 6px 14px rgba(0,0,0,.18); font-size: clamp(30px, 7vw, 56px); }
+.inicio-sub { margin: 0; color: #0f4c81; font-size: clamp(15px, 3.6vw, 20px); font-weight: 600; background: rgba(255,255,255,.7); padding: 4px 14px; border-radius: 999px; }
+.selos { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 4px; }
+.selo { background: rgba(255,255,255,.88); color: #34495e; font-size: 14px; font-weight: 600; padding: 5px 11px; border-radius: 999px; box-shadow: 0 2px 0 rgba(0,0,0,.08); }
+.atalhos { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.atalhos > * { flex: 1 1 280px; max-width: 480px; }
+.secao-titulo { margin: 6px 0 0; font-size: clamp(19px, 4.4vw, 26px); font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.18); }
+.secao-titulo.destaque { text-align: center; }
+
+/* Cartões de idade: coloridos, com a frase e quantos jogos têm */
+.lista-idades { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 14px; }
+.cartao-idade { position: relative; border: none; border-radius: 26px; cursor: pointer; color: #fff; text-align: center; padding: 16px 10px 14px;
+  background: linear-gradient(165deg, rgba(255,255,255,.28), rgba(255,255,255,0) 60%), var(--cor);
+  box-shadow: 0 7px 0 rgba(0,0,0,.2); display: flex; flex-direction: column; align-items: center; gap: 4px; transition: transform .12s; }
+.cartao-idade:active { transform: translateY(5px); box-shadow: 0 2px 0 rgba(0,0,0,.2); }
+.cartao-idade .icone { width: 74px; height: 74px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 44px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.08); }
+.cartao-idade .rotulo { font-size: 22px; font-weight: 700; text-shadow: 0 2px 0 rgba(0,0,0,.18); }
+.cartao-idade .desc { font-size: 14px; line-height: 1.2; opacity: .95; min-height: 2.4em; }
+.cartao-idade .conta { font-size: 13px; font-weight: 700; background: rgba(255,255,255,.28); padding: 2px 10px; border-radius: 999px; }
+.cartao-idade.vazia { filter: grayscale(.6); opacity: .7; }
+
+/* Menu de jogos, separado por categoria */
+.menu-topo { text-align: center; padding: 4px 76px 0; }
+.menu-sub { margin: 6px 0 0; color: #0f4c81; font-weight: 600; font-size: clamp(14px, 3.4vw, 18px); }
+.menu-sub:empty { display: none; }
+#menu .titulo { text-shadow: 0 3px 0 var(--cor-idade, #2b7fc4), 0 6px 14px rgba(0,0,0,.18); }
+#lista-jogos { display: flex; flex-direction: column; gap: 18px; }
+.secao-cat .secao-titulo { display: inline-block; background: var(--cor); padding: 5px 16px; border-radius: 999px; font-size: clamp(17px, 3.8vw, 21px); text-shadow: none; box-shadow: 0 3px 0 rgba(0,0,0,.15); margin: 0 0 10px; }
+.grade-jogos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+
+/* Cartão de jogo: cor da categoria, ícone num círculo, nome e o que ele ensina */
+.cartao-jogo { position: relative; border: none; border-radius: 24px; cursor: pointer; padding: 14px 10px 12px; color: #2d3436; text-align: center;
+  background: linear-gradient(180deg, var(--claro) 0%, #fff 70%); box-shadow: 0 6px 0 var(--cor), 0 10px 18px rgba(0,0,0,.08);
+  display: flex; flex-direction: column; align-items: center; gap: 6px; transition: transform .12s; }
+.cartao-jogo:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--cor); }
+.cartao-jogo .icone { width: 78px; height: 78px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 46px; line-height: 1;
+  box-shadow: 0 0 0 4px var(--claro), 0 0 0 6px var(--cor); flex: none; }
+.cartao-jogo .icone svg { width: 54px; height: 54px; display: block; }
+.cartao-jogo .textos { display: flex; flex-direction: column; gap: 2px; }
+.cartao-jogo .rotulo { font-size: 18px; font-weight: 700; line-height: 1.1; }
+.cartao-jogo .desc { font-size: 13px; color: #5f6b72; line-height: 1.2; }
+/* Atalhos do início: cartões deitados */
+.cartao-jogo.continuar, .atalho-fav { flex-direction: row; text-align: left; padding: 12px 16px; gap: 14px; }
+.cartao-jogo.continuar .rotulo { font-size: 20px; }
+.cartao-jogo.continuar .desc { color: var(--cor); font-weight: 700; font-size: 15px; }
+.atalho-fav { position: relative; border: none; border-radius: 24px; cursor: pointer; display: flex; align-items: center; color: #6b4e00;
+  background: linear-gradient(180deg, #fff6c9, #fff); box-shadow: 0 6px 0 #f4b400, 0 10px 18px rgba(0,0,0,.08); }
+.atalho-fav .icone { width: 64px; height: 64px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 38px; box-shadow: 0 0 0 4px #fff3b0, 0 0 0 6px #f4b400; flex: none; }
+.atalho-fav .textos { display: flex; flex-direction: column; }
+.atalho-fav .rotulo { font-size: 20px; font-weight: 700; }
+.atalho-fav .desc { font-size: 14px; }
+.cartao-jogo .estrela-fav { top: 2px; right: 2px; }
+
+/* Cabeçalho do jogo na tela de escolher o modo */
+.cabecalho-jogo { position: fixed; z-index: 4; top: 14px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 190px);
+  display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 999px; padding: 6px 18px 6px 6px; box-shadow: 0 4px 0 var(--cor), 0 8px 16px rgba(0,0,0,.1); }
+.cabecalho-jogo[hidden] { display: none; }
+.cabecalho-jogo .icone { width: 48px; height: 48px; border-radius: 50%; background: #f6f6f6; display: flex; align-items: center; justify-content: center; font-size: 30px; flex: none; }
+.cabecalho-jogo .icone svg { width: 36px; height: 36px; }
+.cabecalho-jogo .textos { display: flex; flex-direction: column; min-width: 0; }
+.cabecalho-jogo b { font-size: 19px; color: var(--cor); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cabecalho-jogo small { font-size: 13px; color: #5f6b72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Botões de modo: cada um de uma cor */
+.modos .modo { --c1: #fff4cc; --c2: #f2c94c; background: linear-gradient(180deg, var(--c1), #fff 75%); box-shadow: 0 8px 0 var(--c2), 0 12px 20px rgba(0,0,0,.08); }
+.modos .modo:nth-child(6n+2) { --c1: #dff6e5; --c2: #5cc27a; }
+.modos .modo:nth-child(6n+3) { --c1: #e2efff; --c2: #6aa6ee; }
+.modos .modo:nth-child(6n+4) { --c1: #ffe3ea; --c2: #f08aa6; }
+.modos .modo:nth-child(6n+5) { --c1: #efe6ff; --c2: #a98bf0; }
+.modos .modo:nth-child(6n+6) { --c1: #ffe9d6; --c2: #f2a65a; }
+.modos .modo:active { box-shadow: 0 2px 0 var(--c2); }
+.modos .modo .rotulo { color: #2d3436; }
+
+/* Alternativas dos quizzes: cada cartão numa cor clara (acerto, erro e cartas viradas continuam por cima) */
+.grade > :where(.cartao) { background: #fff4cc; box-shadow: 0 10px 0 #f2c94c, 0 14px 22px rgba(0,0,0,.08); }
+.grade > :where(.cartao:nth-child(6n+2)) { background: #dff6e5; box-shadow: 0 10px 0 #5cc27a, 0 14px 22px rgba(0,0,0,.08); }
+.grade > :where(.cartao:nth-child(6n+3)) { background: #e2efff; box-shadow: 0 10px 0 #6aa6ee, 0 14px 22px rgba(0,0,0,.08); }
+.grade > :where(.cartao:nth-child(6n+4)) { background: #ffe3ea; box-shadow: 0 10px 0 #f08aa6, 0 14px 22px rgba(0,0,0,.08); }
+.grade > :where(.cartao:nth-child(6n+5)) { background: #efe6ff; box-shadow: 0 10px 0 #a98bf0, 0 14px 22px rgba(0,0,0,.08); }
+.grade > :where(.cartao:nth-child(6n+6)) { background: #ffe9d6; box-shadow: 0 10px 0 #f2a65a, 0 14px 22px rgba(0,0,0,.08); }
+.enunciado { box-shadow: 0 8px 0 rgba(0,0,0,.12), 0 12px 22px rgba(0,0,0,.08); }
+
+@media (max-width: 420px) {
+  .grade-jogos { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .lista-idades { grid-template-columns: repeat(2, 1fr); }
+  .cartao-jogo .icone { width: 66px; height: 66px; font-size: 40px; }
+  .cartao-jogo .rotulo { font-size: 16px; }
+  .cabecalho-jogo small { display: none; }
+}
+
+/* Tela de opções (Dominó, Damas, Velha...): painéis brancos com título colorido */
+.grupo-op { background: rgba(255,255,255,.9); border-radius: 22px; padding: 10px 12px 12px; box-shadow: 0 5px 0 rgba(0,0,0,.08); }
+.titulo-op { color: #1d6fb8; font-weight: 700; }
+.chip { font-weight: 600; transition: transform .1s; }
+.chip:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--sombra); }
+.chip.ativo { background: linear-gradient(180deg, #ff9f6e, #ff7a45); box-shadow: 0 4px 0 #d9541f; }
+.chip.jogar { background: linear-gradient(180deg, #43c46e, #2a9d55); box-shadow: 0 6px 0 #1b7a3e; border-radius: 22px; }
+
+/* =====================================================================
+   Tamanhos (revisão de todos os jogos): figuras grandes no espaço que têm
+   ===================================================================== */
+/* Pergunta do mesmo porte das respostas */
+.enunciado { font-size: clamp(44px, 12vw, 84px); }
+.enunciado .grande { font-size: min(22vh, 30vw, 160px); }
+.enunciado.historia { flex-wrap: nowrap; }
+.sequencia { font-size: clamp(40px, 11vw, 80px); letter-spacing: 4px; }
+.conjunto { font-size: clamp(30px, 7vh, 64px); }
+.mini-palmas { font-size: .55em; }
+/* Ditado e montar: as lacunas quebram linha em vez de sair da tela */
+.enunciado .lacunas { flex-wrap: wrap; justify-content: center; }
+.enunciado .lacuna { min-width: 1.1em; }
+/* As respostas nunca ficam espremidas pela pergunta */
+.grade { min-height: 30%; }
+.grade.pecas { min-height: 0; }
+@media (orientation: landscape) and (max-height: 500px) {
+  .grade.g4 { grid-template-columns: repeat(4, 1fr); grid-template-rows: 1fr; }
+  .enunciado { font-size: clamp(32px, 9vh, 60px); padding: 6px 24px; }
+  .enunciado .grande { font-size: min(24vh, 22vw, 120px); }
+}
+/* Dinheiro: notas, moedas e produto acompanham a tela */
+.nota { width: min(28vw, 160px); height: auto; aspect-ratio: 2; font-size: min(5.5vw, 28px); }
+.moeda { width: min(17vw, 84px); height: min(17vw, 84px); font-size: min(4vw, 20px); }
+.moeda.m100 { width: min(19vw, 92px); height: min(19vw, 92px); }
+.produto { font-size: min(20vw, 14vh, 110px); }
+.etiqueta { font-size: min(7vw, 34px); }
+/* Arrastar: figuras grandes nos alvos e peças maiores */
+.figura-alvo { font-size: min(22vw, 16vh, 140px); }
+.figura-alvo.texto-peca { font-size: min(16vw, 13vh, 100px); }
+.peca-solta { font-size: min(16vw, 10vh, 80px); }
+.peca-solta.texto-peca { font-size: clamp(32px, 9vw, 56px); }
+.grupinho { overflow-wrap: anywhere; word-break: break-all; }
+/* Cores: a bolinha cabe no cartão deitado */
+.bolinha { width: auto; height: 70%; max-width: 70%; }
+/* Memória: o verso da carta */
+.grade.g8 .cartao, .grade.g12 .cartao, .grade.g16 .cartao { font-size: min(18vw, 12vh, 90px); }
+/* Telas de modo: botões maiores no celular em pé, menores no celular deitado */
+@media (orientation: portrait) { .modos:not(.pequenos) .modo { width: min(44vw, 26vh, 240px); } }
+@media (orientation: landscape) and (max-height: 500px) {
+  .modos:not(.pequenos) .modo { width: min(40vw, 30vh, 220px); }
+  .modos .modo .icone { font-size: min(10vw, 12vh, 80px); }
+}
+.modo .rotulo { font-size: clamp(16px, 3.4vw, 22px); text-align: center; padding: 0 6px; }
+/* Opções: o "Jogar" fica sempre à vista no fim da tela */
+.opcoes-jogo .chip.jogar { position: sticky; bottom: 0; z-index: 2; }
+/* Rótulos pequenos dos placares */
+.blocos-info div, .cobra-info div, .tijolos-info div, .nave-info div, .lab-info div, .n2048-info div { font-size: 14px; }
+.item-placar { font-size: clamp(15px, 2.8vw, 19px); }
+.robo-cmd small { font-size: 14px; }
+/* Robô: o tabuleiro não fica embaixo do 🏠 */
+.robo-topo { min-height: 76px; }
+/* Pintura no celular deitado: a paleta vira uma coluna ao lado do desenho */
+@media (orientation: landscape) and (max-height: 500px) {
+  #area-jogo:has(> .paleta) { flex-direction: row; align-items: stretch; padding-top: 88px; }
+  #area-jogo > .paleta { display: grid; grid-template-columns: repeat(4, auto); gap: 6px; align-content: start; overflow-y: auto; max-height: 100%; max-width: 230px; padding: 6px; }
+  #area-jogo > .paleta .cor { width: 44px; height: 44px; font-size: 22px; }
+}
+.enunciado .sinal { font-size: clamp(30px, 7vh, 64px); font-weight: 700; color: var(--destaque); padding: 0 .15em; }
+/* Juntar Letras: sílabas maiores no celular em pé e longe do botão ➡️ no deitado */
+@media (orientation: portrait) {
+  .vogal-alvo { min-width: min(27vw, 150px); height: min(24vw, 130px); font-size: min(14vw, 64px); }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .vogais-alvo { padding-right: 96px; flex-wrap: nowrap; }
+  .vogal-alvo { min-width: min(12vw, 110px); height: min(22vh, 96px); font-size: min(14vh, 56px); }
+  .enunciado.historia { max-width: calc(100% - 190px); }
+}
+/* Bolinha de cor sempre redonda, do tamanho do cartão (em pé ou deitado) */
+.bolinha { width: 60%; height: auto; max-width: none; aspect-ratio: 1; }
+@supports (width: 1cqh) {
+  .cartao:has(> .bolinha) { container-type: size; }
+  .bolinha { width: min(72cqw, 72cqh); }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .conjunto { font-size: clamp(30px, 11vh, 56px); }
+}
+/* Cartões nunca alargam a grade (o conteúdo se ajusta ao cartão, não o contrário) */
+.grade > .cartao { min-width: 0; min-height: 0; overflow: hidden; }
+/* Quebra-cabeça no celular deitado: a mesa usa a altura toda (desvia do 🏠 pela esquerda) */
+#area-jogo:has(> .mesa.curta) { padding-top: 16px; padding-bottom: 16px; }
+.info-lateral { display: flex; flex-direction: column; align-items: center; gap: 8px; }

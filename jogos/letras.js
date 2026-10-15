@@ -35,7 +35,7 @@
   const maiuscula = t => t[0].toUpperCase() + t.slice(1);
 
   function letraComFigura(item, b) {
-    b.classList.add("letra");
+    b.classList.add("letra", "com-figura"); // letra e figura, as duas grandes
     b.innerHTML = `<span></span><span class="mini"></span>`;
     b.children[0].textContent = item.nome;
     b.children[1].textContent = item.emoji;

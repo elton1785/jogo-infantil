@@ -44,6 +44,10 @@ JOGOS.push({
 });
 ```
 
+Inclua o jogo em `js/catalogo.js` (categoria e uma frase curta): é o que aparece no menu.
+Se o jogo usa as setas do teclado durante a partida, marque `teclas: true` — assim, no controle de
+videogame ou no controle remoto da TV (`js/controle.js`), as setas vão para o jogo em vez de mover o destaque.
+
 Jogo com regras? Escreva a explicação "❓ Como jogar" em `jogos/como-jogar.js` (passos com figura e texto,
 lidos em voz). O botão ❓ aparece na tela inicial do jogo e a explicação abre sozinha na primeira vez.
 

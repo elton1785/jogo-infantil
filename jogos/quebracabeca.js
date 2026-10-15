@@ -1,14 +1,15 @@
-// Quebra-cabeça — a figura é cortada em peças; arrastar (ou tocar) cada peça até o lugar.
-// Pequenos: um bicho grande em 2 a 4 peças. Maiores: cenas desenhadas (fazenda, fundo do mar...)
-// em até 6×6 peças, ou uma foto tirada na hora (📷).
+// Quebra-cabeça — a figura é cortada em peças; arrastar (ou tocar na peça e depois no lugar).
+// Pequenos: um bicho grande em 2 a 4 peças quadradas. Maiores: cenas desenhadas (fazenda, fundo do
+// mar...) ou uma foto tirada na hora (📷), em até 7×7 peças, quadradas ou DE ENCAIXE (com pontas e
+// buracos, como as de verdade). Cada peça é desenhada num canvas e encaixa na posição exata.
 (() => {
   // Faixas sem escolha de tamanho: [colunas, linhas]
   const FIXOS = { "3-4": [2, 1], "4-5": [2, 2] };
   // Faixas que escolhem o tamanho
   const OPCOES = {
     "5-6":  [[2, 2], [3, 2], [3, 3]],
-    "6-8":  [[3, 3], [4, 4], [5, 5]],
-    "8-10": [[4, 4], [5, 5], [6, 6]],
+    "6-8":  [[3, 3], [4, 4], [5, 5], [6, 6]],
+    "8-10": [[4, 4], [5, 5], [6, 6], [7, 7]],
   };
   const FIGS = ["🐶", "🐱", "🦁", "🐸", "🐼", "🦊", "🐵", "🐯", "🐮", "🐷", "🦄", "🐙", "🍉", "🚗", "🏠", "🌻"];
   const FUNDOS = ["#ffd6a5", "#caffbf", "#9bf6ff", "#bdb2ff", "#ffc6ff", "#fdffb6"];
@@ -104,6 +105,47 @@
     });
   }
 
+  // ---------- Peças ----------
+  // Cada encontro entre duas peças vizinhas sorteia quem tem a ponta (+1) e quem tem o buraco (-1).
+  // No modo "encaixe" o contorno das peças segue esses encontros, como um quebra-cabeça de verdade.
+  function sortearEncontros(cols, rows) {
+    const s = () => (Math.random() < 0.5 ? 1 : -1);
+    return {
+      h: Array.from({ length: rows }, () => Array.from({ length: cols }, s)), // entre a linha r-1 e r
+      v: Array.from({ length: rows }, () => Array.from({ length: cols }, s)), // entre a coluna c-1 e c
+    };
+  }
+  // Lados da peça (c, r): 0 reto, +1 ponta para fora, -1 buraco
+  function ladosDa(c, r, cols, rows, enc) {
+    return {
+      cima: r > 0 ? -enc.h[r][c] : 0,
+      baixo: r < rows - 1 ? enc.h[r + 1][c] : 0,
+      esq: c > 0 ? -enc.v[r][c] : 0,
+      dir: c < cols - 1 ? enc.v[r][c + 1] : 0,
+    };
+  }
+  // Um lado de P a Q com a ponta (t = +1) ou o buraco (t = -1) no meio; N aponta para fora
+  function lado(ctx, P, Q, N, t) {
+    if (!t) { ctx.lineTo(Q[0], Q[1]); return; }
+    const L = Math.hypot(Q[0] - P[0], Q[1] - P[1]);
+    const pt = (u, v) => [P[0] + (Q[0] - P[0]) * u + N[0] * v * L * t, P[1] + (Q[1] - P[1]) * u + N[1] * v * L * t];
+    const curva = (a, b, c) => { const [x1, y1] = pt(...a), [x2, y2] = pt(...b), [x3, y3] = pt(...c); ctx.bezierCurveTo(x1, y1, x2, y2, x3, y3); };
+    ctx.lineTo(...pt(0.36, 0));
+    curva([0.40, 0], [0.43, 0.10], [0.39, 0.18]);
+    curva([0.33, 0.31], [0.67, 0.31], [0.61, 0.18]);
+    curva([0.57, 0.10], [0.60, 0], [0.64, 0]);
+    ctx.lineTo(Q[0], Q[1]);
+  }
+  function caminhoPeca(ctx, x, y, w, h, l) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    lado(ctx, [x, y], [x + w, y], [0, -1], l.cima);
+    lado(ctx, [x + w, y], [x + w, y + h], [1, 0], l.dir);
+    lado(ctx, [x + w, y + h], [x, y + h], [0, 1], l.baixo);
+    lado(ctx, [x, y + h], [x, y], [-1, 0], l.esq);
+    ctx.closePath();
+  }
+
   JOGOS.push({
     id: "quebra-cabeca",
     nome: "Quebra-cabeça",
@@ -111,13 +153,23 @@
     faixas: ["3-4", "4-5", "5-6", "6-8", "8-10"],
     iniciar(area, faixa) {
       const id = faixa && faixa.id;
-      if (FIXOS[id] || !OPCOES[id]) return comecar(FIXOS[id] || [2, 2], true);
-      Motor.escolherModo(area, OPCOES[id].map(([c, r]) => ({
-        icone: `${c}×${r}`, rotulo: `${c * r} peças`, iniciar: () => comecar([c, r], false),
-      })));
+      if (FIXOS[id] || !OPCOES[id]) return comecar({ tam: FIXOS[id] || [2, 2], simples: true, estilo: "quadrado", guia: true });
+      // Maiores: tamanho, tipo de peça (quadrada ou de encaixe) e a figura clarinha de ajuda
+      const tamanhos = OPCOES[id];
+      Motor.telaOpcoes(area, {
+        chave: `quebra-opcoes-${id}`,
+        padrao: { tam: tamanhos[0].join("x"), estilo: id === "5-6" ? "quadrado" : "encaixe", guia: id === "8-10" ? "nao" : "sim" },
+        opcoes: [
+          { chave: "tam", titulo: "Quantas peças?", valores: tamanhos.map(([c, r]) => [`${c}x${r}`, `${c * r} peças (${c}×${r})`]) },
+          { chave: "estilo", titulo: "Tipo de peça", valores: [["quadrado", "⬜ Quadradas"], ["encaixe", "🧩 De encaixe, como as de verdade"]] },
+          { chave: "guia", titulo: "Figura clarinha no tabuleiro", valores: [["sim", "💡 Sim"], ["nao", "🙈 Não"]] },
+        ],
+        aoJogar: op => comecar({ tam: op.tam.split("x").map(Number), simples: false, estilo: op.estilo, guia: op.guia === "sim" }),
+      });
 
-      // `simples`: figura de um bicho com guia clarinha no tabuleiro (para os pequenos)
-      function comecar([cols, rows], simples) {
+      // `simples`: figura de um bicho, peças grandes (para os pequenos)
+      function comecar({ tam: [cols, rows], simples, estilo, guia }) {
+        const encaixe = estilo === "encaixe";
         let ultima = null;
 
         function proxima() {
@@ -132,123 +184,130 @@
         }
 
         function jogo(figura = proxima()) {
+          const fonte = new Image();
+          const s = Motor.sessaoAtual();
+          fonte.onload = () => { if (s === Motor.sessaoAtual()) montar(figura, fonte); };
+          fonte.src = figura.img;
+        }
+
+        function montar({ img, nome }, fonte) {
           area.innerHTML = "";
-          const { img, nome } = figura;
           const total = cols * rows;
-          // Tamanho do tabuleiro: ao lado da bandeja (deitado) ou acima dela (em pé)
-          const larg = window.innerWidth - 32, alt = window.innerHeight - 112;
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          // Tamanho do tabuleiro: ao lado da bandeja (deitado) ou acima dela (em pé),
+          // descontando a faixa de cima (🏠) e a de baixo
+          // Celular deitado: usa a altura toda e desvia do 🏠 pela esquerda
+          const curto = window.innerWidth > window.innerHeight && window.innerHeight < 520;
+          const padEsq = curto ? 84 : 0;
+          const larg = window.innerWidth - 32 - padEsq, alt = window.innerHeight - (curto ? 40 : 180);
           const deitado = larg > alt;
-          const lado = Math.min(deitado ? Math.min(alt, larg * 0.55) : Math.min(larg, alt * 0.6), simples ? 380 : 560);
+          const lado = Math.floor(Math.min(deitado
+            ? Math.min(alt, larg * 0.58, (larg - 28) / (1 + 1 / cols))
+            : Math.min(larg, alt * 0.6, (alt - 50) / (1 + 1 / rows)), simples ? 400 : 600));
           const w = lado / cols, h = lado / rows;
+          const m = encaixe ? Math.ceil(Math.max(w, h) * 0.34) : 0; // espaço das pontas em volta
+          const enc = sortearEncontros(cols, rows);
           let restantes = total, selecionada = null;
 
-          // Um pedaço da figura na posição (c, r)
-          function recorte(c, r) {
-            const el = document.createElement("span");
-            el.className = "recorte";
-            Object.assign(el.style, {
-              width: w + "px", height: h + "px", backgroundImage: `url(${img})`,
-              backgroundSize: `${lado}px ${lado}px`, backgroundPosition: `${-c * w}px ${-r * h}px`,
-            });
-            return el;
+          // Desenha a peça (c, r) num canvas: recorte da figura, contorno e um leve relevo
+          function canvasPeca(c, r, escala = 1) {
+            const cv = document.createElement("canvas");
+            const W = (w + 2 * m) * escala, H = (h + 2 * m) * escala;
+            cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+            Object.assign(cv.style, { width: W + "px", height: H + "px" });
+            const ctx = cv.getContext("2d");
+            ctx.scale(dpr * escala, dpr * escala);
+            const l = encaixe ? ladosDa(c, r, cols, rows, enc) : { cima: 0, baixo: 0, esq: 0, dir: 0 };
+            caminhoPeca(ctx, m, m, w, h, l);
+            ctx.save();
+            ctx.clip();
+            const k = S / lado;
+            ctx.drawImage(fonte, (c * w - m) * k, (r * h - m) * k, (w + 2 * m) * k, (h + 2 * m) * k, 0, 0, w + 2 * m, h + 2 * m);
+            // relevo: luz em cima à esquerda, sombra embaixo à direita
+            const g = ctx.createLinearGradient(m, m, m + w, m + h);
+            g.addColorStop(0, "rgba(255,255,255,.22)"); g.addColorStop(0.5, "rgba(255,255,255,0)"); g.addColorStop(1, "rgba(0,0,0,.16)");
+            ctx.fillStyle = g; ctx.fillRect(0, 0, w + 2 * m, h + 2 * m);
+            ctx.restore();
+            caminhoPeca(ctx, m, m, w, h, l);
+            ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = Math.max(1, 1.6 / escala); ctx.stroke();
+            return cv;
           }
 
+          // Tabuleiro: o contorno de cada peça (e a figura clarinha, se pedida)
           const tabuleiro = document.createElement("div");
-          tabuleiro.className = "tabuleiro";
-          Object.assign(tabuleiro.style, { width: lado + "px", height: lado + "px", gridTemplateColumns: `repeat(${cols}, 1fr)` });
-          if (simples) {
-            tabuleiro.classList.add("com-guia");
-            tabuleiro.style.setProperty("--guia", `url(${img})`);
+          tabuleiro.className = "tabuleiro" + (encaixe ? " encaixe" : "");
+          Object.assign(tabuleiro.style, { width: lado + "px", height: lado + "px", gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` });
+          if (guia) { tabuleiro.classList.add("com-guia"); tabuleiro.style.setProperty("--guia", `url(${img})`); }
+          const guiaCv = document.createElement("canvas");
+          guiaCv.className = "guia-pecas";
+          guiaCv.width = guiaCv.height = Math.round(lado * dpr);
+          Object.assign(guiaCv.style, { width: lado + "px", height: lado + "px" });
+          {
+            const g = guiaCv.getContext("2d");
+            g.scale(dpr, dpr);
+            g.strokeStyle = "rgba(0,0,0,.22)"; g.lineWidth = 1.2; g.setLineDash(encaixe ? [] : [4, 4]);
+            for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+              caminhoPeca(g, c * w, r * h, w, h, encaixe ? ladosDa(c, r, cols, rows, enc) : { cima: 0, baixo: 0, esq: 0, dir: 0 });
+              g.stroke();
+            }
           }
+          tabuleiro.appendChild(guiaCv);
+          const encaixadas = document.createElement("div");
+          encaixadas.className = "encaixadas";
+          tabuleiro.appendChild(encaixadas);
 
+          // Casas transparentes: tocar numa casa com a peça escolhida (toque ou controle da TV)
           const casas = [];
           for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
             const casa = document.createElement("button");
             casa.className = "casa";
             casa.dataset.pos = `${c},${r}`;
-            casa.addEventListener("click", () => { if (selecionada) encaixar(selecionada.peca, selecionada.pos, casa); });
+            casa.setAttribute("aria-label", `Lugar ${r * cols + c + 1}`);
+            casa.addEventListener("click", () => {
+              if (!selecionada) return;
+              if (!encaixar(selecionada.peca, selecionada.pos, casa.dataset.pos)) Motor.animar(selecionada.peca, "balanca");
+            });
             tabuleiro.appendChild(casa);
             casas.push(casa);
           }
 
-          // Peças a colocar. Nos grandes, só algumas ficam na bandeja; as outras saem da pilha aos poucos.
+          // Bandeja: as peças embaralhadas, menores; nos grandes só algumas por vez
           const pilha = [];
           for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) pilha.push([c, r]);
           const pilhaEmb = Motor.embaralhar(pilha);
-          const naBandeja = deitado
-            ? Math.max(1, Math.floor((Math.min(larg - lado - 28, 440) / (w + 10))) * Math.floor((alt - 90) / (h + 10)))
-            : Math.max(1, Math.floor(larg / (w + 10)) * Math.max(1, Math.floor((alt - lado - 40) / (h + 10))));
-          const visiveis = Math.min(total, Math.max(2, naBandeja), 12);
+          const lugarBandeja = deitado ? Math.min(larg - lado - 28, 460) : larg;
+          // A figura para consultar (só nos maiores) também ocupa espaço ao lado/abaixo do tabuleiro
+          const ladoMini = simples ? 0 : Math.round(Math.max(84, Math.min(deitado ? 170 : 120, deitado ? alt * 0.4 : (alt - lado) * 0.4)));
+          const altBandeja = deitado ? alt - (simples ? 0 : ladoMini + 24) : alt - lado - (simples ? 0 : ladoMini + 12) - 30;
+          let escalaB = Math.min(1, (lugarBandeja - 10) / (w + 2 * m + 12));
+          if (!simples) escalaB = Math.min(escalaB, Math.max(0.5, 110 / (w + 2 * m)));
+          const tamB = (w + 2 * m) * escalaB + 12, altB = (h + 2 * m) * escalaB + 12;
+          const naBandeja = Math.max(1, Math.floor(lugarBandeja / tamB) * Math.max(1, Math.floor(altBandeja / altB)));
+          const visiveis = Math.min(total, naBandeja, 12);
 
           const lateral = document.createElement("div");
           lateral.className = "lateral-quebra";
           const bandeja = document.createElement("div");
           bandeja.className = "bandeja";
-          bandeja.style.maxWidth = (deitado ? Math.min(larg - lado - 28, 440) : larg) + "px";
+          bandeja.style.maxWidth = lugarBandeja + "px";
           if (!simples) {
-            // Miniatura da figura inteira, para consultar
-            const mini = document.createElement("div");
+            // A figura inteira, grande, para consultar; tocar amplia
+            const topoLat = document.createElement("div");
+            topoLat.className = "topo-lateral";
+            const mini = document.createElement("button");
             mini.className = "mini-figura";
-            mini.style.backgroundImage = `url(${img})`;
+            mini.setAttribute("aria-label", "Ver a figura grande");
+            Object.assign(mini.style, { backgroundImage: `url(${img})`, width: ladoMini + "px", height: ladoMini + "px" });
+            mini.addEventListener("click", () => {
+              const grande = document.createElement("div");
+              grande.className = "figura-grande";
+              grande.style.backgroundImage = `url(${img})`;
+              grande.addEventListener("click", () => grande.remove());
+              area.appendChild(grande);
+              Motor.falar("Esta é a figura que você vai montar. Toque para fechar.");
+            });
             const resta = document.createElement("div");
             resta.className = "resta";
-            lateral.append(mini, resta);
-          }
-          lateral.appendChild(bandeja);
-          const atualizarResta = () => {
-            const el = lateral.querySelector(".resta");
-            if (el) el.textContent = `🧩 ${restantes}`;
-          };
-
-          function novaPeca() {
-            if (!pilhaEmb.length) return;
-            const [c, r] = pilhaEmb.shift();
-            const peca = document.createElement("button");
-            peca.className = "peca-quebra";
-            const pos = `${c},${r}`;
-            peca.appendChild(recorte(c, r));
-            Motor.arrastavel(peca, { alvos: () => casas, aoSoltar: casa => encaixar(peca, pos, casa) });
-            peca.addEventListener("click", () => {
-              bandeja.querySelectorAll(".selecionada").forEach(x => x.classList.remove("selecionada"));
-              selecionada = { peca, pos };
-              peca.classList.add("selecionada");
-            });
-            bandeja.appendChild(peca);
-          }
-
-          function encaixar(peca, pos, casa) {
-            peca.classList.remove("selecionada");
-            selecionada = null;
-            if (casa.dataset.pos !== pos || casa.firstChild) {
-              Motor.animar(peca, "balanca");
-              return false;
-            }
-            const [c, r] = pos.split(",").map(Number);
-            casa.appendChild(recorte(c, r));
-            peca.remove();
-            Motor.ploc();
-            restantes--;
-            novaPeca();
-            atualizarResta();
-            if (restantes === 0) {
-              tabuleiro.classList.add("completo");
-              Motor.comemorar(tabuleiro);
-              Motor.tim();
-              const fala = simples ? `${Motor.elogio()} Você montou o quebra-cabeça!` : `${Motor.elogio()} Você montou ${nome}!`;
-              Motor.falar(fala).then(() => Motor.depois(() => jogo(), 1800));
-            }
-            return true;
-          }
-
-          for (let i = 0; i < visiveis; i++) novaPeca();
-          atualizarResta();
-
-          const mesa = document.createElement("div");
-          mesa.className = "mesa";
-          mesa.append(tabuleiro, lateral);
-          area.appendChild(mesa);
-
-          if (!simples) {
             // 📷 Montar uma foto tirada agora (ou da galeria)
             const entrada = document.createElement("input");
             entrada.type = "file";
@@ -263,12 +322,119 @@
                 jogo({ img: foto, nome: "a sua foto" });
               }).catch(() => Motor.falar("Não consegui abrir essa foto."));
             });
-            area.append(entrada, Motor.botaoCanto("repetir", "📷", "Usar uma foto", () => entrada.click()));
+            const foto = Object.assign(document.createElement("button"), { className: "chip", textContent: "📷 Foto" });
+            foto.setAttribute("aria-label", "Montar uma foto");
+            foto.addEventListener("click", () => entrada.click());
+            const info = document.createElement("div");
+            info.className = "info-lateral";
+            info.append(resta, foto, entrada);
+            topoLat.append(mini, info);
+            lateral.append(topoLat);
           }
+          lateral.appendChild(bandeja);
+          const atualizarResta = () => { const el = lateral.querySelector(".resta"); if (el) el.textContent = `🧩 faltam ${restantes}`; };
+
+          // Arrastar: a peça segue o dedo no tamanho real e gruda se chegar perto do lugar certo
+          function arrastar(peca, pos, ev) {
+            const [c, r] = pos.split(",").map(Number);
+            const x0 = ev.clientX, y0 = ev.clientY;
+            const rp = peca.getBoundingClientRect();
+            const fx = (ev.clientX - rp.left) / rp.width, fy = (ev.clientY - rp.top) / rp.height; // onde pegou na peça
+            let voando = null;
+            const mover = e => {
+              if (!voando) {
+                if (Math.hypot(e.clientX - x0, e.clientY - y0) < 8) return;
+                voando = canvasPeca(c, r);
+                voando.className = "peca-voando";
+                document.body.appendChild(voando);
+                peca.style.visibility = "hidden";
+                peca._arrastou = true;
+              }
+              const W = w + 2 * m, H = h + 2 * m;
+              voando.style.left = e.clientX - fx * W + "px";
+              voando.style.top = e.clientY - fy * H + "px";
+            };
+            const soltar = e => {
+              peca.removeEventListener("pointermove", mover);
+              peca.removeEventListener("pointerup", soltar);
+              peca.removeEventListener("pointercancel", soltar);
+              if (!voando) return;
+              const rt = tabuleiro.getBoundingClientRect(), rv = voando.getBoundingClientRect();
+              const cx = rv.left + rv.width / 2 - rt.left, cy = rv.top + rv.height / 2 - rt.top;
+              const perto = Math.hypot(cx - (c + 0.5) * w, cy - (r + 0.5) * h) < Math.min(w, h) * (encaixe ? 0.38 : 0.48);
+              voando.remove();
+              peca.style.visibility = "";
+              if (perto) encaixar(peca, pos, pos);
+              else {
+                // soltou no tabuleiro mas fora do lugar: balança; fora do tabuleiro: só volta
+                const noTab = cx >= 0 && cy >= 0 && cx <= lado && cy <= lado;
+                if (noTab) { Motor.animar(peca, "balanca"); Motor.nota(200, { dur: 0.1, tipo: "square", vol: 0.05 }); }
+              }
+            };
+            try { peca.setPointerCapture(ev.pointerId); } catch (er) { /* ok */ }
+            peca.addEventListener("pointermove", mover);
+            peca.addEventListener("pointerup", soltar);
+            peca.addEventListener("pointercancel", soltar);
+          }
+
+          function novaPeca() {
+            if (!pilhaEmb.length) return;
+            const [c, r] = pilhaEmb.shift();
+            const pos = `${c},${r}`;
+            const peca = document.createElement("button");
+            peca.className = "peca-quebra" + (encaixe ? " encaixe" : "");
+            peca.setAttribute("aria-label", "Peça");
+            peca.dataset.pos = pos;
+            peca.appendChild(canvasPeca(c, r, escalaB));
+            peca.addEventListener("pointerdown", e => { if (e.pointerId !== 99) arrastar(peca, pos, e); });
+            peca.addEventListener("click", () => {
+              if (peca._arrastou) { peca._arrastou = false; return; }
+              bandeja.querySelectorAll(".selecionada").forEach(x => x.classList.remove("selecionada"));
+              selecionada = { peca, pos };
+              peca.classList.add("selecionada");
+              tabuleiro.classList.add("escolhendo");
+            });
+            bandeja.appendChild(peca);
+          }
+
+          function encaixar(peca, pos, onde) {
+            peca.classList.remove("selecionada");
+            selecionada = null;
+            tabuleiro.classList.remove("escolhendo");
+            if (onde !== pos) return false;
+            const [c, r] = pos.split(",").map(Number);
+            const cv = canvasPeca(c, r);
+            cv.className = "peca-encaixada";
+            Object.assign(cv.style, { left: c * w - m + "px", top: r * h - m + "px" });
+            encaixadas.appendChild(cv);
+            casas[r * cols + c].disabled = true;
+            peca.remove();
+            Motor.ploc();
+            restantes--;
+            novaPeca();
+            atualizarResta();
+            if (restantes === 0) {
+              tabuleiro.classList.add("completo");
+              Motor.comemorar(tabuleiro);
+              Motor.tim();
+              const fala = simples ? `${Motor.elogio()} Você montou o quebra-cabeça!` : `${Motor.elogio()} Você montou ${nome}!`;
+              Motor.falar(fala).then(() => Motor.depois(() => jogo(), 2200));
+            }
+            return true;
+          }
+
+          for (let i = 0; i < visiveis; i++) novaPeca();
+          atualizarResta();
+
+          const mesa = document.createElement("div");
+          mesa.className = "mesa" + (curto ? " curta" : "");
+          mesa.style.paddingLeft = padEsq + "px";
+          mesa.append(tabuleiro, lateral);
+          area.appendChild(mesa);
 
           Motor.falar(simples
             ? "Monte o quebra-cabeça! Arraste cada peça para o lugar certo."
-            : `Vamos montar ${nome}! São ${total} peças.`);
+            : `Vamos montar ${nome}! São ${total} peças.` + (encaixe ? " Repare nas pontinhas e nos buraquinhos de cada peça!" : ""));
         }
 
         jogo();

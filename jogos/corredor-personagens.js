@@ -56,70 +56,224 @@ const CORREDORES = (() => {
   }
   const grad = (ctx, y1, y2, c1, c2) => { const g = ctx.createLinearGradient(0, y1, 0, y2); g.addColorStop(0, c1); g.addColorStop(1, c2); return g; };
 
-  // ---------- 🦖 Dino (tiranossauro) ----------
+  // Membro "musculoso": passa pelos pontos [[x, y], ...] afinando de largura (ws), com contorno
+  function membro(ctx, pts, ws, cor, contorno) {
+    const pedaco = (extra, c) => {
+      ctx.fillStyle = c;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+        const dx = x1 - x0, dy = y1 - y0, n = Math.hypot(dx, dy) || 1, nx = -dy / n, ny = dx / n;
+        const a = ws[i] / 2 + extra, b = ws[i + 1] / 2 + extra;
+        ctx.beginPath();
+        ctx.moveTo(x0 + nx * a, y0 + ny * a); ctx.lineTo(x1 + nx * b, y1 + ny * b);
+        ctx.lineTo(x1 - nx * b, y1 - ny * b); ctx.lineTo(x0 - nx * a, y0 - ny * a); ctx.closePath(); ctx.fill();
+      }
+      pts.forEach(([x, y], i) => { ctx.beginPath(); ctx.arc(x, y, ws[i] / 2 + extra, 0, Math.PI * 2); ctx.fill(); });
+    };
+    if (contorno) pedaco(0.7, contorno);
+    pedaco(0, cor);
+  }
+  // Perna de 2 segmentos (coxa e canela) com o pé no ciclo da corrida; devolve [joelho, pé]
+  function pernaCheia(ctx, s, hx, hy, o) {
+    const [fx, fy] = pe(s, hx, hy, o);
+    const [kx, ky, px, py] = joelho(hx, hy, fx, fy, o.l1, o.l2, o.dobra);
+    membro(ctx, [[hx, hy], [kx, ky], [px, py]], o.ws, o.cor, o.contorno);
+    if (o.pata) o.pata(px, py);
+    return [[kx, ky], [px, py]];
+  }
+
+  // ---------- 🦖 Dino (tiranossauro, com o corpo na horizontal como os de verdade) ----------
   function dino(ctx, s) {
     ctx.save();
-    ctx.translate(-3, 0); // o focinho comprido fica dentro da caixa de colisão
+    ctx.translate(-4, 0); // a cabeça grande fica dentro da caixa de colisão
     desenharDino(ctx, s);
     ctx.restore();
   }
   function desenharDino(ctx, s) {
-    const k = s.abaixado ? 0.62 : 1, frente = s.abaixado ? 4 : 0;
-    const bob = s.correndo && !s.noAr && !s.morto ? Math.abs(Math.sin(s.fi)) * 1.6 : 0;
+    const k = s.abaixado ? 0.66 : 1;
+    const anda = s.correndo && !s.noAr && !s.morto;
+    const bob = anda ? Math.abs(Math.sin(s.fi)) * 1.5 : 0;
     const Y = v => v * k - bob;
-    const verde = "#4a8f45", escuro = "#2c5e2e", barriga = "#d5e3a0";
-    const hx = -6, hy = Y(-21);
-    const leg = { l1: 10, l2: 12, passo: 7.5, ergue: 6, dobra: 1, w1: 6, w2: 3.6 };
-    const garra = cor => (px, py) => { traco(ctx, px, py - 1, px + 5, py - 0.5, 2.6, cor); traco(ctx, px, py - 1, px - 2.5, py - 0.6, 2.2, cor); };
-    // Perna de trás (mais escura)
-    perna(ctx, s, hx, hy, { ...leg, fase: Math.PI, cor: escuro, pata: garra(escuro) });
-    // Cauda
-    const balanco = s.correndo && !s.morto ? Math.sin(s.fi) * 2 : Math.sin(s.t * 2) * 0.8;
+    const pele = "#6b8f3e", costas = "#4e6e2b", barriga = "#d8d29a", contorno = "#2f4419";
+    const balanco = anda ? Math.sin(s.fi) * 1.5 : Math.sin(s.t * 2) * 0.6;
+    const cabeca = s.abaixado ? 3 : anda ? Math.sin(s.fi * 2) * 0.8 : 0;
+    const quadril = [-5, Y(-25)];
+    // Pé apoiado: os dedos vão para a frente do tornozelo (pernas de ave)
+    const perna = (fase, cor) => {
+      const [fx, fy] = pe(s, quadril[0], quadril[1], { l1: 12, l2: 11, passo: 8, ergue: 7, fase });
+      const tornozelo = [fx - 2.5, fy - 5];
+      const [kx, ky, ax, ay] = joelho(quadril[0], quadril[1], tornozelo[0], tornozelo[1], 12, 11, 1);
+      membro(ctx, [quadril, [kx, ky], [ax, ay], [ax + 5, ay + 4.5]], [11, 6, 3.6, 2.6], cor, contorno);
+      ctx.fillStyle = "#e8e4c8";
+      [[ax + 6.5, ay + 5], [ax + 4.6, ay + 5.4]].forEach(([x, y]) => { ctx.beginPath(); ctx.moveTo(x, y - 1); ctx.lineTo(x + 1.6, y); ctx.lineTo(x, y + 0.6); ctx.fill(); });
+    };
+    perna(Math.PI, costas);
+    // Corpo + cauda numa silhueta só
     ctx.beginPath();
-    ctx.moveTo(-14, Y(-34));
-    ctx.quadraticCurveTo(-26, Y(-33), -34, Y(-27) + balanco);
-    ctx.quadraticCurveTo(-25, Y(-24), -13, Y(-20));
+    ctx.moveTo(-36, Y(-30) + balanco);                                   // ponta da cauda
+    ctx.bezierCurveTo(-26, Y(-35), -16, Y(-38), -4, Y(-38));            // em cima da cauda até o quadril
+    ctx.bezierCurveTo(4, Y(-38), 9, Y(-37), 13, Y(-35) + cabeca);       // costas até o pescoço
+    ctx.lineTo(14, Y(-27) + cabeca);                                    // garganta
+    ctx.bezierCurveTo(10, Y(-23), 6, Y(-19), -2, Y(-19));               // peito e barriga
+    ctx.bezierCurveTo(-10, Y(-19), -18, Y(-25), -36, Y(-29) + balanco); // embaixo da cauda
     ctx.closePath();
-    ctx.fillStyle = grad(ctx, Y(-34), Y(-20), verde, "#3c7a3a"); ctx.fill();
-    ctx.strokeStyle = escuro; ctx.lineWidth = 1.1; ctx.stroke();
-    // Corpo
-    elipse(ctx, -5, Y(-28), 15, 10.5, grad(ctx, Y(-39), Y(-18), "#5aa354", "#3f7f3b"), -0.22, escuro);
-    elipse(ctx, -2, Y(-23.5), 10, 5, barriga, -0.15);
-    // Listras nas costas
-    [[-12, -36], [-6, -38], [0, -38.5]].forEach(([x, y]) => traco(ctx, x, Y(y), x + 2, Y(y + 4.5), 1.6, escuro));
-    // Pescoço e cabeça
-    ctx.beginPath();
-    ctx.moveTo(1, Y(-35)); ctx.lineTo(6 + frente, Y(-43)); ctx.lineTo(10 + frente, Y(-31)); ctx.lineTo(4, Y(-25)); ctx.closePath();
-    ctx.fillStyle = verde; ctx.fill();
-    const cx = 2 + frente, cy = Y(-38);
-    ctx.beginPath();
-    ctx.moveTo(cx + 2, cy - 6);
-    ctx.quadraticCurveTo(cx + 12, cy - 9, cx + 19, cy - 5);
-    ctx.quadraticCurveTo(cx + 23, cy - 3, cx + 22, cy + 1);
-    ctx.lineTo(cx + 20, cy + 5);
-    ctx.quadraticCurveTo(cx + 12, cy + 8, cx + 5, cy + 7);
-    ctx.quadraticCurveTo(cx - 1, cy + 3, cx + 2, cy - 6);
-    ctx.fillStyle = grad(ctx, cy - 9, cy + 8, "#5aa354", "#4a8f45"); ctx.fill();
-    ctx.strokeStyle = escuro; ctx.lineWidth = 1.1; ctx.stroke();
-    // Boca (sorriso) e dentinhos
-    ctx.beginPath(); ctx.moveTo(cx + 9, cy + 2.5); ctx.quadraticCurveTo(cx + 16, cy + 4, cx + 21, cy + 1.5);
-    ctx.strokeStyle = escuro; ctx.lineWidth = 1; ctx.stroke();
-    ctx.fillStyle = "#fff";
-    [cx + 13, cx + 16, cx + 19].forEach(x => { ctx.beginPath(); ctx.moveTo(x, cy + 3); ctx.lineTo(x + 1.2, cy + 4.6); ctx.lineTo(x + 2.2, cy + 2.8); ctx.fill(); });
-    elipse(ctx, cx + 19.5, cy - 3.5, 0.8, 0.6, escuro); // narina
-    traco(ctx, cx + 7, cy - 5.5, cx + 12, cy - 6.5, 1.4, escuro); // sobrancelha
-    olho(ctx, s, cx + 10, cy - 2.5, 2.4);
+    ctx.fillStyle = grad(ctx, Y(-39), Y(-19), "#7a9f48", "#5c7d34"); ctx.fill();
+    ctx.strokeStyle = contorno; ctx.lineWidth = 1.1; ctx.stroke();
+    // Barriga clara e listras nas costas
+    ctx.save(); ctx.clip();
+    elipse(ctx, 0, Y(-19), 13, 4.5, barriga, -0.1);
+    ctx.fillStyle = costas;
+    [-24, -17, -10, -3, 4].forEach((x, i) => { ctx.beginPath(); ctx.moveTo(x, Y(-40)); ctx.lineTo(x + 3, Y(-40)); ctx.lineTo(x + 1.5 - i * 0.2, Y(-31)); ctx.closePath(); ctx.fill(); });
+    ctx.restore();
     // Bracinho
-    const braco = s.correndo && !s.morto ? Math.sin(s.fi + Math.PI) * 0.5 : 0.2;
-    const bx = 5 + frente * 0.5, by = Y(-26);
-    const ex = bx + Math.sin(0.9 + braco) * 4.5, ey = by + Math.cos(0.9 + braco) * 4.5;
-    traco(ctx, bx, by, ex, ey, 2.6, "#3f7f3b");
-    traco(ctx, ex, ey, ex + 2.8, ey - 1.2, 1.8, "#3f7f3b");
-    // Perna da frente
-    perna(ctx, s, hx + 1, hy, { ...leg, cor: verde, w1: 7, pata: garra(escuro) });
+    const braco = anda ? Math.sin(s.fi + Math.PI) * 0.4 : 0.2;
+    membro(ctx, [[8, Y(-27)], [10 + braco, Y(-23)], [13, Y(-23.5)]], [3, 2, 1.4], "#5c7d34", contorno);
+    // Cabeça grande: crânio, focinho e mandíbula
+    const cx = 12, cy = Y(-37) + cabeca;
+    ctx.beginPath();
+    ctx.moveTo(cx - 1, cy - 3);
+    ctx.bezierCurveTo(cx + 2, cy - 7.5, cx + 10, cy - 7, cx + 17, cy - 4.5); // crânio
+    ctx.quadraticCurveTo(cx + 20, cy - 3, cx + 19.5, cy);                      // focinho
+    ctx.lineTo(cx + 18.5, cy + 2.2);
+    ctx.quadraticCurveTo(cx + 11, cy + 2.6, cx + 5, cy + 2);                   // linha da boca
+    ctx.quadraticCurveTo(cx + 11, cy + 6.5, cx + 3, cy + 7.5);                 // mandíbula
+    ctx.quadraticCurveTo(cx - 2, cy + 6, cx - 1, cy - 3);
+    ctx.fillStyle = grad(ctx, cy - 7, cy + 7, "#7fa54d", "#5f8238"); ctx.fill();
+    ctx.strokeStyle = contorno; ctx.lineWidth = 1.1; ctx.stroke();
+    // Dentes na linha da boca
+    ctx.fillStyle = "#f4f1df";
+    [6.5, 9.5, 12.5, 15.5].forEach(x => { ctx.beginPath(); ctx.moveTo(cx + x, cy + 2.1); ctx.lineTo(cx + x + 0.9, cy + 3.6); ctx.lineTo(cx + x + 1.8, cy + 2.2); ctx.fill(); });
+    ctx.beginPath(); ctx.moveTo(cx + 5, cy + 2); ctx.quadraticCurveTo(cx + 11, cy + 2.6, cx + 18.5, cy + 2.2);
+    ctx.strokeStyle = contorno; ctx.lineWidth = 0.9; ctx.stroke();
+    elipse(ctx, cx + 17.6, cy - 2.6, 0.9, 0.6, contorno); // narina
+    // Olho com sobrancelha de osso
+    traco(ctx, cx + 4.5, cy - 5, cx + 9.5, cy - 5.6, 1.8, costas);
+    olho(ctx, s, cx + 7.4, cy - 2.6, 1.9, { iris: "#d9861c" });
+    perna(0, pele);
   }
 
-  // ---------- Quadrúpedes (onça, caramelo, capivara) ----------
+  // ---------- Quadrúpedes desenhados (onça e caramelo) ----------
+  // Patas com coxa grossa afinando até a pata; galope: as de trás e as da frente se alternam
+  function patas(ctx, s, { tras, frente, lt, lf, wt, wf, passo, ergue, cor, longe, contorno, pata }) {
+    const T = (fase, c) => pernaCheia(ctx, s, tras[0], tras[1], { l1: lt[0], l2: lt[1], passo, ergue, fase, dobra: 1, ws: wt, cor: c, contorno, pata: pata(c) });
+    const F = (fase, c) => pernaCheia(ctx, s, frente[0], frente[1], { l1: lf[0], l2: lf[1], passo, ergue, fase, dobra: -1, ws: wf, cor: c, contorno, pata: pata(c) });
+    return { longe: () => { T(0.7, longe); F(Math.PI + 0.7, longe); }, perto: () => { T(0, cor); F(Math.PI, cor); } };
+  }
+  const flexao = s => (s.correndo && !s.noAr && !s.morto ? Math.sin(s.fi * 2) : 0);
+
+  // 🐆 Onça-pintada: corpo forte e baixo, cabeça larga, rosetas
+  function onca(ctx, s) {
+    const k = s.abaixado ? 0.68 : 1, fl = flexao(s);
+    const Y = v => v * k - fl * 0.6;
+    const pelo = "#e3a03a", claro = "#f7e4bd", escuro = "#33210f", contorno = "#7a4a14";
+    const pata = c => (px, py) => elipse(ctx, px + 1.4, py - 1.3, 2.9, 1.7, c, 0, contorno, 0.5);
+    const p = patas(ctx, s, { tras: [-13, Y(-21)], frente: [7, Y(-19)], lt: [9, 10.5], lf: [8.5, 9.5], wt: [10, 5, 3.4], wf: [7, 4.2, 3.4],
+      passo: 9.5, ergue: 6, cor: pelo, longe: "#c18530", contorno, pata });
+    p.longe();
+    // Cauda grossa, caída e com a ponta para cima
+    const bal = s.correndo && !s.morto ? Math.sin(s.fi) * 2.5 : Math.sin(s.t * 2) * 1;
+    const cauda = [[-19, Y(-26)], [-26, Y(-24)], [-31, Y(-27) + bal], [-33, Y(-32) + bal]];
+    membro(ctx, cauda, [4.4, 3.6, 3.2, 3], pelo, contorno);
+    cauda.slice(1).forEach(([x, y]) => elipse(ctx, x, y, 1.1, 1.7, escuro));
+    elipse(ctx, -33, Y(-32.5) + bal, 1.8, 1.8, escuro);
+    // Corpo: costas retas, peito fundo, barriga recolhida
+    const corpo = () => {
+      ctx.beginPath();
+      ctx.moveTo(-21, Y(-23));
+      ctx.bezierCurveTo(-20, Y(-30), -12, Y(-30.5), -3, Y(-30));
+      ctx.bezierCurveTo(4, Y(-29.5), 9, Y(-32), 13, Y(-30));
+      ctx.lineTo(15, Y(-22));
+      ctx.bezierCurveTo(13, Y(-15), 7, Y(-14), 2, Y(-15));
+      ctx.bezierCurveTo(-5, Y(-16.5), -10, Y(-15.5), -15, Y(-16));
+      ctx.bezierCurveTo(-20, Y(-16.5), -22, Y(-19), -21, Y(-23));
+      ctx.closePath();
+    };
+    corpo();
+    ctx.fillStyle = grad(ctx, Y(-31), Y(-14), "#eaab48", "#d38f2c"); ctx.fill();
+    ctx.strokeStyle = contorno; ctx.lineWidth = 1; ctx.stroke();
+    ctx.save(); corpo(); ctx.clip();
+    elipse(ctx, -2, Y(-14.5), 15, 3.8, claro);
+    // Rosetas: um anel de manchinhas com o miolo mais escuro que o pelo
+    [[-17, -25], [-11, -28], [-12, -21], [-5, -25], [1, -28], [-1, -20], [6, -25], [11, -28], [-7, -18.5], [-18, -19.5]].forEach(([x, y], i) => {
+      const cy = Y(y);
+      elipse(ctx, x, cy, 1.6, 1.4, "#c47e22");
+      for (let j = 0; j < 5; j++) {
+        const a = j * 1.26 + i;
+        elipse(ctx, x + Math.cos(a) * 2, cy + Math.sin(a) * 1.7, 0.75, 0.6, escuro, a);
+      }
+    });
+    ctx.restore();
+    p.perto();
+    // Cabeça larga, focinho curto, orelhas redondas
+    const hx = 17, hy = Y(-28.5);
+    elipse(ctx, hx - 4.5, hy - 5.5, 2.3, 2.3, pelo, 0, contorno, 0.6);
+    elipse(ctx, hx + 0.5, hy - 6.6, 2.3, 2.3, pelo, 0, contorno, 0.6);
+    elipse(ctx, hx - 4.5, hy - 5.5, 1.1, 1.1, escuro);
+    elipse(ctx, hx + 0.5, hy - 6.6, 1.1, 1.1, escuro);
+    elipse(ctx, hx - 1, hy, 7, 6.2, grad(ctx, hy - 6, hy + 6, "#eaab48", "#d8963a"), 0, contorno, 1);
+    elipse(ctx, hx + 4.2, hy + 2.4, 3.6, 2.8, claro, 0.15);
+    elipse(ctx, hx - 2, hy + 4.8, 4, 1.6, claro); // queixo
+    ctx.beginPath(); ctx.moveTo(hx + 5.6, hy + 0.4); ctx.lineTo(hx + 7.8, hy + 0.6); ctx.lineTo(hx + 6.8, hy + 2.1); ctx.closePath();
+    ctx.fillStyle = "#5a2e1e"; ctx.fill();
+    traco(ctx, hx + 6.8, hy + 2.1, hx + 5.4, hy + 4, 0.7, "#5a2e1e");
+    [[hx - 4.5, hy - 1.5], [hx - 3, hy + 2.5], [hx - 6, hy + 1.5], [hx - 1.5, hy - 3.5]].forEach(([x, y]) => elipse(ctx, x, y, 0.75, 0.75, escuro));
+    olho(ctx, s, hx + 1.8, hy - 1.6, 1.8, { iris: "#c99a10", pupilaVertical: true });
+  }
+
+  // 🐕 Caramelo: vira-lata magro e esperto, peito fundo, focinho comprido, orelha caída
+  function caramelo(ctx, s) {
+    const k = s.abaixado ? 0.68 : 1, fl = flexao(s);
+    const Y = v => v * k - fl * 0.6;
+    const pelo = "#cf8a3c", claro = "#f3dbb0", contorno = "#6e4216";
+    const pata = c => (px, py) => elipse(ctx, px + 1.3, py - 1.2, 2.6, 1.6, c === pelo ? claro : c, 0, contorno, 0.5);
+    const p = patas(ctx, s, { tras: [-12, Y(-22)], frente: [7, Y(-21)], lt: [10, 11], lf: [10, 10.5], wt: [8, 4, 2.8], wf: [5.5, 3.4, 2.8],
+      passo: 9.5, ergue: 6.5, cor: pelo, longe: "#a96b28", contorno, pata });
+    p.longe();
+    // Rabo curvado para cima, abanando
+    const abana = s.morto ? 0 : Math.sin(s.t * 16) * 3;
+    membro(ctx, [[-17, Y(-28)], [-22, Y(-31)], [-23 + abana * 0.5, Y(-36)], [-21 + abana, Y(-39)]], [3.4, 3, 2.4, 1.6], pelo, contorno);
+    // Corpo: peito fundo e cintura fina
+    const corpo = () => {
+      ctx.beginPath();
+      ctx.moveTo(-19, Y(-25));
+      ctx.bezierCurveTo(-18, Y(-31), -10, Y(-31), -2, Y(-31));
+      ctx.bezierCurveTo(4, Y(-31), 8, Y(-33), 12, Y(-31));
+      ctx.lineTo(13, Y(-22));
+      ctx.bezierCurveTo(11, Y(-17), 6, Y(-16.5), 2, Y(-18));
+      ctx.bezierCurveTo(-4, Y(-21), -9, Y(-21.5), -14, Y(-20));
+      ctx.bezierCurveTo(-19, Y(-19.5), -20, Y(-22), -19, Y(-25));
+      ctx.closePath();
+    };
+    corpo();
+    ctx.fillStyle = grad(ctx, Y(-32), Y(-17), "#d9964c", "#bb7a33"); ctx.fill();
+    ctx.strokeStyle = contorno; ctx.lineWidth = 1; ctx.stroke();
+    ctx.save(); corpo(); ctx.clip();
+    elipse(ctx, 9, Y(-20), 6, 5.5, claro, 0.3); // peito claro
+    ctx.restore();
+    p.perto();
+    // Pescoço, coleira e cabeça
+    const hx = 16, hy = Y(-35);
+    membro(ctx, [[9, Y(-28)], [hx - 2, hy + 2]], [9, 7], pelo, contorno);
+    traco(ctx, hx - 6.5, hy + 3.5, hx - 2, hy + 6.5, 2.4, "#e63946");
+    elipse(ctx, hx - 2.5, hy + 7.8, 1.4, 1.4, "#ffd60a", 0, "#b38f00", 0.4);
+    elipse(ctx, hx - 1, hy, 5.6, 5.2, grad(ctx, hy - 5, hy + 5, "#d9964c", "#c4823a"), 0, contorno, 1);
+    // Focinho comprido
+    ctx.beginPath();
+    ctx.moveTo(hx + 2, hy - 2.5); ctx.quadraticCurveTo(hx + 8, hy - 2, hx + 10, hy + 0.5);
+    ctx.quadraticCurveTo(hx + 10, hy + 3.6, hx + 6, hy + 3.8); ctx.quadraticCurveTo(hx + 2.5, hy + 4, hx + 1.5, hy + 2);
+    ctx.closePath(); ctx.fillStyle = claro; ctx.fill(); ctx.strokeStyle = contorno; ctx.lineWidth = 0.8; ctx.stroke();
+    elipse(ctx, hx + 9.6, hy + 0.3, 1.5, 1.2, "#222"); // nariz
+    if (s.correndo && !s.morto) elipse(ctx, hx + 5.5, hy + 4.8 + Math.abs(Math.sin(s.fi)) * 1.2, 1.4, 2.2, "#ff7b9c", 0.25); // linguinha
+    traco(ctx, hx + 3, hy + 3.4, hx + 8, hy + 3.3, 0.7, contorno);
+    olho(ctx, s, hx + 1.2, hy - 1.4, 1.6);
+    // Orelha caída balançando com a corrida
+    const orelha = s.correndo && !s.morto ? Math.sin(s.fi + 1) * 0.3 : 0;
+    ctx.save(); ctx.translate(hx - 3, hy - 4); ctx.rotate(0.35 + orelha);
+    ctx.beginPath(); ctx.moveTo(-1.5, 0); ctx.quadraticCurveTo(-3.5, 4, -1.5, 7.5); ctx.quadraticCurveTo(1.5, 6, 1.8, 0); ctx.closePath();
+    ctx.fillStyle = "#9b5f22"; ctx.fill(); ctx.restore();
+  }
+
+  // ---------- Capivara (patas curtinhas, desenhadas como traços grossos) ----------
   // Galope: as patas de trás e as da frente se alternam, cada par com um pequeno atraso
   function quatroPatas(ctx, s, { tras, frente, leg, corPerto, corLonge, pata }) {
     const fases = [[0, true], [0.6, false], [Math.PI, true], [Math.PI + 0.6, false]];
@@ -134,89 +288,6 @@ const CORREDORES = (() => {
         perna(ctx, s, frente[0], frente[1], { ...leg, dobra: -1, fase: fases[2][0], cor: corPerto, pata: pata && pata(corPerto) });
       },
     };
-  }
-
-  // 🐆 Onça-pintada
-  function onca(ctx, s) {
-    const k = s.abaixado ? 0.66 : 1;
-    const flex = s.correndo && !s.noAr && !s.morto ? Math.sin(s.fi * 2) * 1.2 : 0;
-    const Y = v => v * k - flex * 0.5;
-    const pelo = "#e3a33b", barriga = "#f8e8c6", mancha = "#3b2716", contorno = "#7a4b16";
-    const leg = { l1: 8, l2: 9.5, passo: 9, ergue: 6, w1: 5.5, w2: 3.6 };
-    const pata = cor => (px, py) => elipse(ctx, px + 1.2, py - 1.2, 2.6, 1.6, cor);
-    const p = quatroPatas(ctx, s, { tras: [-15, Y(-16)], frente: [4, Y(-16)], leg, corPerto: pelo, corLonge: "#c4862a", pata });
-    p.longe();
-    // Cauda (comprida, com anéis e a ponta preta)
-    const bal = s.correndo && !s.morto ? Math.sin(s.fi) * 2.5 : Math.sin(s.t * 2) * 1;
-    ctx.beginPath(); ctx.moveTo(-19, Y(-24)); ctx.quadraticCurveTo(-29, Y(-25), -32, Y(-32) + bal);
-    ctx.strokeStyle = pelo; ctx.lineWidth = 3.4; ctx.lineCap = "round"; ctx.stroke();
-    elipse(ctx, -32, Y(-32) + bal, 1.8, 1.8, mancha);
-    // Corpo com rosetas
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(-6, Y(-22), 16, 8.5, -0.04, 0, Math.PI * 2);
-    ctx.fillStyle = grad(ctx, Y(-31), Y(-13), "#eaae4a", "#d39231"); ctx.fill();
-    ctx.strokeStyle = contorno; ctx.lineWidth = 1; ctx.stroke();
-    ctx.clip();
-    elipse(ctx, -5, Y(-15.5), 13, 3.5, barriga);
-    ctx.strokeStyle = mancha; ctx.lineWidth = 1.1;
-    [[-17, -24], [-12, -28], [-8, -22], [-3, -27], [2, -23], [-14, -19], [5, -28], [-1, -18], [-19, -28]].forEach(([x, y]) => {
-      ctx.beginPath(); ctx.arc(x, Y(y), 1.9, 0.4, Math.PI * 1.8); ctx.stroke();
-      elipse(ctx, x + 0.2, Y(y), 0.6, 0.6, "#b8761f");
-    });
-    ctx.restore();
-    // Cabeça
-    const hx = 12, hy = Y(-27);
-    elipse(ctx, hx - 3, hy + 4, 5, 5.5, pelo); // pescoço
-    elipse(ctx, hx - 3, hy - 6, 2.8, 2.8, pelo, 0, contorno, 0.8); // orelhas
-    elipse(ctx, hx + 2, hy - 6.5, 2.8, 2.8, pelo, 0, contorno, 0.8);
-    elipse(ctx, hx - 3, hy - 6, 1.3, 1.3, mancha);
-    elipse(ctx, hx + 2, hy - 6.5, 1.3, 1.3, mancha);
-    elipse(ctx, hx, hy, 7, 6.3, grad(ctx, hy - 6, hy + 6, "#eaae4a", "#d89a36"), 0, contorno, 1);
-    elipse(ctx, hx + 5, hy + 2.3, 4, 3, barriga); // focinho
-    ctx.beginPath(); ctx.moveTo(hx + 7.4, hy + 0.2); ctx.lineTo(hx + 9.6, hy + 0.4); ctx.lineTo(hx + 8.6, hy + 2); ctx.closePath();
-    ctx.fillStyle = "#4a2a1a"; ctx.fill(); // nariz
-    traco(ctx, hx + 8.5, hy + 2, hx + 7, hy + 4, 0.8, "#4a2a1a"); // boca
-    [[hx - 4, hy - 2], [hx - 2, hy + 3], [hx - 5, hy + 2]].forEach(([x, y]) => elipse(ctx, x, y, 0.8, 0.8, mancha));
-    olho(ctx, s, hx + 2.6, hy - 1.8, 1.9, { iris: "#c99a10", pupilaVertical: true });
-    p.perto();
-  }
-
-  // 🐕 Caramelo (o vira-lata caramelo)
-  function caramelo(ctx, s) {
-    const k = s.abaixado ? 0.66 : 1;
-    const flex = s.correndo && !s.noAr && !s.morto ? Math.sin(s.fi * 2) * 1.2 : 0;
-    const Y = v => v * k - flex * 0.5;
-    const pelo = "#cf8a3c", claro = "#f4dcb0", contorno = "#7a4a18";
-    const leg = { l1: 8.5, l2: 9.5, passo: 8.5, ergue: 6, w1: 5, w2: 3.4 };
-    const pata = cor => (px, py) => elipse(ctx, px + 1.3, py - 1.2, 2.5, 1.6, cor === pelo ? claro : cor);
-    const p = quatroPatas(ctx, s, { tras: [-14, Y(-16.5)], frente: [4, Y(-16.5)], leg, corPerto: pelo, corLonge: "#a96c2b", pata });
-    p.longe();
-    // Rabo abanando para cima
-    const abana = Math.sin(s.t * (s.morto ? 0 : 16)) * 3;
-    ctx.beginPath(); ctx.moveTo(-18, Y(-25)); ctx.quadraticCurveTo(-25, Y(-28), -24 + abana, Y(-36));
-    ctx.strokeStyle = pelo; ctx.lineWidth = 3.4; ctx.lineCap = "round"; ctx.stroke();
-    // Corpo
-    elipse(ctx, -5, Y(-22.5), 15, 8.5, grad(ctx, Y(-31), Y(-14), "#d8964a", "#bd7a30"), -0.05, contorno, 1);
-    elipse(ctx, 3, Y(-19), 6, 5, claro, 0.4); // peito
-    // Coleira
-    traco(ctx, 6, Y(-29), 9.5, Y(-20), 2.4, "#e63946");
-    elipse(ctx, 9.5, Y(-19), 1.4, 1.4, "#ffd60a");
-    // Cabeça
-    const hx = 13, hy = Y(-30);
-    elipse(ctx, hx, hy, 6.5, 6, grad(ctx, hy - 6, hy + 6, "#d8964a", "#c4823a"), 0, contorno, 1);
-    elipse(ctx, hx + 6, hy + 2.5, 4.3, 3, claro, 0.1, contorno, 0.6); // focinho
-    elipse(ctx, hx + 9.6, hy + 1.2, 1.6, 1.3, "#222"); // nariz
-    // Linguinha para fora quando corre
-    if (s.correndo && !s.morto) {
-      const l = 1 + Math.abs(Math.sin(s.fi)) * 1.2;
-      elipse(ctx, hx + 6.5, hy + 5.5 + l, 1.5, 2 + l * 0.5, "#ff7b9c", 0.2);
-    }
-    traco(ctx, hx + 3.5, hy + 4.4, hx + 8, hy + 4.2, 0.8, contorno);
-    olho(ctx, s, hx + 2.8, hy - 1.6, 1.9);
-    // Orelha caída, balançando com a corrida
-    const orelha = s.correndo && !s.morto ? Math.sin(s.fi + 1) * 0.35 : 0;
-    elipse(ctx, hx - 3, hy - 1, 2.6, 5.2, "#9d6224", 0.5 + orelha);
-    p.perto();
   }
 
   // 🦫 Capivara (com um passarinho de carona nas costas)

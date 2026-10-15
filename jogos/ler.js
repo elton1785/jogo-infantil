@@ -37,7 +37,7 @@
         return {
           pecas: letras, extras, palavra: p.palavra,
           anuncio: `Escreva: ${p.palavra}`,
-          mostrar: comFigura ? el => { el.textContent = p.emoji; } : null,
+          mostrar: comFigura ? el => { el.innerHTML = `<span class="grande"></span>`; el.firstChild.textContent = p.emoji; } : null,
         };
       },
     });

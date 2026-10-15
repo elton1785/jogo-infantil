@@ -220,31 +220,43 @@ const Motor = (() => {
     return b;
   }
 
-  // Texto do cartão do maior tamanho que cabe nele (nomes longos, como "Rio de Janeiro",
-  // quebram linha entre as palavras, sem cortar palavra no meio)
+  // Conteúdo do cartão (palavra, número, letra ou figura) do maior tamanho que cabe nele.
+  // Palavras longas, como "Rio de Janeiro", quebram linha entre as palavras, sem cortar no meio.
+  // Figuras e números ocupam boa parte do cartão (antes ficavam com 1/4 dele no celular).
   function ajustarTexto(el) {
     const w = el.clientWidth, h = el.clientHeight;
     if (!w || !h) return;
-    let lo = 14, hi = Math.min(120, h * 0.55, w * 0.4);
+    const palavra = el.classList.contains("palavra");
+    let lo = 14, hi = palavra ? Math.min(140, h * 0.58, w * 0.9) : Math.min(230, h * 0.64, w * 0.86); // a busca garante que cabe
     while (hi - lo > 1) {
       const meio = (lo + hi) / 2;
       el.style.fontSize = meio + "px";
       if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) hi = meio; else lo = meio;
     }
-    el.style.fontSize = Math.max(14, lo * 0.9) + "px"; // uma folguinha para não encostar na borda
+    el.style.fontSize = Math.max(14, lo * (palavra ? 0.9 : 0.94)) + "px"; // uma folguinha para não encostar na borda
   }
-  // Os cartões de uma mesma grade ficam todos com o mesmo tamanho (o do texto mais comprido)
+  // Cartões com desenho próprio (bolinha de cor, pizza, letra + figura) já têm o tamanho certo
+  const tamanhoProprio = c => c.classList.contains("com-figura") || !!c.querySelector("svg, img, canvas, .bolinha");
+  // Os cartões de uma mesma grade ficam todos com o mesmo tamanho (o do conteúdo mais comprido)
   function ajustarTextos(raiz) {
     requestAnimationFrame(() => {
-      const grades = new Set([...raiz.querySelectorAll(".cartao.palavra")].map(c => c.parentElement));
+      const grades = new Set([...raiz.querySelectorAll(".grade > .cartao")].map(c => c.parentElement));
       grades.forEach(g => {
-        const cs = [...g.querySelectorAll(":scope > .cartao.palavra")];
+        const cs = [...g.querySelectorAll(":scope > .cartao")].filter(c => !tamanhoProprio(c));
+        if (!cs.length) return;
         cs.forEach(ajustarTexto);
         const menor = Math.min(...cs.map(c => parseFloat(c.style.fontSize) || 99));
         cs.forEach(c => { c.style.fontSize = menor + "px"; });
       });
     });
   }
+  // Cartões novos na tela (qualquer jogo, qualquer modo): ajusta sozinho
+  let esperaCartoes = null;
+  new MutationObserver(ms => {
+    if (!ms.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.matches(".cartao, .grade") || n.querySelector?.(".grade > .cartao"))))) return;
+    clearTimeout(esperaCartoes);
+    esperaCartoes = setTimeout(() => ajustarTextos(document), 30);
+  }).observe(document.documentElement, { childList: true, subtree: true });
   // Girou a tela: ajusta de novo
   let esperaAjuste = null;
   window.addEventListener("resize", () => { clearTimeout(esperaAjuste); esperaAjuste = setTimeout(() => ajustarTextos(document), 200); });

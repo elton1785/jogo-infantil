@@ -15,6 +15,10 @@ const App = (() => {
   const listaIdades = document.getElementById("lista-idades");
   const listaJogos = document.getElementById("lista-jogos");
   const tituloMenu = document.getElementById("titulo-menu");
+  const subMenu = document.getElementById("sub-menu");
+  const atalhos = document.getElementById("atalhos");
+  const selos = document.getElementById("selos");
+  const cabecalho = document.getElementById("cabecalho-jogo");
   const areaJogo = document.getElementById("area-jogo");
   const btnVoltar = document.getElementById("btn-voltar");
   const btnAjuda = document.getElementById("btn-ajuda");
@@ -22,6 +26,10 @@ const App = (() => {
   let telaAtual = "idades";
   let faixaAtual = null;
   let noFavoritos = false; // o menu aberto é o de favoritos (para o "voltar" do jogo)
+  let jogoAtual = null;
+  // Controle da TV: a partida de um jogo com `teclas` usa as setas (fora das telas de escolha)
+  Controle.usarTeclasDoJogo(() => telaAtual === "jogo" && !!(jogoAtual && jogoAtual.teclas) &&
+    !areaJogo.querySelector(":scope > .modos, :scope > .opcoes-jogo, :scope > .plat-menu, :scope > .fim"));
 
   function lembrar(chave, valor) {
     try { localStorage.setItem(chave, valor); } catch (e) {}
@@ -39,7 +47,7 @@ const App = (() => {
     telaAtual = id;
     telas.forEach(t => t.classList.toggle("ativa", t.id === id));
     btnVoltar.style.display = id === "idades" ? "none" : "block";
-    if (id !== "jogo") { Ajuda.fechar(); btnAjuda.hidden = true; }
+    if (id !== "jogo") { Ajuda.fechar(); btnAjuda.hidden = true; cabecalho.hidden = true; }
   }
 
   function criarOpcao(icone, rotulo, aoClicar, vazia) {
@@ -55,6 +63,24 @@ const App = (() => {
   }
 
   function jogosDa(faixa) { return JOGOS.filter(j => j.faixas.includes(faixa.id)); }
+
+  // ---------- Cartões do catálogo (cor da categoria, ícone num círculo, nome e frase) ----------
+  const catDe = jogo => CATEGORIAS[(CATALOGO[jogo.id] || [])[0]] || CATEGORIAS.descobrir;
+  function cartaoJogo(jogo, aoClicar, sub) {
+    const cat = catDe(jogo);
+    const b = document.createElement("button");
+    b.className = "cartao-jogo";
+    b.style.setProperty("--cor", cat.cor);
+    b.style.setProperty("--claro", cat.claro);
+    b.innerHTML = `<span class="icone"></span><span class="textos"><span class="rotulo"></span><span class="desc"></span></span>`;
+    const ic = b.querySelector(".icone");
+    if (jogo.icone.startsWith("<svg")) ic.innerHTML = jogo.icone; else ic.textContent = jogo.icone;
+    b.querySelector(".rotulo").textContent = jogo.nome;
+    b.querySelector(".desc").textContent = sub || (CATALOGO[jogo.id] || [])[1] || "";
+    b.setAttribute("aria-label", jogo.nome);
+    b.addEventListener("click", aoClicar);
+    return b;
+  }
 
   // ---------- Favoritos: lista de "idDoJogo|idDaFaixa" ----------
   function favoritos() {
@@ -91,17 +117,68 @@ const App = (() => {
     return card;
   }
 
+  // Tela de início: selos do app, atalhos (continuar o último jogo, favoritos) e as idades
   function abrirIdades() {
     Motor.novaSessao();
+    selos.innerHTML = "";
+    [["🎮", `${JOGOS.length} jogos`], ["🔊", "Com voz"], ["📴", "Sem internet"], ["🚫", "Sem anúncios"], ["🕹️", "Controle na TV"]].forEach(([i, t]) => {
+      const el = document.createElement("span");
+      el.className = "selo";
+      el.textContent = `${i} ${t}`;
+      selos.appendChild(el);
+    });
+    atalhos.innerHTML = "";
+    const [uid, ufx] = (lembrado("ultimo") || "").split("|");
+    const ultJogo = JOGOS.find(j => j.id === uid), ultFaixa = FAIXAS.find(f => f.id === ufx);
+    if (ultJogo && ultFaixa) {
+      const c = cartaoJogo(ultJogo, () => { telaCheia(); faixaAtual = ultFaixa; noFavoritos = false; abrirMenu(ultFaixa); abrirJogo(ultJogo); }, `▶️ Continuar · ${ultFaixa.nome}`);
+      c.classList.add("continuar");
+      atalhos.appendChild(c);
+    }
+    const nFav = favoritos().length;
+    const fav = document.createElement("button");
+    fav.className = "atalho-fav";
+    fav.innerHTML = `<span class="icone">⭐</span><span class="textos"><span class="rotulo">Favoritos</span><span class="desc"></span></span>`;
+    fav.querySelector(".desc").textContent = nFav ? `${nFav} ${nFav === 1 ? "jogo guardado" : "jogos guardados"}` : "Toque na ⭐ de um jogo";
+    fav.addEventListener("click", () => { telaCheia(); abrirFavoritos(); });
+    atalhos.appendChild(fav);
+
     listaIdades.innerHTML = "";
-    const fav = criarOpcao("⭐", "Favoritos", () => { telaCheia(); abrirFavoritos(); });
-    fav.classList.add("favoritos");
-    listaIdades.appendChild(fav);
     FAIXAS.forEach(f => {
-      const vazia = jogosDa(f).length === 0;
-      listaIdades.appendChild(criarOpcao(f.icone, f.nome, () => { telaCheia(); abrirMenu(f); }, vazia));
+      const n = jogosDa(f).length, info = IDADES[f.id] || {};
+      const b = document.createElement("button");
+      b.className = "cartao-idade" + (n ? "" : " vazia");
+      b.style.setProperty("--cor", info.cor || "#4895ef");
+      b.innerHTML = `<span class="icone"></span><span class="rotulo"></span><span class="desc"></span><span class="conta"></span>`;
+      b.querySelector(".icone").textContent = f.icone;
+      b.querySelector(".rotulo").textContent = f.nome;
+      b.querySelector(".desc").textContent = info.texto || "";
+      b.querySelector(".conta").textContent = n ? `${n} jogos` : "em breve";
+      b.addEventListener("click", () => { telaCheia(); abrirMenu(f); });
+      listaIdades.appendChild(b);
     });
     mostrar("idades");
+  }
+
+  // Lista de jogos separada por categoria (cada uma com a sua cor)
+  function porCategoria(jogos, cartao) {
+    listaJogos.innerHTML = "";
+    ORDEM_CATEGORIAS.forEach(c => {
+      const daqui = jogos.filter(j => (CATALOGO[j.id] || ["descobrir"])[0] === c);
+      if (!daqui.length) return;
+      const cat = CATEGORIAS[c];
+      const secao = document.createElement("section");
+      secao.className = "secao-cat";
+      secao.style.setProperty("--cor", cat.cor);
+      const h = document.createElement("h2");
+      h.className = "secao-titulo";
+      h.textContent = `${cat.icone} ${cat.nome}`;
+      const grade = document.createElement("div");
+      grade.className = "grade-jogos";
+      daqui.forEach(j => grade.appendChild(cartao(j)));
+      secao.append(h, grade);
+      listaJogos.appendChild(secao);
+    });
   }
 
   // Cada tela aberta entra no histórico, para o "voltar" do celular voltar uma tela
@@ -112,15 +189,17 @@ const App = (() => {
     noFavoritos = false;
     lembrar("faixa", faixa.id);
     tituloMenu.textContent = `${faixa.icone} ${faixa.nome}`;
-    listaJogos.innerHTML = "";
     const jogos = jogosDa(faixa);
+    subMenu.textContent = jogos.length ? `${jogos.length} jogos · ${(IDADES[faixa.id] || {}).texto || ""}` : "";
+    document.getElementById("menu").style.setProperty("--cor-idade", (IDADES[faixa.id] || {}).cor || "#4895ef");
+    porCategoria(jogos, j => comEstrela(cartaoJogo(j, () => abrirJogo(j)), j, faixa));
     if (jogos.length === 0) {
       const aviso = document.createElement("div");
       aviso.className = "aviso";
       aviso.textContent = "🚧 Jogos desta idade em breve!";
       listaJogos.appendChild(aviso);
     }
-    jogos.forEach(j => listaJogos.appendChild(comEstrela(criarOpcao(j.icone, j.nome, () => abrirJogo(j)), j, faixa)));
+    listaJogos.scrollTop = 0;
     mostrar("menu");
   }
 
@@ -130,6 +209,8 @@ const App = (() => {
     noFavoritos = true;
     lembrar("faixa", "favoritos");
     tituloMenu.textContent = "⭐ Favoritos";
+    subMenu.textContent = "Os jogos que você guardou";
+    document.getElementById("menu").style.setProperty("--cor-idade", "#f4a300");
     listaJogos.innerHTML = "";
     const itens = favoritos().map(k => {
       const [id, fid] = k.split("|");
@@ -141,19 +222,20 @@ const App = (() => {
       aviso.textContent = "Toque na ⭐ de um jogo para guardar ele aqui!";
       listaJogos.appendChild(aviso);
     }
+    const grade = document.createElement("div");
+    grade.className = "grade-jogos";
+    listaJogos.appendChild(grade);
     itens.forEach(({ jogo, faixa }) => {
-      const card = criarOpcao(jogo.icone, jogo.nome, () => { faixaAtual = faixa; abrirJogo(jogo); });
-      const sub = document.createElement("span");
-      sub.className = "sub";
-      sub.textContent = `${faixa.icone} ${faixa.nome}`;
-      card.appendChild(sub);
+      const card = cartaoJogo(jogo, () => { faixaAtual = faixa; abrirJogo(jogo); }, `${faixa.icone} ${faixa.nome}`);
       // Desmarcou aqui: o card sai da lista
-      listaJogos.appendChild(comEstrela(card, jogo, faixa, on => { if (!on) abrirFavoritos(); }));
+      grade.appendChild(comEstrela(card, jogo, faixa, on => { if (!on) abrirFavoritos(); }));
     });
     mostrar("menu");
   }
 
   function abrirJogo(jogo) {
+    jogoAtual = jogo;
+    if (faixaAtual) lembrar("ultimo", `${jogo.id}|${faixaAtual.id}`);
     history.pushState({ tela: "jogo" }, "");
     Motor.novaSessao();
     areaJogo.innerHTML = "";
@@ -172,15 +254,28 @@ const App = (() => {
     const passos = Ajuda.passosDe(jogo, faixa);
     btnAjuda.hidden = true;
     btnAjuda.onclick = () => Ajuda.abrir(jogo, passos);
-    if (!passos) return;
     const conferir = () => {
-      btnAjuda.hidden = telaAtual !== "jogo" ||
-        !(jogo.ajudaSempre || areaJogo.querySelector(":scope > .modos, :scope > .opcoes-jogo, :scope > .plat-menu"));
+      const inicial = telaAtual === "jogo" && !!areaJogo.querySelector(":scope > .modos, :scope > .opcoes-jogo, :scope > .plat-menu");
+      btnAjuda.hidden = !passos || telaAtual !== "jogo" || !(jogo.ajudaSempre || inicial);
+      mostrarCabecalho(jogo, inicial);
     };
     observador = new MutationObserver(conferir);
     observador.observe(areaJogo, { childList: true });
     conferir();
-    if (!Ajuda.jaViu(jogo)) Motor.depois(() => Ajuda.abrir(jogo, passos), 900);
+    if (passos && !Ajuda.jaViu(jogo)) Motor.depois(() => Ajuda.abrir(jogo, passos), 900);
+  }
+
+  // Cabeçalho com o ícone, o nome e a frase do jogo, na tela de escolher o modo/opções
+  function mostrarCabecalho(jogo, visivel) {
+    cabecalho.hidden = !visivel;
+    if (!visivel) return;
+    const cat = catDe(jogo);
+    cabecalho.style.setProperty("--cor", cat.cor);
+    cabecalho.innerHTML = `<span class="icone"></span><span class="textos"><b></b><small></small></span>`;
+    const ic = cabecalho.querySelector(".icone");
+    if (jogo.icone.startsWith("<svg")) ic.innerHTML = jogo.icone; else ic.textContent = jogo.icone;
+    cabecalho.querySelector("b").textContent = jogo.nome;
+    cabecalho.querySelector("small").textContent = (CATALOGO[jogo.id] || [])[1] || "";
   }
 
   function voltar() {

@@ -11,8 +11,8 @@
         return {
           pergunta: `${NUMEROS_FALADOS[a]} mais ${NUMEROS_FALADOS[b]}. Quanto dá?`,
           ...Motor.opcoesNumericas(a + b, { min: 1 }),
-          mostrar: el => { el.innerHTML = `<span class="conjunto"></span> + <span class="conjunto"></span>`;
-            el.children[0].textContent = e.repeat(a); el.children[1].textContent = e.repeat(b); },
+          mostrar: el => { el.innerHTML = `<span class="conjunto"></span><span class="sinal">+</span><span class="conjunto"></span>`;
+            const [ca, cb] = el.querySelectorAll(".conjunto"); ca.textContent = e.repeat(a); cb.textContent = e.repeat(b); },
           resposta: `${a} mais ${b} é ${a + b}.`,
         };
       },

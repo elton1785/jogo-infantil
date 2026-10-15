@@ -318,7 +318,7 @@
         const mao = document.createElement("div");
         mao.className = "domino-mao" + (minhaVez ? " minha-vez" : "");
         const porFila = deitado ? 8 : 5;
-        const tMao = Math.max(30, Math.min(deitado ? 40 : 44, (larg - 10 * porFila) / (2 * porFila + 0.4)));
+        const tMao = Math.max(30, Math.min(deitado ? 50 : 58, (larg - 10 * porFila) / (2 * porFila + 0.4)));
         voce.mao.forEach(p => {
           const el = desenharPeca(p.a, p.b, p.fa, p.fb, tMao, { tag: "button" });
           el.setAttribute("aria-label", `${nomeValor(p.a)} e ${nomeValor(p.b)}`);
@@ -428,12 +428,12 @@
         zonas = {};
         if (!centro) {
           // Mesa vazia: a zona é o meio da mesa
-          const u = Math.min(30, Math.floor(MH / 2.5));
+          const u = Math.min(40, Math.floor(MH / 2.5));
           zonas.centro = { x: MW / 2 - u, y: MH / 2 - u / 2, w: 2 * u, h: u };
           return null;
         }
         const W = MW - 12, H = MH - 12;
-        let u = Math.min(30, Math.floor(H / 2.2)), rects = null;
+        let u = Math.min(40, Math.floor(H / 2.2)), rects = null;
         for (; u >= 9 && !(rects = montarMesa(u, W, H)); u--);
         if (!rects) { u = 9; rects = montarMesa(u, 1e6, 1e6); } // não coube: desenha assim mesmo
         // Centraliza o desenho na mesa

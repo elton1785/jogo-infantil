@@ -28,7 +28,7 @@
   const ICONE = '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4 58 18 32 32 6 18Z" fill="#6cbf3f"/><path d="M6 18 32 32v28L6 46Z" fill="#8a5f3c"/><path d="M58 18 32 32v28l26-14Z" fill="#6e4a2e"/><path d="M6 18 32 32 58 18v6l-4 2v-2l-4 2v3l-4 2v-3l-5 3v2l-4 2-5-3v3l-4-2v-3l-5-3v2l-4-2v-3l-4-2v3l-3-2Z" fill="#5aa836"/><path d="M32 4 58 18 32 32 6 18Z" fill="none" stroke="#3d7a24" stroke-width="1.5"/><g fill="#7ad04a"><rect x="20" y="13" width="4" height="2"/><rect x="36" y="20" width="4" height="2"/><rect x="30" y="9" width="3" height="2"/></g><g fill="#5c3d22"><rect x="12" y="34" width="4" height="3"/><rect x="20" y="44" width="3" height="3"/><rect x="42" y="40" width="4" height="3"/><rect x="48" y="30" width="3" height="3"/></g></svg>';
 
   JOGOS.push({
-    id: "mundo",
+    id: "mundo", teclas: true,
     nome: "Mundo de Blocos",
     icone: ICONE,
     faixas: ["6-8", "8-10"],
@@ -303,11 +303,13 @@
     const naAgua = () => pegar(Math.floor(jog.x), Math.floor(jog.y + 0.4), Math.floor(jog.z)) === B.agua;
 
     // ---------- Entrada ----------
-    const ent = { jx: 0, jz: 0, pular: false, descer: false, teclas: new Set() };
+    const ent = { jx: 0, jz: 0, px: 0, pz: 0, pular: false, descer: false, padPular: false, padDescer: false, teclas: new Set() };
     function fisica(dt) {
       const k = ent.teclas;
-      let fx = ent.jx + (k.has("d") ? 1 : 0) - (k.has("a") ? 1 : 0);
-      let fz = ent.jz + (k.has("w") ? 1 : 0) - (k.has("s") ? 1 : 0);
+      let fx = ent.jx + ent.px + (k.has("d") ? 1 : 0) - (k.has("a") ? 1 : 0);
+      let fz = ent.jz + ent.pz + (k.has("w") || k.has("arrowup") ? 1 : 0) - (k.has("s") || k.has("arrowdown") ? 1 : 0);
+      // Controle remoto: ⬅️ ➡️ viram o corpo
+      jog.yaw += ((k.has("arrowright") ? 1 : 0) - (k.has("arrowleft") ? 1 : 0)) * 2.2 * dt;
       const mag = Math.hypot(fx, fz); if (mag > 1) { fx /= mag; fz /= mag; }
       const agua = naAgua();
       const vel = jog.voando ? 9 : agua ? 2.6 : 4.4;
@@ -315,7 +317,7 @@
       const alvoX = (s * fz + c * fx) * vel, alvoZ = (-c * fz + s * fx) * vel;
       const suav = Math.min(1, dt * (jog.chao || jog.voando ? 14 : 4));
       jog.vx += (alvoX - jog.vx) * suav; jog.vz += (alvoZ - jog.vz) * suav;
-      const pular = ent.pular || k.has(" "), descer = ent.descer || k.has("shift");
+      const pular = ent.pular || ent.padPular || k.has(" "), descer = ent.descer || ent.padDescer || k.has("shift");
       if (jog.voando) jog.vy = (pular ? 7 : 0) - (descer ? 7 : 0);
       else if (agua) { jog.vy = Math.max(jog.vy - 9 * dt, -2.5); if (pular) jog.vy = 3.2; }
       else { jog.vy = Math.max(jog.vy - 28 * dt, -40); if (pular && jog.chao) jog.vy = 8.4; }
@@ -773,16 +775,30 @@
       if (bicho && (!alvo || bicho.t < alvo.t)) { Motor.falar(bicho.a.tipo === "porco" ? "Oinc!" : "Méé!"); return; }
       if (e.button === 0) quebrar(alvo); else if (e.button === 2) colocar(alvo);
     };
+    // OK do controle remoto (Enter): tocar coloca o bloco na mira; segurar quebra
+    let okDesde = 0, okTimer = null;
     const teclaDesce = e => {
-      if (!vivo()) return;
+      if (!vivo() || e.doControle) return; // o controle de videogame é lido direto (lerControle)
       const k = e.key.toLowerCase();
+      if (k === "enter") {
+        e.preventDefault();
+        if (e.repeat || okDesde) return;
+        okDesde = performance.now();
+        okTimer = setInterval(() => { if (performance.now() - okDesde > 450) quebrar(mirar(olho(), direcao())); }, 350);
+        return;
+      }
       if (/^[1-9]$/.test(k)) { escolhido = +k - 1; desenharBarra(); return; }
       if (k === "f") return alternarVoo();
       if (k === "e") return hud.querySelector(".mundo-mochila") ? hud.querySelector(".mundo-mochila").remove() : abrirMochila();
       ent.teclas.add(k);
       if (k === " ") e.preventDefault();
     };
-    const teclaSobe = e => ent.teclas.delete(e.key.toLowerCase());
+    const teclaSobe = e => {
+      if (e.doControle) return;
+      const k = e.key.toLowerCase();
+      if (k === "enter" && okDesde) { clearInterval(okTimer); if (performance.now() - okDesde < 450) colocar(mirar(olho(), direcao())); okDesde = 0; return; }
+      ent.teclas.delete(k);
+    };
     const roda = e => { if (document.pointerLockElement !== canvas) return; escolhido = (escolhido + (e.deltaY > 0 ? 1 : 8)) % 9; desenharBarra(); };
     const lockMudou = () => { mira.classList.toggle("visivel", document.pointerLockElement === canvas); };
     const semMenu = e => { if (document.pointerLockElement === canvas) e.preventDefault(); };
@@ -810,6 +826,30 @@
       if (perder) perder.loseContext(); // libera a memória de vídeo (o iPhone tem limite)
     }
 
+    // ---------- Controle de videogame (lido direto, a cada quadro) ----------
+    // Alavanca esquerda anda, direita olha; A pula (e sobe voando), B volta ao menu (pelo app),
+    // RT coloca, LT quebra (segurando, continua), Y voa, X mochila, LB/RB trocam o bloco,
+    // direcional ⬇️ desce voando.
+    const antes = {};
+    let quebraEm = 0;
+    function lerControle(dt) {
+      const p = Controle.pad();
+      if (!p) { ent.px = ent.pz = 0; ent.padPular = ent.padDescer = false; return; }
+      const borda = (i, fn) => { const v = p.botao(i); if (v && !antes[i]) fn(); antes[i] = v; };
+      if (hud.querySelector(".mundo-mochila")) { [3, 2, 4, 5, 6, 7].forEach(i => { antes[i] = p.botao(i); }); return; }
+      ent.px = p.eixo(0); ent.pz = -p.eixo(1);
+      jog.yaw += p.eixo(2) * 2.6 * dt;
+      jog.pitch = Math.max(-1.5, Math.min(1.5, jog.pitch - p.eixo(3) * 2 * dt));
+      ent.padPular = p.botao(0); ent.padDescer = p.botao(13);
+      borda(3, alternarVoo);
+      borda(2, abrirMochila);
+      borda(4, () => { escolhido = (escolhido + 8) % 9; desenharBarra(); avisar(M.BLOCOS[hotbar[escolhido]].nome); });
+      borda(5, () => { escolhido = (escolhido + 1) % 9; desenharBarra(); avisar(M.BLOCOS[hotbar[escolhido]].nome); });
+      borda(7, () => colocar(mirar(olho(), direcao())));
+      if (p.botao(6)) { if (!antes[6] || performance.now() > quebraEm) { quebrar(mirar(olho(), direcao())); quebraEm = performance.now() + 320; } }
+      antes[6] = p.botao(6);
+    }
+
     // ---------- Laço principal ----------
     let ultimo = performance.now(), relogio = 0, ultimoSalvo = 0;
     function laco(t) {
@@ -821,7 +861,11 @@
         if (cfg.bichos) moverBichos(dt);
         if (cfg.diaNoite) tempoDia = (tempoDia + dt / 480) % 1; // um dia inteiro em 8 minutos
       }
-      if (document.pointerLockElement === canvas) { const a = mirar(olho(), direcao()); alvoTela = a; }
+      lerControle(dt);
+      // Mira no meio da tela: mouse capturado, controle de videogame ou controle remoto
+      const comMira = document.pointerLockElement === canvas || Controle.ativo();
+      mira.classList.toggle("visivel", comMira);
+      if (comMira && !dedos.size) alvoTela = mirar(olho(), direcao());
       desenhar();
       if (relogio - ultimoSalvo > 20) { ultimoSalvo = relogio; salvar(); }
       requestAnimationFrame(laco);

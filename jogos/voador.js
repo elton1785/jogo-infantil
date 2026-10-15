@@ -16,7 +16,7 @@
   const recorde = () => { try { return +localStorage.getItem("voador-recorde") || 0; } catch (e) { return 0; } };
 
   JOGOS.push({
-    id: "voador",
+    id: "voador", teclas: true,
     nome: "Passarinho Voador",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="10" fill="#8fd3f4"/><rect x="0" y="54" width="64" height="10" fill="#7cc36a"/><g fill="#2a9d55" stroke="#1b6b3a" stroke-width="2"><rect x="44" y="-2" width="14" height="20"/><rect x="41" y="14" width="20" height="7" rx="2"/><rect x="44" y="42" width="14" height="14"/><rect x="41" y="38" width="20" height="7" rx="2"/></g><ellipse cx="22" cy="30" rx="13" ry="11" fill="#ffd60a" stroke="#c99700" stroke-width="2"/><path d="M12 30c-4-6 2-9 8-5" fill="#ffe45c" stroke="#c99700" stroke-width="2"/><circle cx="27" cy="26" r="2.2" fill="#151515"/><path d="M34 29l7 2-7 3z" fill="#f77f00"/></svg>',
     faixas: ["6-8", "8-10"],
@@ -276,7 +276,7 @@
     canvas.addEventListener("contextmenu", e => e.preventDefault());
     const tecla = e => {
       if (!vivo()) { tirarTeclas(); return; }
-      if (e.key === " " || e.key === "ArrowUp") {
+      if (e.key === " " || e.key === "ArrowUp" || e.key === "Enter") {
         e.preventDefault();
         if (e.repeat) return;
         if (fase === "fim") { if (performance.now() - fimEm > 1000) comecar(); return; }

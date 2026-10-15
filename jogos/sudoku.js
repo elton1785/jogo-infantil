@@ -129,7 +129,7 @@
   }
 
   JOGOS.push({
-    id: "sudoku",
+    id: "sudoku", teclas: true,
     nome: "Sudoku",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="3" y="3" width="58" height="58" rx="6" fill="#fffdf6" stroke="#34495e" stroke-width="4"/><path d="M22.3 5V59M41.7 5V59M5 22.3H59M5 41.7H59" stroke="#34495e" stroke-width="2.5"/><rect x="23.5" y="23.5" width="17" height="17" fill="#ffd60a" opacity=".6"/><g font-family="sans-serif" font-weight="bold" font-size="14" text-anchor="middle"><text x="12.7" y="18" fill="#34495e">1</text><text x="51.3" y="18" fill="#34495e">3</text><text x="32" y="37.5" fill="#e76f51">2</text><text x="12.7" y="56.5" fill="#34495e">4</text><text x="51.3" y="56.5" fill="#2a9d55">1</text><text x="32" y="18" fill="#2a9d55">4</text></g></svg>',
     faixas: ["6-8", "8-10"],
@@ -421,6 +421,13 @@
         const r = (Math.floor(sel / n) + mov[0] + n) % n, c = (sel % n + mov[1] + n) % n;
         escolher(r * n + c);
       } else if (["Backspace", "Delete", "0"].includes(e.key)) { e.preventDefault(); apagar(); }
+      else if (e.key === "Enter" || e.key === " ") {
+        // Controle da TV (sem teclas de número): cada OK troca o número da casa, 1, 2, 3... e vazio
+        e.preventDefault();
+        if (sel < 0) { escolher(0); return; }
+        const prox = (valores[sel] || 0) + 1;
+        if (prox > n) apagar(); else colocar(prox);
+      }
       else if (e.key.toLowerCase() === "n") alternarAnotar();
     };
     document.addEventListener("keydown", aoTeclar);

@@ -26,7 +26,7 @@
   const recorde = () => { try { return +localStorage.getItem("tijolos-recorde") || 0; } catch (e) { return 0; } };
 
   JOGOS.push({
-    id: "tijolos",
+    id: "tijolos", teclas: true,
     nome: "Quebra-Tijolos",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="10" fill="#1b263b"/><g stroke="#151515" stroke-width="1.5"><rect x="6" y="8" width="16" height="8" rx="2" fill="#e63946"/><rect x="24" y="8" width="16" height="8" rx="2" fill="#f77f00"/><rect x="42" y="8" width="16" height="8" rx="2" fill="#ffd60a"/><rect x="6" y="18" width="16" height="8" rx="2" fill="#2a9d55"/><rect x="42" y="18" width="16" height="8" rx="2" fill="#00b4d8"/><rect x="15" y="28" width="16" height="8" rx="2" fill="#9b5de5"/></g><path d="M36 28 L30 46" stroke="#fff" stroke-width="2" stroke-dasharray="3 3"/><circle cx="29" cy="48" r="4" fill="#fff"/><rect x="16" y="53" width="30" height="6" rx="3" fill="#f77f00"/></svg>',
     faixas: ["6-8", "8-10"],
@@ -348,7 +348,7 @@
     const tecla = e => {
       if (!vivo()) { document.removeEventListener("keydown", tecla); document.removeEventListener("keyup", solta); return; }
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); teclas[e.key] = true; }
-      else if (e.key === " " || e.key === "ArrowUp") { e.preventDefault(); lancar(); }
+      else if (e.key === " " || e.key === "ArrowUp" || e.key === "Enter") { e.preventDefault(); lancar(); }
       else if (e.key === "p") alternarPausa();
     };
     const solta = e => { teclas[e.key] = false; };

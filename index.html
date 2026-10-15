@@ -11,24 +11,40 @@
 <link rel="apple-touch-icon" href="icones/icone-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<link rel="preload" href="fontes/fredoka.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/estilo.css">
 </head>
 <body>
 
-<!-- 1. Escolha da idade -->
+<!-- 1. Início: apresentação, atalhos (continuar, favoritos) e escolha da idade -->
 <section id="idades" class="tela ativa">
-  <h1 class="titulo">🌈 Brincar e Aprender 🌈</h1>
-  <div class="lista-opcoes" id="lista-idades"></div>
+  <div class="rolagem">
+    <header class="inicio-topo">
+      <h1 class="titulo">Brincar e Aprender</h1>
+      <p class="inicio-sub">Jogos educativos com voz para crianças de 1 a 10 anos</p>
+      <div class="selos" id="selos"></div>
+    </header>
+    <div class="atalhos" id="atalhos"></div>
+    <h2 class="secao-titulo destaque">Qual é a idade?</h2>
+    <div class="lista-idades" id="lista-idades"></div>
+  </div>
 </section>
 
-<!-- 2. Jogos da faixa escolhida -->
+<!-- 2. Jogos da faixa escolhida, por categoria -->
 <section id="menu" class="tela">
-  <h1 class="titulo" id="titulo-menu"></h1>
-  <div class="lista-opcoes" id="lista-jogos"></div>
+  <div class="rolagem" id="rolagem-menu">
+    <header class="menu-topo">
+      <h1 class="titulo" id="titulo-menu"></h1>
+      <p class="menu-sub" id="sub-menu"></p>
+    </header>
+    <div id="lista-jogos"></div>
+  </div>
 </section>
 
 <!-- 3. O jogo em si -->
 <section id="jogo" class="tela">
+  <!-- Nome do jogo, na tela de escolher o modo -->
+  <div class="cabecalho-jogo" id="cabecalho-jogo" hidden></div>
   <div id="area-jogo"></div>
 </section>
 
@@ -44,8 +60,10 @@
 
 <script src="js/motor.js"></script>
 <script src="js/dados.js"></script>
+<script src="js/catalogo.js"></script>
 <script src="js/placar.js"></script>
 <script src="js/ajuda.js"></script>
+<script src="js/controle.js"></script>
 <!-- Jogos: cada arquivo registra um jogo em JOGOS (a ordem aqui é a ordem no menu) -->
 <!-- Pequenos -->
 <script src="jogos/animais.js"></script>

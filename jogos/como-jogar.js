@@ -189,6 +189,15 @@
       { figura: "⌨️🖱️", texto: "No computador: clique na tela, ande com W A S D, pule com espaço, quebre com o botão esquerdo e coloque com o direito." },
     ],
 
+    "quebra-cabeca": faixa => (pequeno(faixa) ? null : [
+      { figura: "🖼️", texto: "A figura inteira fica ao lado. Toque nela para ver bem grande!" },
+      { figura: "👆➜🧩", texto: "Arraste cada peça até o lugar dela. Quando chega pertinho do lugar certo, ela gruda sozinha." },
+      { figura: "👆👆", texto: "Também dá para tocar na peça e depois tocar no lugar onde ela vai." },
+      { figura: "🧩", texto: "Nas peças de encaixe, repare nas pontinhas e nos buraquinhos: uma ponta sempre entra num buraco da vizinha. As peças da borda têm um lado reto!" },
+      { figura: "💡", texto: "Nas opções dá para escolher quantas peças, o tipo de peça e se a figura aparece clarinha no tabuleiro." },
+      { figura: "📷", texto: "Toque na câmera para montar um quebra-cabeça com uma foto sua!" },
+    ]),
+
     memoria: faixa => (pequeno(faixa) ? null : [
       { figura: "🃏🃏", texto: "Vire duas cartas tocando nelas." },
       { figura: "🐶🐶", texto: "Se forem iguais, elas ficam abertas. Se forem diferentes, viram de novo: lembre onde elas estavam!" },

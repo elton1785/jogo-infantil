@@ -83,7 +83,7 @@
   const estrelasSalvas = () => { try { return JSON.parse(ler("plataforma-estrelas", "{}")) || {}; } catch (e) { return {}; } };
 
   JOGOS.push({
-    id: "plataforma",
+    id: "plataforma", teclas: true,
     nome: "Super Pulo",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="plat-recorte"><rect x="2" y="2" width="60" height="60" rx="12"/></clipPath></defs><g clip-path="url(#plat-recorte)"><rect x="2" y="2" width="60" height="60" fill="#8fd3ff"/><ellipse cx="18" cy="50" rx="18" ry="10" fill="#6cbf5a"/><rect x="2" y="50" width="60" height="12" rx="0" fill="#b9773c"/><rect x="2" y="50" width="60" height="5" fill="#5cc23f"/><rect x="38" y="16" width="16" height="16" rx="3" fill="#ffc93c" stroke="#9a6b00" stroke-width="2"/><text x="46" y="29" font-size="13" font-weight="bold" text-anchor="middle" fill="#fff" stroke="#9a6b00" stroke-width=".8" font-family="sans-serif">?</text><circle cx="46" cy="8" r="4" fill="#ffd60a" stroke="#c99400" stroke-width="1.5"/><g transform="rotate(-8 20 34)"><rect x="13" y="36" width="5" height="10" rx="2.5" fill="#374a6d" transform="rotate(25 15 37)"/><rect x="21" y="36" width="5" height="10" rx="2.5" fill="#374a6d" transform="rotate(-30 23 37)"/><rect x="12" y="25" width="16" height="14" rx="5" fill="#2a9df4"/><circle cx="20" cy="19" r="8" fill="#f5c193"/><path d="M12 18a8 8 0 0 1 16-1c-4-2-9-2-16 1z" fill="#6b3e1f"/><circle cx="23" cy="19" r="1.6" fill="#222"/><path d="M19 23q3 2 6 0" stroke="#7a3b2e" stroke-width="1.2" fill="none"/></g></g></svg>',
     faixas: ["5-6", "6-8", "8-10"],
@@ -862,7 +862,7 @@
     ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => bPulo.addEventListener(ev, e => { toquesPulo.delete(e.pointerId); bPulo.classList.toggle("apertado", toquesPulo.size > 0); }));
     [pad, bPulo, canvas].forEach(el => el.addEventListener("contextmenu", e => e.preventDefault()));
 
-    const MAPA_TECLAS = { ArrowLeft: "esq", a: "esq", A: "esq", ArrowRight: "dir", d: "dir", D: "dir", ArrowUp: "pulo", w: "pulo", W: "pulo", " ": "pulo" };
+    const MAPA_TECLAS = { ArrowLeft: "esq", a: "esq", A: "esq", ArrowRight: "dir", d: "dir", D: "dir", ArrowUp: "pulo", w: "pulo", W: "pulo", " ": "pulo", Enter: "pulo" };
     const aoApertar = e => {
       if (!vivo()) return limpar();
       const k = MAPA_TECLAS[e.key];

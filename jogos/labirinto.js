@@ -98,7 +98,7 @@
   const recorde = () => { try { return +localStorage.getItem("labirinto-recorde") || 0; } catch (e) { return 0; } };
 
   JOGOS.push({
-    id: "labirinto",
+    id: "labirinto", teclas: true,
     nome: "Come-Come do Labirinto",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="12" fill="#0d1430"/><path d="M8 8h48M8 56h48" stroke="#3a6df0" stroke-width="5" stroke-linecap="round"/><circle cx="34" cy="32" r="3" fill="#ffe8b0"/><circle cx="46" cy="32" r="3" fill="#ffe8b0"/><circle cx="56" cy="32" r="3" fill="#ffe8b0"/><path d="M22 32 L33 25 A13 13 0 1 0 33 39 Z" fill="#ffd60a" stroke="#c99a00" stroke-width="1.5"/><circle cx="20" cy="24" r="2" fill="#151515"/><path d="M40 52v-9a7 7 0 0 1 14 0v9l-2.3-2-2.4 2-2.3-2-2.4 2-2.3-2z" fill="#ff4040"/><circle cx="44.5" cy="43" r="2" fill="#fff"/><circle cx="50" cy="43" r="2" fill="#fff"/></svg>',
     faixas: ["6-8", "8-10"],

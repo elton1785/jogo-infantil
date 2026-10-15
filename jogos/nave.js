@@ -13,7 +13,7 @@
   const recorde = () => { try { return +localStorage.getItem("nave-recorde") || 0; } catch (e) { return 0; } };
 
   JOGOS.push({
-    id: "nave",
+    id: "nave", teclas: true,
     nome: "Nave Espacial",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="10" fill="#10172a"/><g fill="#fff"><circle cx="10" cy="40" r="1.2"/><circle cx="54" cy="30" r="1.2"/><circle cx="20" cy="26" r="1"/><circle cx="48" cy="48" r="1"/></g><g fill="#7ae582" stroke="#151515" stroke-width="1.5"><path d="M12 8 h14 v4 h4 v6 h-22 v-6 h4z"/><path d="M36 8 h14 v4 h4 v6 h-22 v-6 h4z"/></g><g fill="#151515"><rect x="15" y="12" width="3" height="3"/><rect x="21" y="12" width="3" height="3"/><rect x="39" y="12" width="3" height="3"/><rect x="45" y="12" width="3" height="3"/></g><rect x="31" y="24" width="2.5" height="9" rx="1" fill="#ffd60a"/><path d="M32 38 c-5 5 -6 12 -6 16 h12 c0 -4 -1 -11 -6 -16z" fill="#e9ecef" stroke="#151515" stroke-width="1.5"/><path d="M26 50 l-6 6 h6z M38 50 l6 6 h-6z" fill="#e63946" stroke="#151515" stroke-width="1.2"/><circle cx="32" cy="47" r="2.6" fill="#00b4d8"/><path d="M29 56 l3 5 l3 -5z" fill="#f77f00"/></svg>',
     faixas: ["6-8", "8-10"],
@@ -371,7 +371,7 @@
     const tecla = e => {
       if (!vivo()) { document.removeEventListener("keydown", tecla); document.removeEventListener("keyup", solta); return; }
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); teclas[e.key] = true; }
-      else if (e.key === " " || e.key === "ArrowUp") { e.preventDefault(); atirar(); }
+      else if (e.key === " " || e.key === "ArrowUp" || e.key === "Enter") { e.preventDefault(); atirar(); }
       else if (e.key === "p") alternarPausa();
     };
     const solta = e => { teclas[e.key] = false; };

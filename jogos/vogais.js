@@ -9,7 +9,7 @@
   ];
 
   function vogalColorida(item, b) {
-    b.classList.add("letra");
+    b.classList.add("letra", "com-figura"); // letra e figura, as duas grandes
     b.innerHTML = `<span></span><span class="mini"></span>`;
     b.children[0].textContent = item.nome;
     b.children[0].style.color = item.cor;

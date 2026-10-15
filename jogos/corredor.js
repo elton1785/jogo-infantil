@@ -16,7 +16,7 @@
   const recorde = () => { try { return +localStorage.getItem("corredor-recorde") || 0; } catch (e) { return 0; } };
 
   JOGOS.push({
-    id: "corredor",
+    id: "corredor", teclas: true,
     nome: "Corrida dos Bichos",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="50" cy="13" r="7" fill="#ffd166"/><rect x="0" y="50" width="64" height="14" fill="#e9c46a"/><path d="M0 50h64" stroke="#8d6e3f" stroke-width="2"/><g fill="#2a9d55" stroke="#1b6b3a" stroke-width="1.5"><rect x="47" y="30" width="8" height="21" rx="4"/><rect x="41" y="34" width="5" height="10" rx="2.5"/><rect x="56" y="31" width="5" height="9" rx="2.5"/></g><g fill="#43aa8b" stroke="#1d5c4a" stroke-width="1.5"><path d="M8 40c2-9 9-13 16-13h4v-9c0-5 4-8 9-8h4c4 0 6 3 6 6v3c0 2-2 3-4 3h-6v4l4 2-2 3-3-1v7c0 6-4 10-9 11l2 6h-5l-2-5-4 0 1 5h-5l-1-6c-3-1-5-4-6-6z"/></g><circle cx="38" cy="15" r="1.8" fill="#151515"/></svg>',
     faixas: ["5-6", "6-8", "8-10"],
@@ -385,7 +385,7 @@
     // Teclado (computador)
     const teclaDesce = e => {
       if (!vivo()) { tirarTeclas(); return; }
-      if (e.key === " " || e.key === "ArrowUp") {
+      if (e.key === " " || e.key === "ArrowUp" || e.key === "Enter") {
         e.preventDefault();
         if (e.repeat) return;
         if (fase === "fim") { if (performance.now() - fimEm > 1000) comecar(); return; }
@@ -395,7 +395,7 @@
     };
     const teclaSobe = e => {
       if (!vivo()) { tirarTeclas(); return; }
-      if (e.key === " " || e.key === "ArrowUp") soltarPular();
+      if (e.key === " " || e.key === "ArrowUp" || e.key === "Enter") soltarPular();
       else if (e.key === "ArrowDown") abaixar = false;
     };
     const escondeu = () => { if (!vivo()) { tirarTeclas(); return; } if (document.hidden && fase === "correndo" && !pausado) alternarPausa(); };

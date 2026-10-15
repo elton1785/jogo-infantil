@@ -66,7 +66,7 @@
   }
 
   JOGOS.push({
-    id: "2048",
+    id: "2048", teclas: true,
     nome: "2048",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="10" fill="#bba89a"/><rect x="6" y="6" width="25" height="25" rx="5" fill="#fff3b0"/><rect x="33" y="6" width="25" height="25" rx="5" fill="#ff8fab"/><rect x="6" y="33" width="25" height="25" rx="5" fill="#c77dff"/><rect x="33" y="33" width="25" height="25" rx="5" fill="#f9c74f"/><g font-family="sans-serif" font-weight="bold" text-anchor="middle"><text x="18.5" y="25" font-size="17" fill="#6b5a2a">2</text><text x="45.5" y="25" font-size="15" fill="#fff">16</text><text x="18.5" y="51" font-size="11" fill="#fff">256</text><text x="45.5" y="50" font-size="8.5" fill="#fff">2048</text></g></svg>',
     faixas: ["6-8", "8-10"],

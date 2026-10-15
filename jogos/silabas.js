@@ -33,7 +33,7 @@
         return {
           pecas: p.silabas, extras: distracoes(p, 2), palavra: p.palavra,
           anuncio: `Vamos escrever ${p.palavra}!`,
-          mostrar: el => { el.textContent = p.emoji; },
+          mostrar: el => { el.innerHTML = `<span class="grande"></span>`; el.firstChild.textContent = p.emoji; },
           falarPeca: s => s.toLowerCase(),
         };
       },

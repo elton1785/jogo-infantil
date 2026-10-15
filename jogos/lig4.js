@@ -112,7 +112,7 @@
   }
 
   JOGOS.push({
-    id: "lig4",
+    id: "lig4", teclas: true,
     nome: "Lig 4",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="3" y="10" width="58" height="50" rx="8" fill="#1d4ed8"/><rect x="3" y="54" width="58" height="6" rx="3" fill="#163ca8"/><g fill="#dbeafe"><circle cx="13" cy="20" r="5"/><circle cx="25.5" cy="20" r="5"/><circle cx="38.5" cy="20" r="5"/><circle cx="51" cy="20" r="5"/><circle cx="13" cy="32" r="5"/><circle cx="25.5" cy="32" r="5"/><circle cx="51" cy="32" r="5"/><circle cx="13" cy="44" r="5"/><circle cx="51" cy="44" r="5"/></g><g fill="#e63946" stroke="#fff" stroke-width="1.5"><circle cx="13" cy="44" r="5"/><circle cx="25.5" cy="44" r="5"/><circle cx="38.5" cy="44" r="5"/><circle cx="51" cy="44" r="5"/></g><g fill="#ffd60a"><circle cx="38.5" cy="32" r="5"/><circle cx="25.5" cy="32" r="5"/></g><circle cx="38.5" cy="5.5" r="5" fill="#ffd60a"/></svg>',
     faixas: ["6-8", "8-10"],

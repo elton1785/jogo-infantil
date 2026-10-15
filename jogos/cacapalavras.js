@@ -83,7 +83,7 @@
         // Tamanho: grade ao lado da lista (deitado) ou acima dela (em pé)
         const larg = window.innerWidth - 32, alt = window.innerHeight - 112;
         const deitado = larg > alt;
-        const ladoPx = Math.min(deitado ? Math.min(alt, larg * 0.62) : Math.min(larg, alt * 0.62), 620);
+        const ladoPx = Math.min(deitado ? Math.min(alt, larg * 0.62, larg - 400) : Math.min(larg, alt * 0.62), 620); // deitado: sobra espaço para a lista
         const cel = ladoPx / n;
 
         const tab = document.createElement("div");
@@ -92,6 +92,7 @@
         const celulas = grade.map((linha, y) => linha.map((letra, x) => {
           const el = document.createElement("div");
           el.className = "caca-letra";
+          el.dataset.toque = ""; // controle da TV: OK = tocar na letra
           el.textContent = letra;
           el.dataset.x = x;
           el.dataset.y = y;
