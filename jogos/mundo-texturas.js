@@ -11,6 +11,7 @@ const MundoTexturas = (() => {
     la: 16, // 16..24: vermelha, amarela, azul, verde, branca, rosa, laranja, roxa, preta
     ouro: 25, diamante: 26, carvao: 27, florAmarela: 28, florVermelha: 29, gramaAlta: 30, cactoLado: 31,
     cactoTopo: 32, porcoPele: 33, porcoCara: 34, ovelhaCara: 35, cascalho: 36, ovelhaPele: 37,
+    zumbiPele: 38, zumbiCara: 39, zumbiRoupa: 40, gosma: 41, gosmaCara: 42, tocha: 43, zumbiCalca: 44,
   };
   const LAS = [["vermelha", [200, 45, 45]], ["amarela", [235, 200, 40]], ["azul", [45, 80, 200]], ["verde", [70, 150, 50]],
     ["branca", [235, 235, 235]], ["rosa", [240, 140, 175]], ["laranja", [235, 125, 35]], ["roxa", [130, 60, 180]], ["preta", [35, 35, 40]]];
@@ -40,10 +41,11 @@ const MundoTexturas = (() => {
     { nome: "Grama alta", f: [T.gramaAlta], tipo: "cruz" },                 // 28
     { nome: "Cacto", f: [T.cactoTopo, T.cactoLado, T.cactoTopo] },          // 29
     { nome: "Cascalho", f: [T.cascalho] },                                  // 30
+    { nome: "Tocha", f: [T.tocha], tipo: "cruz" },                          // 31 (afasta as criaturas da noite)
   ];
   const ID = { ar: 0, pedra: 1, grama: 2, terra: 3, pedregulho: 4, tabuas: 5, tronco: 6, folhas: 7, areia: 8, agua: 9, vidro: 10,
     tijolo: 11, rochaMae: 12, neve: 13, la: 14, ouro: 23, diamante: 24, carvao: 25, florAmarela: 26, florVermelha: 27,
-    gramaAlta: 28, cacto: 29, cascalho: 30 };
+    gramaAlta: 28, cacto: 29, cascalho: 30, tocha: 31 };
   // Textura de cada face: 0 cima, 1 lado, 2 baixo
   const tex = (b, lado) => { const f = BLOCOS[b].f; return f.length === 1 ? f[0] : f[lado]; };
   const opaco = b => b > 0 && !BLOCOS[b].tipo;
@@ -229,6 +231,26 @@ const MundoTexturas = (() => {
         for (let y = 0; y < alto * K; y++) px(Math.floor(u * K) + (y > alto * K * 0.6 ? inc : 0), N - 1 - y, varia([80, 155, 50], 0.2));
       }
     };
+    // Criaturas da noite (Sobrevivência): zumbi e gosma, e a tocha
+    pinturas[T.zumbiPele] = () => encher([92, 160, 92], 0.1);
+    pinturas[T.zumbiCara] = () => {
+      encher([92, 160, 92], 0.08);
+      [[3, 6], [10, 6]].forEach(([u, v]) => { ponto(u, v, [20, 30, 20]); ponto(u + 1, v, [20, 30, 20]); ponto(u, v + 1, [20, 30, 20]); ponto(u + 1, v + 1, [20, 30, 20]); });
+      for (let u = 5; u < 11; u++) ponto(u, 11, [50, 90, 50]);
+    };
+    pinturas[T.zumbiRoupa] = () => encher([40, 150, 160], 0.1);
+    pinturas[T.zumbiCalca] = () => encher([60, 60, 140], 0.1);
+    pinturas[T.gosma] = () => cada((u, v, x, y) => { const borda = u < 1.5 || v < 1.5 || u > 14.5 || v > 14.5; px(x, y, varia(borda ? [60, 170, 70] : [110, 220, 110], 0.08), 230); });
+    pinturas[T.gosmaCara] = () => {
+      cada((u, v, x, y) => px(x, y, varia([110, 220, 110], 0.08), 230));
+      [[4, 5], [10, 5]].forEach(([u, v]) => { ponto(u, v, [20, 40, 20]); ponto(u + 1, v, [20, 40, 20]); ponto(u, v + 1, [20, 40, 20]); ponto(u + 1, v + 1, [20, 40, 20]); });
+      ponto(7, 10, [40, 90, 40]); ponto(8, 10, [40, 90, 40]);
+    };
+    pinturas[T.tocha] = () => {
+      vazio();
+      for (let v = 7; v < 16; v++) { ponto(7, v, [110, 80, 45]); ponto(8, v, [90, 64, 36]); }
+      [[7, 6, [255, 200, 40]], [8, 6, [255, 160, 30]], [7, 5, [255, 230, 120]], [8, 5, [255, 120, 20]], [7, 4, [255, 250, 200]]].forEach(([u, v, c]) => ponto(u, v, c));
+    };
     (pinturas[i] || (() => encher([255, 0, 255], 0)))();
     return buf;
   }
@@ -241,7 +263,7 @@ const MundoTexturas = (() => {
     cv.width = cv.height = S * COLS;
     const ctx = cv.getContext("2d");
     const img = ctx.createImageData(cv.width, cv.height);
-    for (let i = 0; i < 38; i++) {
+    for (let i = 0; i < 45; i++) {
       const buf = pintarTextura(i, N, N > 16);
       const ox = (i % COLS) * S, oy = Math.floor(i / COLS) * S;
       for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {

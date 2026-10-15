@@ -1203,3 +1203,26 @@ button { font-family: inherit; }
   background: linear-gradient(165deg, rgba(255,255,255,.3), rgba(255,255,255,0) 60%), linear-gradient(90deg, #f4a300, #ff7a45); }
 .cartao-idade.livre .icone { grid-row: 1 / 4; }
 .cartao-idade.livre .desc { min-height: 0; }
+
+/* Mundo de Blocos: Sobrevivência */
+.mundo-vida { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); font-size: clamp(14px, 3.6vw, 20px); letter-spacing: -1px; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); }
+.mundo-vida[hidden] { display: none; }
+.mundo-dano { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle, transparent 45%, rgba(230, 30, 30, .55)); opacity: 0; }
+.mundo-dano.ativo { animation: dano .5s ease-out; }
+@keyframes dano { from { opacity: 1; } to { opacity: 0; } }
+.mundo-slot { position: relative; }
+.mundo-slot .qtd { position: absolute; right: 2px; bottom: 0; font-size: 13px; color: #fff; text-shadow: 0 1px 2px #000, 0 0 2px #000; }
+.mundo-slot.vazio img { opacity: .3; filter: grayscale(1); }
+.mundo-mochila-titulo.menor { font-size: 17px; }
+.mundo-receitas { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; width: 100%; overflow-y: auto; max-height: 34%; flex: none; }
+.mundo-receita { display: flex; gap: 10px; align-items: center; text-align: left; border: none; border-radius: 14px; background: #2f8f4e; color: #fff; padding: 8px 10px; cursor: pointer; }
+.mundo-receita .ic { font-size: 28px; }
+.mundo-receita b { display: block; font-size: 16px; }
+.mundo-receita small { font-size: 12px; opacity: .9; }
+.mundo-receita.falta { background: rgba(255,255,255,.14); color: #ddd; }
+.mundo-desmaio { color: #fff; text-align: center; font-size: 16px; padding: 6px 10px; }
+@media (orientation: landscape) and (max-height: 500px) { .mundo-vida { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); } }
+.mundo-mochila { overflow-y: auto; }
+.mundo-mochila > * { flex: none; }
+.mundo-mochila-grade { overflow: visible; }
+.mundo-receitas { max-height: none; overflow: visible; }

@@ -195,6 +195,7 @@
       { figura: "⬆️🕊️", texto: "O botão de seta pula. A pombinha liga o voo: aí a seta sobe e o outro botão desce." },
       { figura: "🎒", texto: "Escolha o bloco na barra de baixo, ou abra a mochila para ver todos." },
       { figura: "🧱🌳", texto: "O Clássico é como os jogos antigos: simples e sempre de dia. O Novo tem alta definição, dia e noite, bichinhos, flores, deserto e montanhas com neve. Cada mundo fica salvo!" },
+      { figura: "🗡️🌙", texto: "Na Sobrevivência a mochila começa vazia: quebre blocos para recolher e faça tábuas, ferramentas e tochas na mochila. À noite aparecem gosmas e zumbis: toque neles para espantar, ou fique perto das tochas. Explore as cavernas!" },
       { figura: "⌨️🖱️", texto: "No computador: clique na tela, ande com W A S D, pule com espaço, quebre com o botão esquerdo e coloque com o direito." },
     ],
 

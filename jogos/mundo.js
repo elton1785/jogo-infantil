@@ -10,6 +10,11 @@
 // o bloco escolhido ali; SEGURAR num bloco quebra. Botões: pular, voar, mochila.
 // No computador: clique para capturar o mouse, WASD, espaço, Shift, botão esquerdo quebra,
 // direito coloca, 1–9 escolhe o bloco, F voa, E abre a mochila.
+// - 🗡️ Sobrevivência: o mundo do Novo (com cavernas), mas começa com a mochila vazia: quebrar
+//   recolhe o bloco, colocar gasta. 10 corações de vida (voltam aos poucos; queda alta machuca).
+//   Blocos duros demoram mais (picareta e machado ajudam). Receitas: tábuas, ferramentas, tochas,
+//   vidro e tijolos. À noite aparecem gosmas e zumbis (somem de dia; tochas impedem que apareçam
+//   perto). Desmaiou? Volta para o começo sem perder nada.
 // O mundo fica salvo no aparelho (cada modo tem o seu).
 (() => {
   const M = MundoTexturas, B = M.ID;
@@ -20,11 +25,34 @@
         B.la, B.la + 1, B.la + 2, B.la + 3, B.la + 4, B.la + 8, B.ouro, B.florAmarela, B.florVermelha],
     },
     novo: {
-      nome: "Novo", X: 96, Z: 96, Y: 48, agua: 20, res: 32, hd: true, ao: true, diaNoite: true, bichos: true, nevoa: 0.019,
+      nome: "Novo", X: 96, Z: 96, Y: 48, agua: 20, res: 32, hd: true, ao: true, diaNoite: true, bichos: true, nevoa: 0.019, cavernas: true,
       paleta: [B.grama, B.terra, B.pedra, B.pedregulho, B.tabuas, B.tronco, B.folhas, B.areia, B.cascalho, B.vidro, B.tijolo, B.neve,
-        ...Array.from({ length: 9 }, (_, i) => B.la + i), B.ouro, B.diamante, B.carvao, B.agua, B.cacto, B.florAmarela, B.florVermelha, B.gramaAlta],
+        ...Array.from({ length: 9 }, (_, i) => B.la + i), B.ouro, B.diamante, B.carvao, B.agua, B.cacto, B.florAmarela, B.florVermelha, B.gramaAlta, B.tocha],
     },
   };
+  MODOS.sobrevivencia = { ...MODOS.novo, nome: "Sobrevivência", sobrevivencia: true };
+  // Sobrevivência: quanto tempo (s) para quebrar cada bloco com a mão; a ferramenta certa ajuda
+  const DUREZA = {};
+  [B.terra, B.grama, B.areia, B.cascalho, B.neve, B.folhas].forEach(b => { DUREZA[b] = 0.5; });
+  for (let i = 0; i < 9; i++) DUREZA[B.la + i] = 0.45;
+  [B.florAmarela, B.florVermelha, B.gramaAlta, B.tocha].forEach(b => { DUREZA[b] = 0.12; });
+  DUREZA[B.vidro] = 0.35; DUREZA[B.cacto] = 0.4;
+  [B.tronco, B.tabuas].forEach(b => { DUREZA[b] = 1.1; });
+  [B.pedra, B.pedregulho, B.tijolo, B.carvao].forEach(b => { DUREZA[b] = 1.7; });
+  [B.ouro, B.diamante].forEach(b => { DUREZA[b] = 2.4; });
+  const MADEIRA = new Set([B.tronco, B.tabuas]), PEDRA = new Set([B.pedra, B.pedregulho, B.tijolo, B.carvao, B.ouro, B.diamante]);
+  // O que cai ao quebrar (o resto cai ele mesmo)
+  const CAI = { [B.grama]: B.terra, [B.pedra]: B.pedregulho, [B.gramaAlta]: 0 };
+  // Receitas: o que precisa → o que dá. Ferramentas ficam guardadas (não são blocos).
+  const RECEITAS = [
+    { nome: "4 Tábuas", icone: "🪵", precisa: { [B.tronco]: 1 }, da: { [B.tabuas]: 4 } },
+    { nome: "4 Tochas", icone: "🔥", precisa: { [B.carvao]: 1, [B.tabuas]: 1 }, da: { [B.tocha]: 4 } },
+    { nome: "Machado", icone: "🪓", precisa: { [B.tabuas]: 3 }, ferramenta: "machado", dica: "quebra madeira rapidinho" },
+    { nome: "Picareta", icone: "⛏️", precisa: { [B.pedregulho]: 3, [B.tabuas]: 2 }, ferramenta: "picareta", dica: "quebra pedra rapidinho" },
+    { nome: "Espada", icone: "🗡️", precisa: { [B.pedregulho]: 2, [B.tabuas]: 1 }, ferramenta: "espada", dica: "afasta as criaturas mais rápido" },
+    { nome: "Vidro", icone: "🪟", precisa: { [B.areia]: 2 }, da: { [B.vidro]: 1 } },
+    { nome: "2 Tijolos", icone: "🧱", precisa: { [B.terra]: 2 }, da: { [B.tijolo]: 2 } },
+  ];
   const ICONE = '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4 58 18 32 32 6 18Z" fill="#6cbf3f"/><path d="M6 18 32 32v28L6 46Z" fill="#8a5f3c"/><path d="M58 18 32 32v28l26-14Z" fill="#6e4a2e"/><path d="M6 18 32 32 58 18v6l-4 2v-2l-4 2v3l-4 2v-3l-5 3v2l-4 2-5-3v3l-4-2v-3l-5-3v2l-4-2v-3l-4-2v3l-3-2Z" fill="#5aa836"/><path d="M32 4 58 18 32 32 6 18Z" fill="none" stroke="#3d7a24" stroke-width="1.5"/><g fill="#7ad04a"><rect x="20" y="13" width="4" height="2"/><rect x="36" y="20" width="4" height="2"/><rect x="30" y="9" width="3" height="2"/></g><g fill="#5c3d22"><rect x="12" y="34" width="4" height="3"/><rect x="20" y="44" width="3" height="3"/><rect x="42" y="40" width="4" height="3"/><rect x="48" y="30" width="3" height="3"/></g></svg>';
 
   JOGOS.push({
@@ -36,6 +64,7 @@
       Motor.escolherModo(area, [
         { icone: "🧱", rotulo: "Clássico (antigo)", iniciar: () => jogo(area, "classico") },
         { icone: "🌳", rotulo: "Novo (alta definição)", iniciar: () => jogo(area, "novo") },
+        { icone: "🗡️", rotulo: "Sobrevivência", iniciar: () => jogo(area, "sobrevivencia") },
       ]);
     },
   });
@@ -102,11 +131,37 @@
         w[I(x, y, z)] = b;
       }
     }
+    // Cavernas: "minhocas" que escavam túneis no subsolo (algumas começam perto da superfície)
+    if (cfg.cavernas) {
+      const ehAgua = (x, y, z) => y < Y && w[I(x, y, z)] === B.agua;
+      for (let k = 0; k < Math.round(X * Z / 380); k++) {
+        let x = 4 + rnd() * (X - 8), z = 4 + rnd() * (Z - 8);
+        const h = alt[Math.floor(z) * X + Math.floor(x)];
+        let y = k % 4 === 0 ? h - 1 : 4 + rnd() * Math.max(2, h - 8);
+        let yaw = rnd() * 6.28, pitch = (rnd() - 0.5) * 0.6;
+        const passos = 50 + Math.floor(rnd() * 70);
+        for (let p = 0; p < passos; p++) {
+          const r = 1.2 + rnd() * 1.3;
+          for (let dy = -r; dy <= r; dy++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
+            if (dx * dx + dy * dy + dz * dz > r * r) continue;
+            const cx = Math.floor(x + dx), cy = Math.floor(y + dy), cz = Math.floor(z + dz);
+            if (cx < 1 || cz < 1 || cx >= X - 1 || cz >= Z - 1 || cy < 2 || cy >= Y - 1) continue;
+            if (ehAgua(cx, cy + 1, cz) || ehAgua(cx + 1, cy, cz) || ehAgua(cx - 1, cy, cz) || ehAgua(cx, cy, cz + 1) || ehAgua(cx, cy, cz - 1)) continue;
+            const b = w[I(cx, cy, cz)];
+            if (b && b !== B.rochaMae && b !== B.agua) w[I(cx, cy, cz)] = 0;
+          }
+          yaw += (rnd() - 0.5) * 0.8; pitch = Math.max(-0.6, Math.min(0.6, pitch + (rnd() - 0.5) * 0.4));
+          x += Math.cos(yaw) * Math.cos(pitch); z += Math.sin(yaw) * Math.cos(pitch); y += Math.sin(pitch) * 0.8;
+          if (y < 3) pitch = 0.3;
+        }
+      }
+    }
     const no = (x, z) => x >= 2 && z >= 2 && x < X - 2 && z < Z - 2;
     const por = (x, y, z, b) => { if (x >= 0 && z >= 0 && x < X && z < Z && y < Y && !w[I(x, y, z)]) w[I(x, y, z)] = b; };
     // Árvores, cactos, flores e grama alta
     for (let z = 0; z < Z; z++) for (let x = 0; x < X; x++) {
       const h = alt[z * X + x], bi = bioma[z * X + x], topo = w[I(x, h, z)];
+      if (w[I(x, h + 1, z)]) continue;
       if (topo === B.grama && no(x, z)) {
         const chance = !cfg.hd ? 0.012 : bi === "floresta" ? 0.05 : bi === "montanha" ? 0.008 : 0.006;
         const r = rnd();
@@ -207,8 +262,20 @@
     let mundo = salvo && salvo.mundo ? descomprimir(salvo.mundo, X * Y * Z) : gerar(cfg, seed);
     const I = (x, y, z) => (y * Z + z) * X + x;
     const pegar = (x, y, z) => (x < 0 || z < 0 || x >= X || z >= Z || y >= Y ? 0 : y < 0 ? B.rochaMae : mundo[I(x, y, z)]);
-    let hotbar = (salvo && salvo.hotbar) || cfg.paleta.slice(0, 9);
-    let escolhido = 0, tempoDia = (salvo && salvo.tempoDia) || 0.3, mudou = false;
+    const sobrev = !!cfg.sobrevivencia;
+    // Sobrevivência: quantidade de cada bloco (inv[id]) e ferramentas (inv.picareta...)
+    const inv = (sobrev && salvo && salvo.inv) || {};
+    let vida = (sobrev && salvo && salvo.vida) || 20, ultimoDano = -99, derrotadas = (salvo && salvo.derrotadas) || 0;
+    let hotbar = (salvo && salvo.hotbar) || (sobrev ? Array(9).fill(0) : cfg.paleta.slice(0, 9));
+    const temBloco = b => !sobrev || (inv[b] || 0) > 0;
+    function ganhar(b, n = 1) {
+      if (!b) return;
+      const novo = !inv[b];
+      inv[b] = (inv[b] || 0) + n;
+      if (novo && !hotbar.includes(b)) { const vago = hotbar.indexOf(0); if (vago >= 0) hotbar[vago] = b; }
+      mudou = true;
+    }
+    let escolhido = 0, tempoDia = (salvo && salvo.tempoDia) || (sobrev ? 0.22 : 0.3), mudou = false;
 
     // ---------- Malhas por pedaço (16 × 16 colunas) ----------
     const CH = 16, NCX = X / CH, NCZ = Z / CH;
@@ -336,9 +403,16 @@
         jog.vz = 0;
       }
       const ny = jog.y + jog.vy * dt;
+      const estavaNoChao = jog.chao;
       jog.chao = false;
       if (!bate(jog.x, ny, jog.z)) jog.y = ny;
       else { if (jog.vy < 0) { jog.chao = true; jog.y = Math.max(jog.y - 0.5, Math.floor(ny) + 1); } jog.vy = 0; }
+      // Altura da queda: do ponto mais alto até tocar o chão (na água não machuca)
+      if (estavaNoChao && !jog.chao) jog.alturaQueda = jog.y;
+      if (!jog.chao) jog.alturaQueda = Math.max(jog.alturaQueda || jog.y, jog.y);
+      if (agua || jog.voando) jog.alturaQueda = jog.y;
+      if (jog.chao && !estavaNoChao && sobrev) { const q = (jog.alturaQueda || jog.y) - jog.y; if (q > 3.6) machucar(Math.round(q - 3), null); }
+      if (jog.chao) jog.alturaQueda = jog.y;
       if (jog.voando && jog.y > Y + 6) jog.y = Y + 6;
       if (jog.y < -5) nascer(); // caiu para fora do mundo
     }
@@ -371,8 +445,25 @@
       return null;
     }
 
+    // Tempo para quebrar o bloco (o Criativo quebra rapidinho; a Sobrevivência depende do bloco)
+    function tempoQuebra(b) {
+      if (!sobrev) return 0.38;
+      let t = DUREZA[b] || 0.8;
+      if (MADEIRA.has(b) && inv.machado) t *= 0.35;
+      if (PEDRA.has(b) && inv.picareta) t *= 0.3;
+      return t;
+    }
     function quebrar(alvo) {
       if (!alvo || M.BLOCOS[alvo.b].fixo) { if (alvo) Motor.nota(120, { dur: 0.08, tipo: "square", vol: 0.05 }); return false; }
+      if (sobrev) {
+        // Recolhe o bloco (folhas, às vezes)
+        const cai = alvo.b in CAI ? CAI[alvo.b] : alvo.b;
+        if (alvo.b !== B.folhas || Math.random() < 0.35) ganhar(cai);
+        const cima = pegar(alvo.x, alvo.y + 1, alvo.z);
+        if (M.BLOCOS[cima]?.tipo === "cruz" && cima !== B.gramaAlta) ganhar(cima);
+        if (alvo.b === B.tocha) tochas.delete(`${alvo.x},${alvo.y},${alvo.z}`);
+        desenharBarra();
+      }
       mundo[I(alvo.x, alvo.y, alvo.z)] = 0;
       if (M.BLOCOS[pegar(alvo.x, alvo.y + 1, alvo.z)]?.tipo === "cruz") mundo[I(alvo.x, alvo.y + 1, alvo.z)] = 0;
       // Água em volta escorre para o buraco (um pouquinho)
@@ -385,6 +476,7 @@
       if (!alvo) return false;
       const x = alvo.x + alvo.n[0], y = alvo.y + alvo.n[1], z = alvo.z + alvo.n[2];
       const b = hotbar[escolhido];
+      if (!b || !temBloco(b)) { avisar(sobrev ? "Sua mochila não tem esse bloco. Quebre blocos para recolher!" : "Escolha um bloco"); return false; }
       if (x < 0 || z < 0 || x >= X || z >= Z || y < 1 || y >= Y) return false;
       const atual = pegar(x, y, z);
       if (atual && atual !== B.agua && M.BLOCOS[atual].tipo !== "cruz") return false;
@@ -392,12 +484,41 @@
       if (M.solido(b) && x + 1 > jog.x - LARG && x < jog.x + LARG && z + 1 > jog.z - LARG && z < jog.z + LARG && y + 1 > jog.y && y < jog.y + ALT) return false;
       if (bichos.some(a => x + 1 > a.x - 0.45 && x < a.x + 0.45 && z + 1 > a.z - 0.45 && z < a.z + 0.45 && y + 1 > a.y && y < a.y + 1)) return false;
       mundo[I(x, y, z)] = b;
+      if (b === B.tocha) tochas.add(`${x},${y},${z}`);
+      if (sobrev) { inv[b]--; desenharBarra(); }
       sujar(x, z); mudou = true;
       Motor.nota(220 + (b % 7) * 30, { dur: 0.07, tipo: "triangle", vol: 0.12 });
       return true;
     }
+    // Tochas do mundo (criaturas não aparecem perto delas)
+    const tochas = new Set();
+    for (let i = 0; i < mundo.length; i++) if (mundo[i] === B.tocha) { const x = i % X, z = Math.floor(i / X) % Z, y = Math.floor(i / (X * Z)); tochas.add(`${x},${y},${z}`); }
+    const pertoDeTocha = (x, y, z) => [...tochas].some(t => { const [a, b, c] = t.split(",").map(Number); return Math.abs(a - x) + Math.abs(c - z) < 10 && Math.abs(b - y) < 6; });
 
-    // ---------- Bichinhos (só no Novo) ----------
+    // ---------- Vida (Sobrevivência) ----------
+    function machucar(n, de) {
+      if (!sobrev || vida <= 0) return;
+      vida = Math.max(0, vida - n);
+      ultimoDano = relogio;
+      Motor.ruido({ dur: 0.15, vol: 0.25, freq: 300 });
+      dano.classList.remove("ativo"); void dano.offsetWidth; dano.classList.add("ativo");
+      if (de) { const a = Math.atan2(jog.z - de.z, jog.x - de.x); jog.vx = Math.cos(a) * 7; jog.vz = Math.sin(a) * 7; jog.vy = 5; }
+      desenharVida();
+      if (vida <= 0) desmaiar();
+    }
+    function desmaiar() {
+      const caixa = document.createElement("div");
+      caixa.className = "mundo-mochila menu";
+      caixa.innerHTML = `<div class="mundo-mochila-titulo">😵 Você desmaiou!</div><div class="mundo-desmaio">Não se preocupe: você volta para o começo com tudo o que tinha na mochila.</div>`;
+      const b = Object.assign(document.createElement("button"), { className: "chip jogar", textContent: "🌅 Voltar" });
+      b.addEventListener("click", () => { caixa.remove(); vida = 20; desenharVida(); nascer(); bichos.splice(0, bichos.length, ...bichos.filter(a => !a.hostil)); });
+      caixa.appendChild(b);
+      caixa.addEventListener("pointerdown", e => e.stopPropagation());
+      hud.appendChild(caixa);
+      Motor.falar("Ops, você desmaiou! Toque em voltar.");
+    }
+
+    // ---------- Bichinhos (só no Novo) e criaturas da noite (Sobrevivência) ----------
     const bichos = [];
     if (cfg.bichos) {
       const r = M.aleatorio(seed + 7);
@@ -407,13 +528,59 @@
         bichos.push({ tipo: k % 2 ? "ovelha" : "porco", x: x + 0.5, y: h, z: z + 0.5, yaw: r() * 6.3, vy: 0, anda: 0, pausa: r() * 3, fase: 0, chao: false });
       }
     }
+    const ALTURA = { porco: 1, ovelha: 1, zumbi: 1.9, gosma: 0.85 };
+    const noite = () => Math.sin(tempoDia * Math.PI * 2) < -0.08;
+    let proximaCriatura = 0;
+    function criaturasDaNoite(dt) {
+      // Aparecem à noite, longe da vista e longe das tochas; de dia somem numa fumacinha
+      if (noite() && relogio > proximaCriatura && bichos.filter(a => a.hostil).length < 6) {
+        proximaCriatura = relogio + 3 + Math.random() * 4;
+        const ang = Math.random() * 6.28, d = 11 + Math.random() * 10;
+        const x = Math.floor(jog.x + Math.cos(ang) * d), z = Math.floor(jog.z + Math.sin(ang) * d);
+        if (x > 1 && z > 1 && x < X - 2 && z < Z - 2) {
+          const y = alturaLivre(x, z);
+          if (M.solido(pegar(x, y - 1, z)) && !pertoDeTocha(x, y, z)) {
+            const tipo = Math.random() < 0.6 ? "zumbi" : "gosma";
+            bichos.push({ tipo, hostil: true, vida: tipo === "zumbi" ? 10 : 6, x: x + 0.5, y, z: z + 0.5, yaw: 0, vy: 0, anda: 0, pausa: 0, fase: 0, chao: false, pulo: 0, golpe: 0 });
+          }
+        }
+      }
+      if (!noite()) for (let i = bichos.length - 1; i >= 0; i--) if (bichos[i].hostil && Math.random() < dt * 0.4) { fumaca(bichos[i]); bichos.splice(i, 1); }
+    }
+    function fumaca(a) { Motor.ruido({ dur: 0.2, vol: 0.12, freq: 1800 }); }
+    function atacar(a) {
+      const forca = inv.espada ? 5 : 3;
+      a.vida -= forca;
+      const ang = Math.atan2(a.z - jog.z, a.x - jog.x);
+      a.empurra = [Math.cos(ang) * 6, Math.sin(ang) * 6]; a.vy = 4;
+      Motor.nota(180, { dur: 0.1, tipo: "square", vol: 0.1 });
+      if (a.vida <= 0) {
+        bichos.splice(bichos.indexOf(a), 1); fumaca(a); derrotadas++; mudou = true;
+        avisar(a.tipo === "zumbi" ? "💨 O zumbi fugiu!" : "💨 A gosma sumiu!");
+      }
+    }
     function moverBichos(dt) {
+      if (sobrev) criaturasDaNoite(dt);
       bichos.forEach(a => {
-        if (a.pausa > 0) { a.pausa -= dt; if (a.pausa <= 0) { a.anda = 1 + Math.random() * 3; a.yaw += (Math.random() - 0.5) * 2.5; } }
-        else { a.anda -= dt; if (a.anda <= 0) a.pausa = 1 + Math.random() * 4; }
-        const v = a.anda > 0 ? 1.3 : 0;
+        if (a.hostil) {
+          // vai na sua direção (se estiver perto); a gosma anda aos pulinhos
+          const dx = jog.x - a.x, dz = jog.z - a.z, dist = Math.hypot(dx, dz);
+          a.anda = dist < 18 ? 1 : 0; a.pausa = 0;
+          if (dist < 18) a.yaw = Math.atan2(dx, -dz);
+          if (a.tipo === "gosma" && a.chao && dist < 18 && relogio > a.pulo) { a.vy = 6.5; a.pulo = relogio + 1 + Math.random(); }
+          if (dist < 0.95 && Math.abs(jog.y - a.y) < 1.6 && relogio > a.golpe) { a.golpe = relogio + 1.1; machucar(a.tipo === "zumbi" ? 3 : 2, a); }
+        } else {
+          if (a.pausa > 0) { a.pausa -= dt; if (a.pausa <= 0) { a.anda = 1 + Math.random() * 3; a.yaw += (Math.random() - 0.5) * 2.5; } }
+          else { a.anda -= dt; if (a.anda <= 0) a.pausa = 1 + Math.random() * 4; }
+        }
+        if (a.empurra) {
+          const [ex, ez] = a.empurra;
+          if (!bate(a.x + ex * dt, a.y, a.z + ez * dt, 0.4, 0.95)) { a.x += ex * dt; a.z += ez * dt; }
+          a.empurra = Math.hypot(ex, ez) > 0.5 ? [ex * 0.85, ez * 0.85] : null;
+        }
+        const v = a.anda > 0 ? (a.tipo === "zumbi" ? 1.7 : a.tipo === "gosma" ? (a.chao ? 0 : 2.4) : 1.3) : 0;
         const dx = Math.sin(a.yaw) * v * dt, dz = -Math.cos(a.yaw) * v * dt;
-        const livre = (x, y, z) => !bate(x, y, z, 0.4, 0.95) && pegar(Math.floor(x), Math.floor(y - 0.5), Math.floor(z)) !== B.agua;
+        const livre = (x, y, z) => !bate(x, y, z, 0.4, 0.95) && (a.hostil || pegar(Math.floor(x), Math.floor(y - 0.5), Math.floor(z)) !== B.agua);
         if (v) {
           if (livre(a.x + dx, a.y, a.z + dz)) { a.x += dx; a.z += dz; a.fase += dt * 9; }
           else if (a.chao && livre(a.x + dx, a.y + 1.05, a.z + dz)) a.vy = 6.5;
@@ -447,9 +614,22 @@
         });
       };
       bichos.forEach(a => {
+        const T = M.T, balanca = Math.sin(a.fase) * 0.6;
+        if (a.tipo === "zumbi") {
+          // corpo de gente, braços esticados para a frente
+          [[-0.13, 1], [0.13, -1]].forEach(([lx, s]) => caixa(a, lx, 0, 0, 0.24, 0.75, 0.24, [T.zumbiCalca], 0.75, balanca * s));
+          caixa(a, 0, 0.75, 0, 0.5, 0.7, 0.28, [T.zumbiRoupa]);
+          caixa(a, 0, 1.45, 0, 0.45, 0.45, 0.45, [T.zumbiPele, T.zumbiPele, T.zumbiPele, T.zumbiPele, T.zumbiPele, T.zumbiCara]);
+          [-0.36, 0.36].forEach(lx => caixa(a, lx, 1.12, -0.3, 0.2, 0.2, 0.62, [T.zumbiPele]));
+          return;
+        }
+        if (a.tipo === "gosma") {
+          const estica = a.chao ? 1 : 1.15;
+          caixa(a, 0, 0, 0, 0.8 / Math.sqrt(estica), 0.8 * estica, 0.8 / Math.sqrt(estica), [T.gosma, T.gosma, T.gosma, T.gosma, T.gosma, T.gosmaCara]);
+          return;
+        }
         const porco = a.tipo === "porco", pele = porco ? M.T.porcoPele : M.T.la + 4, cara = porco ? M.T.porcoCara : M.T.ovelhaCara;
         const perna = porco ? M.T.porcoPele : M.T.ovelhaPele;
-        const balanca = Math.sin(a.fase) * 0.6;
         caixa(a, 0, 0.35, 0, 0.6, 0.45, 0.9, [pele, pele, pele, pele, pele, pele], null, 0);
         caixa(a, 0, 0.5, -0.55, 0.45, 0.42, 0.38, [pele, pele, pele, pele, pele, cara], null, 0);
         [[-0.17, -0.3, 1], [0.17, -0.3, -1], [-0.17, 0.3, -1], [0.17, 0.3, 1]].forEach(([lx, lz, sinal]) =>
@@ -462,7 +642,7 @@
     function bichoNoRaio(o, d, max) {
       let melhor = null;
       bichos.forEach(a => {
-        const min = [a.x - 0.45, a.y, a.z - 0.45], mx = [a.x + 0.45, a.y + 1, a.z + 0.45];
+        const min = [a.x - 0.45, a.y, a.z - 0.45], mx = [a.x + 0.45, a.y + (ALTURA[a.tipo] || 1), a.z + 0.45];
         let t0 = 0, t1 = max;
         for (let i = 0; i < 3; i++) {
           const inv = 1 / (d[i] || 1e-9); let ta = (min[i] - o[i]) * inv, tb = (mx[i] - o[i]) * inv;
@@ -600,17 +780,26 @@
       barra.innerHTML = "";
       hotbar.forEach((b, i) => {
         const s = document.createElement("button");
-        s.className = "mundo-slot" + (i === escolhido ? " ativo" : "");
-        s.setAttribute("aria-label", M.BLOCOS[b].nome);
-        s.innerHTML = `<img alt="" src="${iconeDe(b)}">`;
-        s.addEventListener("pointerdown", e => { e.stopPropagation(); escolhido = i; desenharBarra(); avisar(M.BLOCOS[b].nome); });
+        s.className = "mundo-slot" + (i === escolhido ? " ativo" : "") + (b && !temBloco(b) ? " vazio" : "");
+        s.setAttribute("aria-label", b ? M.BLOCOS[b].nome : "Vazio");
+        s.innerHTML = b ? `<img alt="" src="${iconeDe(b)}">` + (sobrev ? `<b class="qtd">${inv[b] || 0}</b>` : "") : "";
+        s.addEventListener("pointerdown", e => { e.stopPropagation(); escolhido = i; desenharBarra(); if (b) avisar(M.BLOCOS[b].nome); });
         barra.appendChild(s);
       });
     }
+    // Corações (Sobrevivência)
+    const vidaEl = Object.assign(document.createElement("div"), { className: "mundo-vida" });
+    const dano = Object.assign(document.createElement("div"), { className: "mundo-dano" });
+    hud.append(vidaEl, dano);
+    function desenharVida() {
+      if (!sobrev) { vidaEl.hidden = true; return; }
+      vidaEl.textContent = Array.from({ length: 10 }, (_, i) => (vida >= (i + 1) * 2 ? "❤️" : vida === i * 2 + 1 ? "💔" : "🤍")).join("");
+    }
     desenharBarra();
+    desenharVida();
 
     const bVoar = btn("🕊️", "Voar"), bMochila = btn("🎒", "Mochila"), bMenu = btn("⚙️", "Opções");
-    topo.append(bMochila, bVoar, bMenu, Motor.botaoSom());
+    topo.append(bMochila, ...(sobrev ? [] : [bVoar]), bMenu, Motor.botaoSom());
     const bPular = btn("⬆️", "Pular", "grande"), bDescer = btn("⬇️", "Descer");
     botoesDir.append(bDescer, bPular);
     const segurar = (b, liga) => {
@@ -620,7 +809,7 @@
     segurar(bPular, v => { ent.pular = v; });
     segurar(bDescer, v => { ent.descer = v; });
     const atualizarVoo = () => { bVoar.classList.toggle("ativo", jog.voando); bDescer.style.visibility = jog.voando ? "visible" : "hidden"; };
-    const alternarVoo = () => { jog.voando = !jog.voando; jog.vy = 0; atualizarVoo(); avisar(jog.voando ? "🕊️ Voando! ⬆️ sobe, ⬇️ desce" : "🚶 Andando"); };
+    const alternarVoo = () => { if (sobrev) return; jog.voando = !jog.voando; jog.vy = 0; atualizarVoo(); avisar(jog.voando ? "🕊️ Voando! ⬆️ sobe, ⬇️ desce" : "🚶 Andando"); };
     bVoar.addEventListener("click", alternarVoo);
     atualizarVoo();
 
@@ -632,10 +821,12 @@
       const t = Object.assign(document.createElement("div"), { className: "mundo-mochila-titulo", textContent: "🎒 Escolha um bloco" });
       const grade = document.createElement("div");
       grade.className = "mundo-mochila-grade";
-      cfg.paleta.forEach(b => {
+      const lista = sobrev ? cfg.paleta.filter(b => inv[b] > 0) : cfg.paleta;
+      if (sobrev && !lista.length) grade.innerHTML = `<div class="mundo-desmaio">Sua mochila está vazia. Segure o dedo num bloco para quebrar e recolher!</div>`;
+      lista.forEach(b => {
         const s = document.createElement("button");
         s.className = "mundo-slot";
-        s.innerHTML = `<img alt="" src="${iconeDe(b)}"><small></small>`;
+        s.innerHTML = `<img alt="" src="${iconeDe(b)}"><small></small>` + (sobrev ? `<b class="qtd">${inv[b]}</b>` : "");
         s.querySelector("small").textContent = M.BLOCOS[b].nome;
         s.addEventListener("click", () => {
           const ja = hotbar.indexOf(b);
@@ -646,7 +837,36 @@
       });
       const fechar = Object.assign(document.createElement("button"), { className: "chip", textContent: "✖️ Fechar" });
       fechar.addEventListener("click", () => caixa.remove());
-      caixa.append(t, grade, fechar);
+      caixa.append(t, grade);
+      if (sobrev) {
+        // Ferramentas e receitas
+        const ferr = ["machado", "picareta", "espada"].filter(f => inv[f]).map(f => ({ machado: "🪓", picareta: "⛏️", espada: "🗡️" })[f]).join(" ");
+        const tf = Object.assign(document.createElement("div"), { className: "mundo-mochila-titulo menor", textContent: `🛠️ Receitas ${ferr ? "· você tem " + ferr : ""}` });
+        const rec = document.createElement("div");
+        rec.className = "mundo-receitas";
+        RECEITAS.forEach(r => {
+          if (r.ferramenta && inv[r.ferramenta]) return;
+          const pode = Object.entries(r.precisa).every(([b, n]) => (inv[b] || 0) >= n);
+          const bt = document.createElement("button");
+          bt.className = "mundo-receita" + (pode ? "" : " falta");
+          const custo = Object.entries(r.precisa).map(([b, n]) => `${n} ${M.BLOCOS[b].nome.toLowerCase()}`).join(" + ");
+          bt.innerHTML = `<span class="ic"></span><span><b></b><small></small></span>`;
+          bt.querySelector(".ic").textContent = r.icone;
+          bt.querySelector("b").textContent = r.nome;
+          bt.querySelector("small").textContent = custo + (r.dica ? ` · ${r.dica}` : "");
+          bt.addEventListener("click", () => {
+            if (!pode) { Motor.falar(`Para fazer ${r.nome.toLowerCase()} você precisa de ${custo}.`); return; }
+            Object.entries(r.precisa).forEach(([b, n]) => { inv[b] -= n; });
+            if (r.ferramenta) inv[r.ferramenta] = 1;
+            Object.entries(r.da || {}).forEach(([b, n]) => ganhar(+b, n));
+            mudou = true; Motor.tim(); Motor.falar(`Você fez ${r.nome.toLowerCase()}!`);
+            caixa.remove(); desenharBarra(); abrirMochila();
+          });
+          rec.appendChild(bt);
+        });
+        caixa.append(tf, rec);
+      }
+      caixa.append(fechar);
       caixa.addEventListener("pointerdown", e => e.stopPropagation());
       hud.appendChild(caixa);
     }
@@ -681,6 +901,14 @@
     }
     bMenu.addEventListener("click", abrirMenu);
 
+    // Bicho tocado: criatura leva um golpe; ovelha dá lã (na Sobrevivência); porco faz oinc
+    function tocarBicho(a) {
+      if (a.hostil) return atacar(a);
+      if (a.tipo === "ovelha" && sobrev && relogio - (a.tosquiada || -99) > 30) { a.tosquiada = relogio; ganhar(B.la + 4); desenharBarra(); avisar("🐑 Você ganhou lã!"); }
+      Motor.falar(a.tipo === "porco" ? "Oinc oinc!" : "Méééé!");
+      a.vy = 5;
+    }
+
     // ---------- Toque: joystick (esquerda), olhar (arrastar), colocar (tocar), quebrar (segurar) ----------
     const dedos = new Map();
     const QUEBRA_MS = 380;
@@ -709,16 +937,17 @@
       d.timer = setInterval(() => {
         if (d.moveu || !vivo()) return;
         const passou = performance.now() - d.t0;
+        const alvoAgora = passou > 120 ? alvoNoPonto(d.ev) : null;
+        const precisa = alvoAgora && !alvoAgora.bicho ? tempoQuebra(alvoAgora.b) * 1000 + 120 : QUEBRA_MS;
         if (passou > 120) {
-          const alvo = alvoNoPonto(d.ev);
-          alvoTela = alvo && !alvo.bicho ? alvo : null;
+          alvoTela = alvoAgora && !alvoAgora.bicho ? alvoAgora : null;
           anel.style.left = d.ev.clientX - r.left + "px"; anel.style.top = d.ev.clientY - r.top + "px";
-          anel.style.setProperty("--p", Math.min(1, (passou - 120) / (QUEBRA_MS - 120)));
+          anel.style.setProperty("--p", Math.min(1, (passou - 120) / (precisa - 120)));
           anel.classList.add("ativo");
         }
-        if (passou > QUEBRA_MS) {
-          const alvo = alvoNoPonto(d.ev);
-          if (alvo && !alvo.bicho) quebrar(alvo);
+        if (passou > precisa) {
+          if (alvoAgora && !alvoAgora.bicho) quebrar(alvoAgora);
+          else if (alvoAgora && alvoAgora.bicho && alvoAgora.bicho.hostil) atacar(alvoAgora.bicho);
           d.t0 = performance.now() - 120; d.quebrou = true; // segurando: continua quebrando
         }
       }, 30);
@@ -752,7 +981,7 @@
       anel.classList.remove("ativo"); alvoTela = null;
       if (!d.moveu && !d.quebrou && performance.now() - d.t0 < QUEBRA_MS) {
         const alvo = alvoNoPonto(d.ev);
-        if (alvo && alvo.bicho) { Motor.falar(alvo.bicho.tipo === "porco" ? "Oinc oinc!" : "Méééé!"); alvo.bicho.vy = 5; }
+        if (alvo && alvo.bicho) tocarBicho(alvo.bicho);
         else if (!colocar(alvo) && !alvo) avisar("Toque num bloco para colocar outro ao lado. Segure para quebrar!");
       }
     };
@@ -772,8 +1001,8 @@
       if (document.pointerLockElement !== canvas) return;
       const alvo = mirar(olho(), direcao());
       const bicho = cfg.bichos ? bichoNoRaio(olho(), direcao(), 7) : null;
-      if (bicho && (!alvo || bicho.t < alvo.t)) { Motor.falar(bicho.a.tipo === "porco" ? "Oinc!" : "Méé!"); return; }
-      if (e.button === 0) quebrar(alvo); else if (e.button === 2) colocar(alvo);
+      if (bicho && (!alvo || bicho.t < alvo.t)) { tocarBicho(bicho.a); return; }
+      if (e.button === 0) { if (sobrev) segurandoMouse = true; else quebrar(alvo); } else if (e.button === 2) colocar(alvo);
     };
     // OK do controle remoto (Enter): tocar coloca o bloco na mira; segurar quebra
     let okDesde = 0, okTimer = null;
@@ -784,7 +1013,7 @@
         e.preventDefault();
         if (e.repeat || okDesde) return;
         okDesde = performance.now();
-        okTimer = setInterval(() => { if (performance.now() - okDesde > 450) quebrar(mirar(olho(), direcao())); }, 350);
+        okTimer = null;
         return;
       }
       if (/^[1-9]$/.test(k)) { escolhido = +k - 1; desenharBarra(); return; }
@@ -793,10 +1022,28 @@
       ent.teclas.add(k);
       if (k === " ") e.preventDefault();
     };
+    let segurandoMouse = false;
+    const mouseUp = e => { if (e.button === 0) segurandoMouse = false; };
+    document.addEventListener("mouseup", mouseUp);
+    // Quebrar segurando, mirando o meio da tela (mouse, controle de videogame, controle remoto)
+    let quebraAlvo = null, quebraTempo = 0;
+    function quebraNoMeio(segurando, dt) {
+      if (!segurando) { quebraAlvo = null; quebraTempo = 0; if (!dedos.size) anel.classList.remove("ativo"); return; }
+      const a = mirar(olho(), direcao());
+      const chave = a && `${a.x},${a.y},${a.z}`;
+      if (chave !== quebraAlvo) { quebraAlvo = chave; quebraTempo = 0; }
+      if (!a) { anel.classList.remove("ativo"); return; }
+      quebraTempo += dt;
+      const precisa = tempoQuebra(a.b);
+      Object.assign(anel.style, { left: "50%", top: "50%" });
+      anel.style.setProperty("--p", Math.min(1, quebraTempo / precisa));
+      anel.classList.add("ativo");
+      if (quebraTempo >= precisa) { quebrar(a); quebraAlvo = null; quebraTempo = 0; }
+    }
     const teclaSobe = e => {
       if (e.doControle) return;
       const k = e.key.toLowerCase();
-      if (k === "enter" && okDesde) { clearInterval(okTimer); if (performance.now() - okDesde < 450) colocar(mirar(olho(), direcao())); okDesde = 0; return; }
+      if (k === "enter" && okDesde) { if (performance.now() - okDesde < 250) colocar(mirar(olho(), direcao())); okDesde = 0; return; }
       ent.teclas.delete(k);
     };
     const roda = e => { if (document.pointerLockElement !== canvas) return; escolhido = (escolhido + (e.deltaY > 0 ? 1 : 8)) % 9; desenharBarra(); };
@@ -810,7 +1057,7 @@
     function salvar() {
       if (!mudou && salvo) return;
       try {
-        localStorage.setItem(CHAVE, JSON.stringify({ seed, mundo: comprimir(mundo), hotbar, tempoDia, jog: { x: jog.x, y: jog.y, z: jog.z, yaw: jog.yaw, pitch: jog.pitch, voando: jog.voando } }));
+        localStorage.setItem(CHAVE, JSON.stringify({ seed, mundo: comprimir(mundo), hotbar, tempoDia, inv, vida, derrotadas, jog: { x: jog.x, y: jog.y, z: jog.z, yaw: jog.yaw, pitch: jog.pitch, voando: jog.voando } }));
         mudou = false; salvo = true;
       } catch (e) { /* sem espaço: segue sem salvar */ }
     }
@@ -831,12 +1078,12 @@
     // RT coloca, LT quebra (segurando, continua), Y voa, X mochila, LB/RB trocam o bloco,
     // direcional ⬇️ desce voando.
     const antes = {};
-    let quebraEm = 0;
+    let padQuebra = false;
     function lerControle(dt) {
       const p = Controle.pad();
-      if (!p) { ent.px = ent.pz = 0; ent.padPular = ent.padDescer = false; return; }
+      if (!p) { ent.px = ent.pz = 0; ent.padPular = ent.padDescer = false; padQuebra = false; return; }
       const borda = (i, fn) => { const v = p.botao(i); if (v && !antes[i]) fn(); antes[i] = v; };
-      if (hud.querySelector(".mundo-mochila")) { [3, 2, 4, 5, 6, 7].forEach(i => { antes[i] = p.botao(i); }); return; }
+      if (hud.querySelector(".mundo-mochila")) { [3, 2, 4, 5, 6, 7].forEach(i => { antes[i] = p.botao(i); }); padQuebra = false; return; }
       ent.px = p.eixo(0); ent.pz = -p.eixo(1);
       jog.yaw += p.eixo(2) * 2.6 * dt;
       jog.pitch = Math.max(-1.5, Math.min(1.5, jog.pitch - p.eixo(3) * 2 * dt));
@@ -845,8 +1092,10 @@
       borda(2, abrirMochila);
       borda(4, () => { escolhido = (escolhido + 8) % 9; desenharBarra(); avisar(M.BLOCOS[hotbar[escolhido]].nome); });
       borda(5, () => { escolhido = (escolhido + 1) % 9; desenharBarra(); avisar(M.BLOCOS[hotbar[escolhido]].nome); });
-      borda(7, () => colocar(mirar(olho(), direcao())));
-      if (p.botao(6)) { if (!antes[6] || performance.now() > quebraEm) { quebrar(mirar(olho(), direcao())); quebraEm = performance.now() + 320; } }
+      const bichoNaMira = () => { const b = bichos.length ? bichoNoRaio(olho(), direcao(), 7) : null, a = mirar(olho(), direcao()); return b && (!a || b.t < a.t) ? b.a : null; };
+      borda(7, () => { const b = bichoNaMira(); if (b) tocarBicho(b); else colocar(mirar(olho(), direcao())); });
+      if (p.botao(6) && !antes[6]) { const b = bichoNaMira(); if (b) { tocarBicho(b); antes[6] = true; return; } }
+      padQuebra = p.botao(6) && !bichoNaMira();
       antes[6] = p.botao(6);
     }
 
@@ -859,9 +1108,17 @@
       if (!hud.querySelector(".mundo-mochila")) {
         fisica(dt);
         if (cfg.bichos) moverBichos(dt);
-        if (cfg.diaNoite) tempoDia = (tempoDia + dt / 480) % 1; // um dia inteiro em 8 minutos
+        if (cfg.diaNoite) {
+          const antes = noite();
+          tempoDia = (tempoDia + dt / 480) % 1; // um dia inteiro em 8 minutos
+          if (sobrev && noite() && !antes) { Motor.falar("Está anoitecendo! Faça uma casinha ou coloque tochas para as criaturas não chegarem perto."); avisar("🌙 Anoiteceu: cuidado com as criaturas!"); }
+          if (sobrev && !noite() && antes) { Motor.falar("Amanheceu! As criaturas foram embora."); avisar("☀️ Amanheceu!"); }
+        }
+        // vida volta aos pouquinhos se ninguém machucar por um tempo
+        if (sobrev && vida < 20 && vida > 0 && relogio - ultimoDano > 6 && Math.floor(relogio / 3) !== Math.floor((relogio - dt) / 3)) { vida++; desenharVida(); }
       }
       lerControle(dt);
+      quebraNoMeio((segurandoMouse && document.pointerLockElement === canvas) || padQuebra || (okDesde && performance.now() - okDesde > 250), dt);
       // Mira no meio da tela: mouse capturado, controle de videogame ou controle remoto
       const comMira = document.pointerLockElement === canvas || Controle.ativo();
       mira.classList.toggle("visivel", comMira);
@@ -871,11 +1128,13 @@
       requestAnimationFrame(laco);
     }
     requestAnimationFrame(laco);
-    Motor.falar(cfg.hd
+    Motor.falar(sobrev
+      ? "Sobrevivência! Sua mochila começa vazia: segure o dedo nos blocos para recolher. Faça tábuas e ferramentas na mochila, e prepare-se para a noite!"
+      : cfg.hd
       ? "Mundo novo! Ande com o joystick, arraste para olhar, toque para colocar um bloco e segure para quebrar."
       : "Mundo clássico! Ande com o joystick, arraste para olhar, toque para colocar um bloco e segure para quebrar.");
 
     // Gancho para testes automáticos
-    if (window.MUNDO_TESTE) window.MUNDO_TESTE = { jog, pegar, mirar, direcao, olho, colocar, quebrar, bichos, salvar, ent, cfg };
+    if (window.MUNDO_TESTE) window.MUNDO_TESTE = { jog, pegar, mirar, direcao, olho, colocar, quebrar, bichos, salvar, ent, cfg, inv, hora: t => { tempoDia = t; }, vida: () => vida, abrirMochila };
   }
 })();
