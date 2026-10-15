@@ -178,6 +178,17 @@
         ? "As palavras ficam deitadas ou em pé." : "As palavras podem estar deitadas, em pé ou na diagonal. As letras ficam sem acento." },
     ],
 
+    mundo: [
+      { figura: "🕹️", texto: "Ande com o joystick: encoste o dedão do lado esquerdo da tela e arraste." },
+      { figura: "👆↔️", texto: "Arraste o dedo no resto da tela para olhar em volta." },
+      { figura: "👆🧱", texto: "Toque num bloco para colocar o bloco escolhido grudadinho nele." },
+      { figura: "✊⛏️", texto: "Segure o dedo num bloco para quebrar. Continue segurando para quebrar vários." },
+      { figura: "⬆️🕊️", texto: "O botão de seta pula. A pombinha liga o voo: aí a seta sobe e o outro botão desce." },
+      { figura: "🎒", texto: "Escolha o bloco na barra de baixo, ou abra a mochila para ver todos." },
+      { figura: "🧱🌳", texto: "O Clássico é como os jogos antigos: simples e sempre de dia. O Novo tem alta definição, dia e noite, bichinhos, flores, deserto e montanhas com neve. Cada mundo fica salvo!" },
+      { figura: "⌨️🖱️", texto: "No computador: clique na tela, ande com W A S D, pule com espaço, quebre com o botão esquerdo e coloque com o direito." },
+    ],
+
     memoria: faixa => (pequeno(faixa) ? null : [
       { figura: "🃏🃏", texto: "Vire duas cartas tocando nelas." },
       { figura: "🐶🐶", texto: "Se forem iguais, elas ficam abertas. Se forem diferentes, viram de novo: lembre onde elas estavam!" },
@@ -189,7 +200,7 @@
       { figura: "👆🔄", texto: "Arraste o dedo no cubo para ver os outros lados. Os botões coloridos giram as faces." },
       { figura: "🎬📘", texto: "Comece pelas Demonstrações e pelo Aprender: lá você aprende o método das camadas, passo a passo." },
       { figura: "🤖", texto: "No modo livre, embaralhe e toque em Resolver: eu mostro a solução, e você pode fazer junto." },
-      { figura: "🚀", texto: "Já sabe resolver? No Avançado tem o método CFOP, com os casos desenhados, treino de reconhecer casos e desenhos bonitos no cubo." },
+      { figura: "🚀", texto: "Já sabe resolver? No Avançado tem o método CFOP: os casos desenhados, treino de reconhecer casos, desenhos bonitos e o Resolver pelo CFOP, que mostra a solução inteira passo a passo." },
     ],
   };
 

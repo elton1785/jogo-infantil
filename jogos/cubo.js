@@ -101,6 +101,7 @@
     { titulo: "Os movimentos", icone: "🔄", iniciante: true, fazer: demoMovimentos },
     { titulo: "Os 7 passos (3×3)", icone: "🪜", iniciante: true, fazer: area => demoResolucao(area, 3) },
     { titulo: "Resolvendo o 2×2", icone: svgCubo(2), fazer: area => demoResolucao(area, 2) },
+    { titulo: "Resolvendo pelo CFOP", icone: "🚀", fazer: area => demoResolucao(area, 3, "cfop") },
     { titulo: "Os algoritmos", icone: "✨", fazer: area => demoAlgoritmo(area, 2) },
   ];
 
@@ -257,7 +258,7 @@
     const caixa = document.createElement("div");
     caixa.className = "cubo-botoes";
     const porTexto = {};
-    [...LISTA_FACES, ...extras].forEach(f => [1, -1].forEach(v => {
+    const criar = f => [1, -1].forEach(v => {
       const mv = { face: f, vezes: v };
       const b = document.createElement("button");
       b.className = "botao-face";
@@ -267,14 +268,17 @@
       b.addEventListener("click", () => aoTocar(mv, b));
       caixa.appendChild(b);
       porTexto[texto(mv)] = b;
-    }));
+    });
+    [...LISTA_FACES, ...extras].forEach(criar);
+    // Giros que aparecem depois (ex.: o CFOP usa r, f e M): ganham botões na hora
+    const adicionar = fs => fs.forEach(f => { if (!porTexto[f]) criar(f); });
     const marcarProximo = mv => {
       Object.values(porTexto).forEach(b => b.classList.remove("proximo"));
       // Giro duplo (U2) se faz com dois giros simples
       const b = mv && porTexto[texto({ face: mv.face, vezes: mv.vezes === -1 ? -1 : 1 })];
       if (b) b.classList.add("proximo");
     };
-    return { caixa, porTexto, marcarProximo };
+    return { caixa, porTexto, marcarProximo, adicionar };
   }
 
   function montarTela(area, N) {
@@ -322,7 +326,8 @@
   // ---------- Guia de resolução (🤖 Resolver) ----------
   // Mostra a solução do método das camadas etapa por etapa. Dois jeitos:
   // "assistir" (o cubo faz sozinho, devagar) e "fazer" (a criança aperta o botão destacado).
-  function criarGuia({ caixa, cubo, botoes, etapas, modo = "assistir", podeFazer = true, aoFim, aoSair }) {
+  function criarGuia({ caixa, cubo, botoes, etapas, modo = "assistir", podeFazer = true, aoFim, aoSair, metodo = "camadas" }) {
+    if (botoes.adicionar) botoes.adicionar([...new Set(etapas.flatMap(e => e.movs.map(mv => mv.face)).filter(f => !LISTA_FACES.includes(f)))]);
     const sessao = Motor.sessaoAtual();
     const vivo = () => sessao === Motor.sessaoAtual() && document.contains(caixa);
     // Cada etapa vira uma lista de giros simples (U2 = U U) para dar para fazer pelos botões
@@ -434,7 +439,7 @@
       acabou = true;
       botoes.marcarProximo(null);
       titulo.textContent = "🎉 Cubo resolvido!";
-      explica.textContent = "Esses foram os passos do método das camadas.";
+      explica.textContent = metodo === "cfop" ? "Esses foram os passos do CFOP: cruz, 4 pares do F2L, 2 olhadas da OLL e 2 da PLL." : "Esses foram os passos do método das camadas.";
       alg.innerHTML = "";
       ctrl.innerHTML = "";
       ctrl.append(chip("✖️ Fechar", sair));
@@ -460,7 +465,8 @@
   const formatar = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
   // ---------- Modo livre ----------
-  function livre(area, N) {
+  // `auto: "cfop"`: já embaralha e mostra a solução pelo CFOP (cartão do modo Avançado)
+  function livre(area, N, { auto } = {}) {
     const { tela, topo, cubo } = montarTela(area, N);
     const historico = [];
     let embaralhado = false, inicio = 0, jogadas = 0, relogio = null, guia = null;
@@ -477,7 +483,7 @@
       chip("🎲 Embaralhar", embaralhar),
       chip("↩️ Desfazer", () => { if (guia || cubo.ocupado() || !historico.length) return; const mv = historico.pop(); jogadas++; cubo.girar(inverso([mv])[0]); atualizar(); }),
       chip("⏪ Voltar tudo", voltarTudo),
-      chip("🤖 Resolver", abrirGuia));
+      chip("🤖 Resolver", () => escolherMetodo()));
     const guiaEl = document.createElement("div");
     topo.append(barra, guiaEl);
 
@@ -518,16 +524,32 @@
       atualizar();
     }
 
-    function abrirGuia() {
+    // No 3×3 dá para escolher o método: camadas (o das lições) ou CFOP (o dos mais rápidos)
+    function escolherMetodo() {
       if (guia || cubo.ocupado()) return;
       if (cubo.pronto()) { Motor.falar("O cubo já está resolvido! Toque em embaralhar primeiro."); return; }
-      const r = resolver(N, cubo.estado());
+      if (N !== 3) return abrirGuia("camadas");
+      guiaEl.className = "cubo-guia";
+      guiaEl.innerHTML = "";
+      const t = Object.assign(document.createElement("div"), { className: "guia-titulo", textContent: "Resolver com qual método?" });
+      const ac = document.createElement("div");
+      ac.className = "cubo-acoes";
+      ac.append(chip("🪜 Camadas", () => abrirGuia("camadas")), chip("🚀 CFOP", () => abrirGuia("cfop")),
+        chip("✖️", () => { guiaEl.innerHTML = ""; guiaEl.className = ""; }));
+      guiaEl.append(t, ac);
+      Motor.falar("Resolver com qual método? Camadas, o que você aprendeu, ou CFOP, o dos mais rápidos?");
+    }
+
+    function abrirGuia(metodo = "camadas") {
+      if (guia || cubo.ocupado()) return;
+      if (cubo.pronto()) { Motor.falar("O cubo já está resolvido! Toque em embaralhar primeiro."); return; }
+      const r = resolver(N, cubo.estado(), metodo);
       if (!r.ok) { Motor.falar("Não consegui encontrar a solução. Tente embaralhar de novo."); return; }
       clearInterval(relogio);
       inicio = 0; embaralhado = false;
       barra.style.display = "none";
       guia = criarGuia({
-        caixa: guiaEl, cubo, botoes, etapas: r.etapas,
+        caixa: guiaEl, cubo, botoes, etapas: r.etapas, metodo,
         aoFim: () => { historico.length = 0; },
         aoSair: () => { guia = null; guiaEl.innerHTML = ""; guiaEl.className = ""; barra.style.display = ""; historico.length = 0; jogadas = 0; atualizar(); },
       });
@@ -548,6 +570,10 @@
       inicio = 0;
     }
 
+    if (auto === "cfop") {
+      embaralhar().then(() => { if (document.contains(tela)) abrirGuia("cfop"); });
+      return;
+    }
     Motor.falar(`Cubo ${N} por ${N}. Arraste o dedo para girar o cubo e use os botões para girar as faces. Toque em embaralhar para começar, e em resolver para eu te ensinar!`);
   }
 
@@ -745,6 +771,7 @@
     caixa.append(
       botaoModo("🗺️", "Conheça os métodos", () => telaMetodos(area)),
       botaoModo("🔤", "Notação dos avançados", () => demoNotacaoAvancada(area)),
+      botaoModo("🤖", "Resolver pelo CFOP", () => livre(area, 3, { auto: "cfop" })),
       ...CUBO_AVANCADO.map(g => botaoModo(g.icone, g.titulo, () => listaGrupo(area, g))),
       botaoModo("🎯", "Qual é o caso?", () => quizCasos(area)));
     area.appendChild(caixa);
@@ -979,19 +1006,22 @@
   }
 
   // Resolução completa: embaralha e mostra todos os passos do método das camadas
-  async function demoResolucao(area, N) {
-    const d = telaDemo(area, N, N === 3 ? "🪜 Os 7 passos" : "🧊 Resolvendo o 2×2");
+  async function demoResolucao(area, N, metodo = "camadas") {
+    const cfop = metodo === "cfop";
+    const d = telaDemo(area, N, cfop ? "🚀 Resolvendo pelo CFOP" : N === 3 ? "🪜 Os 7 passos" : "🧊 Resolvendo o 2×2");
     const { cubo, narrar, vivo, legenda, algEl, acoes } = d;
     const botoes = { marcarProximo: () => {} };
-    await narrar(N === 3
+    await narrar(cfop
+      ? "Vou embaralhar e resolver pelo CFOP: a cruz, os 4 pares do F2L, duas olhadas da OLL e duas da PLL. Repare como usa bem menos movimentos!"
+      : N === 3
       ? "Vou embaralhar o cubo e resolver pelo método das camadas, que tem 7 passos. Preste atenção em cada um!"
       : "O cubo 2 por 2 só tem cantos. Vou embaralhar e resolver em 3 passos.");
     for (const mv of embaralhamento(N)) { if (!vivo()) return; await cubo.girar(mv, 100); }
-    const r = resolver(N, cubo.estado());
+    const r = resolver(N, cubo.estado(), metodo);
     if (!r.ok || !vivo()) return;
     legenda.remove(); algEl.remove(); acoes.innerHTML = "";
     const guiaEl = document.createElement("div");
     d.topo.appendChild(guiaEl);
-    criarGuia({ caixa: guiaEl, cubo, botoes, etapas: r.etapas, podeFazer: false, aoSair: () => listaDemos(area) });
+    criarGuia({ caixa: guiaEl, cubo, botoes, etapas: r.etapas, podeFazer: false, metodo, aoSair: () => listaDemos(area) });
   }
 })();

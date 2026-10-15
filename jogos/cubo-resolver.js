@@ -100,23 +100,26 @@ const CuboMat = (() => {
   const idxRot = M => INDICE.get(chave(M));
   const I0 = idxRot(I);
 
-  // 18 giros: cada face × (horário, anti-horário, duplo)
-  const MOVS = LISTA_FACES.flatMap(face => [1, -1, 2].map(vezes => ({ face, vezes })));
-  const idxMov = mv => LISTA_FACES.indexOf(mv.face) * 3 + (mv.vezes === 1 ? 0 : mv.vezes === -1 ? 1 : 2);
+  // Giros que o resolvedor conhece: os 18 das faces (cada face × horário, anti-horário, duplo)
+  // e, depois deles, os de duas camadas e do meio que os algoritmos do CFOP usam (r, f, M)
+  const MOVS = [...LISTA_FACES, "r", "f", "M"].flatMap(face => [1, -1, 2].map(vezes => ({ face, vezes })));
+  const IDX_MOV = new Map(MOVS.map((mv, i) => [texto(mv), i]));
+  const idxMov = mv => IDX_MOV.get(texto(mv));
 
   // ---------- Resolvedor (método das camadas) ----------
   // `pecas`: [{ home: [x, y, z], rot: matriz }] (o estado atual do cubo). Devolve
   // { ok, etapas: [{ nome, texto, movs }] } com os giros de cada etapa do método.
-  function resolver(N, pecas) {
+  // `metodo`: "camadas" (o das lições) ou "cfop" (só no 3×3: cruz, F2L, OLL e PLL em 4 olhadas)
+  function resolver(N, pecas, metodo = "camadas") {
     const m = (N - 1) / 2;
     const homes = pecas.map(p => p.home);
     const P = homes.length;
     // Tabela: giro × peça × rotação atual → nova rotação
     const tab = MOVS.map(mv => {
-      const f = FACES[mv.face], k = "xyz".indexOf(f.eixo), M = matriz(f.eixo, grausDe(mv));
+      const g = GIROS[mv.face], k = "xyz".indexOf(g.eixo), M = matriz(g.eixo, grausDe(mv));
       return homes.map(h => Int8Array.from(ROTS, (R) => {
         const pos = aplicarV(R, h);
-        return pos[k] === f.lado * m ? idxRot(mult(M, R)) : idxRot(R);
+        return g.pega(pos[k], m) ? idxRot(mult(M, R)) : idxRot(R);
       }));
     });
     const aplicar = (s, mi) => { const n = new Int8Array(P); for (let p = 0; p < P; p++) n[p] = tab[mi][p][s[p]]; return n; };
@@ -140,7 +143,10 @@ const CuboMat = (() => {
       B: { F: "B", R: "L", B: "F", L: "R" },
       L: { F: "L", R: "F", B: "R", L: "B" },
     };
-    const naVista = (alg, v) => alg.split(" ").map(t => (VISTAS[v][t[0]] || t[0]) + t.slice(1)).join(" ");
+    const naVista = (alg, v) => alg.split(" ").map(t => {
+      const c = t[0], nova = VISTAS[v][c.toUpperCase()];
+      return (nova ? (c === c.toUpperCase() ? nova : nova.toLowerCase()) : c) + t.slice(1);
+    }).join(" ");
     const seq = alg => ler(alg).map(idxMov);
 
     const etapas = [];
@@ -203,6 +209,124 @@ const CuboMat = (() => {
         fazer(caminho);
       }
       fecharEtapa("Cruz branca", "Primeiro, a cruz branca embaixo: cada peça do meio com branco vai para baixo, combinando com a cor do centro do lado.");
+      if (metodo === "cfop") return cfop();
+    }
+
+    // ---------- CFOP: F2L (pares), OLL e PLL em 4 olhadas ----------
+    // Busca em profundidade crescente numa lista de itens { a: algoritmo, rot?: caso, g?: gatilho };
+    // devolve os itens escolhidos (sem aplicar) ou null.
+    // `maxAlgs`: quantos algoritmos (itens que não são só U) o caminho pode ter
+    function procurar(itens, pronto, max, maxAlgs = Infinity) {
+      const xs = itens.map(it => ({ ...it, sq: seq(it.a), ehU: /^U/.test(it.a) && it.a.split(" ").length === 1 }));
+      const caminho = [];
+      function dfs(st, prof, ultimoU, algs) {
+        if (pronto(st)) return true;
+        if (!prof) return false;
+        for (const x of xs) {
+          if (x.ehU && ultimoU) continue;
+          if (!x.ehU && algs >= maxAlgs) continue;
+          caminho.push(x);
+          if (dfs(aplicarSeq(st, x.sq), prof - 1, x.ehU, algs + (x.ehU ? 0 : 1))) return true;
+          caminho.pop();
+        }
+        return false;
+      }
+      for (let d = 0; d <= max; d++) if (dfs(s, d, false, 0)) return caminho.slice();
+      return null;
+    }
+    function cfop() {
+      const VISTA = (x, z) => (x > 0 ? (z > 0 ? "F" : "R") : (z > 0 ? "L" : "B"));
+      const Us = ["U", "U'", "U2"].map(a => ({ a }));
+      const tipo = h => h.filter(v => v === 0).length;
+      const mantidas = homes.map((h, p) => p).filter(p => tipo(homes[p]) === 1 && homes[p][1] === m); // a cruz
+      const casosDe = id => (typeof CUBO_AVANCADO === "undefined" ? [] : CUBO_AVANCADO.find(g => g.id === id).itens.map(it => ({ a: it.alg, rot: it })));
+      const tamanho = cam => cam.reduce((t, x) => t + x.sq.length, 0);
+
+      // ---- F2L: cada canto branco vai junto com o seu meio, como um par ----
+      const SLOTS = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([x, z]) => ({
+        x, z, v: VISTA(x, z),
+        canto: homes.findIndex(h => h[0] === x && h[1] === m && h[2] === z),
+        meio: homes.findIndex(h => h[0] === x && h[1] === 0 && h[2] === z),
+        lugar: `${z > 0 ? "frente" : "trás"}, à ${x > 0 ? "direita" : "esquerda"}`,
+        cores: `${z > 0 ? "verde" : "azul"} e ${x > 0 ? "laranja" : "vermelho"}`,
+      }));
+      const GATILHOS = ["R U R'", "R U' R'", "R U2 R'", "F' U F", "F' U' F", "F' U2 F"];
+      // A peça está encaixada em outro lugar (não em cima, nem no lugar dela)
+      const presaFora = (p, q) => { const o = pos(s, p); return o[1] >= 0 && !(sinal(o[0]) === q.x && sinal(o[2]) === q.z); };
+      const prontoPar = q => st => resolvida(st, q.canto) && resolvida(st, q.meio) && mantidas.every(p => resolvida(st, p));
+      // Plano B (raro): o par do jeito do método das camadas, canto e depois meio
+      function parPeloMetodoDasCamadas(q) {
+        let o = pos(s, q.canto);
+        if (o[1] > 0 && !resolvida(s, q.canto)) fazer(naVista("R U R' U'", VISTA(sinal(o[0]), sinal(o[2]))));
+        for (let k = 0; k < 4; k++) { o = pos(s, q.canto); if (resolvida(s, q.canto) || (sinal(o[0]) === q.x && sinal(o[2]) === q.z)) break; fazer("U"); }
+        for (let k = 0; k < 6 && !resolvida(s, q.canto); k++) fazer(naVista("R U R' U'", q.v));
+        const DIREITA = "U R U' R' U' F' U F", ESQUERDA = "U' L' U L U F U' F'";
+        o = pos(s, q.meio);
+        if (!resolvida(s, q.meio) && o[1] === 0) fazer(naVista(DIREITA, VISTA(sinal(o[0]), sinal(o[2]))));
+        if (prontoPar(q)(s)) return true;
+        for (const u of ["", "U", "U2", "U'"]) for (const v of ["F", "R", "B", "L"]) for (const alg of [DIREITA, ESQUERDA]) {
+          const sq = seq((u + " " + naVista(alg, v)).trim());
+          if (prontoPar(q)(aplicarSeq(s, sq))) { fazer(sq); return true; }
+        }
+        return false;
+      }
+      const restantes = SLOTS.slice();
+      let numPar = 0, tirou = 0;
+      while (restantes.length) {
+        let melhor = null;
+        for (const q of restantes) {
+          if (prontoPar(q)(s)) { melhor = { q, cam: [] }; break; }
+          if (presaFora(q.canto, q) || presaFora(q.meio, q)) continue;
+          const cam = procurar([...Us, ...GATILHOS.map(g => ({ a: naVista(g, q.v), g }))], prontoPar(q), 5);
+          if (cam && (!melhor || tamanho(cam) < tamanho(melhor.cam))) melhor = { q, cam };
+        }
+        if (!melhor && tirou < 4) {
+          // As peças dos pares que faltam estão presas em outros lugares: tira uma de lá
+          tirou++;
+          const q = restantes[0], presa = presaFora(q.canto, q) ? q.canto : q.meio, o = pos(s, presa);
+          if (o[1] >= 0) { fazer(naVista("R U R'", VISTA(sinal(o[0]), sinal(o[2])))); continue; }
+        }
+        let q, txt;
+        if (melhor) {
+          q = melhor.q;
+          melhor.cam.forEach(x => fazer(x.sq));
+          const gs = [...new Set(melhor.cam.filter(x => x.g).map(x => x.g))];
+          txt = melhor.cam.length
+            ? `O canto branco com ${q.cores} e o seu meio se juntam em cima e descem juntos para o lugar da ${q.lugar}. Gatilhos usados: ${gs.join(", ")}.`
+            : `O par branco com ${q.cores} já estava no lugar!`;
+        } else {
+          q = restantes[0];
+          if (!parPeloMetodoDasCamadas(q)) return { ok: false, etapas };
+          txt = "Este par estava escondido: colocamos primeiro o canto e depois o meio, como no método das camadas.";
+        }
+        if (!prontoPar(q)(s)) return { ok: false, etapas };
+        restantes.splice(restantes.indexOf(q), 1);
+        mantidas.push(q.canto, q.meio);
+        tirou = 0;
+        fecharEtapa(`F2L: par ${++numPar} de 4`, txt);
+      }
+
+      // ---- OLL e PLL: cada olhada procura o caso (com U antes e depois) entre os algoritmos ----
+      const cima = homes.map((h, p) => p).filter(p => homes[p][1] === -m && tipo(homes[p]) < 2);
+      const meiosCima = cima.filter(p => tipo(homes[p]) === 1), cantosCima = cima.filter(p => tipo(homes[p]) === 0);
+      const olhada = (id, nome, intro, pronto, max) => {
+        const cam = procurar([...Us, ...casosDe(id)], pronto, max, 1); // um algoritmo por olhada
+        if (!cam) return false;
+        cam.forEach(x => fazer(x.sq));
+        const casos = cam.filter(x => x.rot).map(x => x.rot);
+        const txt = casos.length
+          ? `${intro} ${casos.map(c => `Caso ${c.nome}: ${c.reconhecer} Algoritmo: ${c.alg}.`).join(" Depois, ")}`
+          : `${intro} Já estava pronto${cam.length ? ": só girar a camada de cima" : ""}!`;
+        fecharEtapa(nome, txt);
+        return true;
+      };
+      const tudo = st => st.every((r, p) => tipo(homes[p]) === 2 || r === I0);
+      if (!olhada("oll1", "OLL 1: cruz amarela", "Primeira olhada da camada de cima: a cruz amarela.", st => meiosCima.every(p => amareloEmCima(st, p)), 4)) return { ok: false, etapas };
+      if (!olhada("oll2", "OLL 2: face amarela", "Segunda olhada: toda a face de cima amarela.", st => cima.every(p => amareloEmCima(st, p)), 3)) return { ok: false, etapas };
+      if (!olhada("pll1", "PLL 1: cantos", "Terceira olhada: os cantos de cima no lugar.", st => cantosCima.every(p => resolvida(st, p)), 4)) return { ok: false, etapas };
+      if (!olhada("pll2", "PLL 2: meios", "Última olhada: os meios de cima no lugar.", tudo, 3)) return { ok: false, etapas };
+      etapas.forEach(e => { e.movs = simplificar(e.movs); });
+      return { ok: true, etapas };
     }
 
     // ---- 2. Cantos de baixo (algoritmo mágico) ----
