@@ -14,6 +14,61 @@
   const CORES = { vermelho: "#e63946", azul: "#2f80ed", amarelo: "#ffc21a", verde: "#2a9d55", rosa: "#ff70a6", laranja: "#f77f00" };
   const ICONE = '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="12" fill="#7cc6fe"/><path d="M2 40h60v22H2z" fill="#6cc35a"/><path d="M24 40h16l14 22H10z" fill="#555"/><path d="M31 44h2v5h-2zM30.5 53h3v6h-3z" fill="#fff"/><g transform="translate(14 22)"><rect x="2" y="10" width="32" height="12" rx="4" fill="#e63946"/><path d="M8 10l4-8h12l4 8z" fill="#c1121f"/><path d="M10 9l3-5h10l3 5z" fill="#9ad1ff"/><rect x="3" y="13" width="5" height="3" rx="1" fill="#ffd60a"/><rect x="28" y="13" width="5" height="3" rx="1" fill="#ffd60a"/><circle cx="9" cy="23" r="4" fill="#222"/><circle cx="27" cy="23" r="4" fill="#222"/></g></svg>';
 
+  // Ronco do motor: som contínuo que acompanha a velocidade, com troca de marcha. `lado`: -1 a 1,
+  // para cada carro da corrida a dois soar do seu lado. tocar(pv, acelerando): pv de 0 a 1 (ou
+  // null para silenciar, na pausa ou com o som desligado); parar() desliga de vez.
+  function somDeMotor(lado = 0) {
+    const a = Motor.audio();
+    if (!a) return { tocar() {}, parar() {} };
+    const t0 = a.currentTime;
+    const saida = a.createGain();
+    saida.gain.value = 0;
+    if (lado && a.createStereoPanner) { const p = a.createStereoPanner(); p.pan.value = lado; saida.connect(p).connect(a.destination); }
+    else saida.connect(a.destination);
+    // explosões do motor: o volume pulsa no ritmo das rotações
+    const pulso = a.createGain();
+    pulso.gain.value = 0.65;
+    pulso.connect(saida);
+    const filtro = a.createBiquadFilter();
+    filtro.type = "lowpass"; filtro.Q.value = 3; filtro.frequency.value = 350;
+    filtro.connect(pulso);
+    const o1 = a.createOscillator(), o2 = a.createOscillator(), g2 = a.createGain();
+    o1.type = "sawtooth"; o2.type = "square"; g2.gain.value = 0.45;
+    o1.connect(filtro); o2.connect(g2).connect(filtro);
+    const lfo = a.createOscillator(), lfoG = a.createGain();
+    lfoG.gain.value = 0.35;
+    lfo.connect(lfoG).connect(pulso.gain);
+    [o1, o2, lfo].forEach(o => o.start(t0));
+    let parado = false;
+    // app em segundo plano: o laço do jogo para, então o ronco também cala
+    const aoEsconder = () => { if (document.hidden) saida.gain.setTargetAtTime(0, a.currentTime, 0.03); };
+    document.addEventListener("visibilitychange", aoEsconder);
+    return {
+      tocar(pv, acelerando) {
+        if (parado || document.hidden) return;
+        const t = a.currentTime;
+        if (pv == null) { saida.gain.setTargetAtTime(0, t, 0.05); return; }
+        pv = Math.max(0, Math.min(1, pv));
+        // 4 marchas: a rotação sobe em cada uma e cai um pouco na troca
+        const m = Math.min(3, Math.floor(pv * 4)), rot = pv * 4 - m;
+        const f = 42 + m * 10 + rot * 62 + (acelerando && pv < 0.05 ? 12 : 0);
+        o1.frequency.setTargetAtTime(f, t, 0.06);
+        o2.frequency.setTargetAtTime(f / 2, t, 0.06);
+        lfo.frequency.setTargetAtTime(f / 2, t, 0.06);
+        filtro.frequency.setTargetAtTime(260 + pv * 900 + (acelerando ? 350 : 0), t, 0.08);
+        saida.gain.setTargetAtTime((0.045 + pv * 0.05) * (acelerando ? 1.25 : 0.85), t, 0.08);
+      },
+      parar() {
+        if (parado) return;
+        parado = true;
+        document.removeEventListener("visibilitychange", aoEsconder);
+        const t = a.currentTime;
+        saida.gain.setTargetAtTime(0, t, 0.05);
+        [o1, o2, lfo].forEach(o => { try { o.stop(t + 0.4); } catch (e) { /* ok */ } });
+      },
+    };
+  }
+
   JOGOS.push({
     id: "carros", teclas: true,
     nome: "Pé na Estrada",
@@ -339,6 +394,7 @@
     };
     const jog = DOIS ? [novoJogador(1, cor1, T.ent), novoJogador(2, cor2, T.ent2)] : [novoJogador(1, cor1, T.ent)];
     if (DOIS) { jog[0].x = -0.5; jog[1].x = 0.5; }
+    const roncos = jog.map((j, i) => somDeMotor(DOIS ? (i ? 0.6 : -0.6) : 0));
     const usadas = jog.map(j => j.hex);
     const outrasCores = Object.values(CORES).filter(c => !usadas.includes(c));
     const rivais = outrasCores.slice(0, DOIS ? 4 : 5).map((cor, k) => ({
@@ -445,7 +501,6 @@
         r.z += r.v * dt;
         if (r.z >= VOLTA) { r.z -= VOLTA; r.voltas++; if (r.voltas >= TOTAL_VOLTAS && !r.chegou) r.chegou = ++chegada; }
       });
-      if (pvMax > 0) Motor.nota(70 + pvMax * 90, { dur: 0.05, tipo: "sawtooth", vol: 0.012 }); // ronco do motor
       // 2 jogadores: depois que o primeiro chega, o outro tem um tempinho para terminar
       if (DOIS && fase === "correndo" && primeiraChegada && tempo - primeiraChegada > 25) terminarDois();
     }
@@ -645,11 +700,15 @@
     // ----- Laço -----
     let ultimo = performance.now(), infoAnt = "";
     function laco(t) {
-      if (!vivo()) { T.desligar(); return; }
+      if (!vivo()) { T.desligar(); roncos.forEach(r => r.parar()); return; }
       const dt = Math.min(0.05, (t - ultimo) / 1000);
       ultimo = t;
       if (DOIS) lerControles();
       if (!pausado) atualizar(dt);
+      jog.forEach((j, i) => {
+        const quieto = pausado || !Motor.somLigado() || (fase === "fim" && j.vel < VMAX * 0.05);
+        roncos[i].tocar(quieto ? null : j.vel / VMAX, !!(j.ent.acel || (NIVEL.auto && fase === "correndo" && !j.ent.freio)));
+      });
       desenhar();
       let inf;
       if (DOIS) inf = `👥 Corrida a dois|${jog.map(j => `${j.emoji} ${lugarDe(j)}º`).join(" ")}|⏱️ ${relogio()}`;
@@ -950,11 +1009,13 @@
     }
 
     let ultimo = performance.now(), infoAnt = "";
+    const ronco = somDeMotor();
     function laco(t) {
-      if (!vivo()) { T.desligar(); return; }
+      if (!vivo()) { T.desligar(); ronco.parar(); return; }
       const dt = Math.min(0.05, (t - ultimo) / 1000);
       ultimo = t;
       if (!pausado) atualizar(dt);
+      ronco.tocar(pausado || !Motor.somLigado() ? null : Math.abs(eu.v) / NIVEL.vmax, !!(T.ent.acel || T.ent.freio && eu.v < 0));
       desenhar();
       const dist = Math.round(Math.hypot(missao.alvo.x - eu.x, missao.alvo.y - eu.y) / 12);
       const inf = `${missao.fase === "buscar" ? "📦 Buscar" : "🏠 Entregar"}: ${dist} m|✅ ${entregas} entregas|⭐ ${moedas}`;

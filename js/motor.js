@@ -762,7 +762,7 @@ const Motor = (() => {
   }
 
   return {
-    novaSessao, sessaoAtual, depois, falar, tocarSom, somLigado, alternarSom, botaoSom, ajustarTextos, nota, ruido, ploc, tim,
+    novaSessao, sessaoAtual, depois, falar, tocarSom, somLigado, audio, alternarSom, botaoSom, ajustarTextos, nota, ruido, ploc, tim,
     embaralhar, sortear, aleatorio, maiuscula, elogio, ehPequeno, opcoesNumericas,
     animar, comemorar, criarCartao, desenharTexto, botaoCanto, telaFim, arrastavel, comEmoji, comTexto,
     telaOpcoes, escolherModo, modoExplorar, modoQuiz, modoCade, modoMontar, modoArrastar, vocabulario,
