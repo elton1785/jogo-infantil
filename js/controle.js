@@ -45,10 +45,14 @@ const Controle = (() => {
 
   // ---------- Destaque ----------
   let atual = null;
+  let lembrado = null; // { tipo, x, y } do último destacado: para achar o substituto se ele sumir
+  const tipoDe = el => el.tagName + "." + (el.classList[0] || "");
   function focar(el) {
     if (atual) atual.classList.remove("foco-tv");
     atual = el;
-    if (!el) return;
+    if (!el) { lembrado = null; return; }
+    const [x, y] = centro(el.getBoundingClientRect());
+    lembrado = { tipo: tipoDe(el), x, y };
     if (el.tabIndex < 0 && !/^(BUTTON|A|INPUT)$/.test(el.tagName)) el.setAttribute("tabindex", "-1");
     el.classList.add("foco-tv");
     try { el.focus({ preventScroll: true }); } catch (e) { /* ok */ }
@@ -56,13 +60,30 @@ const Controle = (() => {
   }
   const focoValido = () => atual && document.contains(atual) && candidatos().includes(atual) ? atual : null;
   const centro = r => [r.left + r.width / 2, r.top + r.height / 2];
+  // Jogos que redesenham a tela a cada jogada (tabuleiros) trocam o elemento destacado por um
+  // novo igual: o destaque passa para o do mesmo tipo no mesmo lugar, em vez de pular para o início.
+  function substituto(lista) {
+    if (!lembrado || (atual && document.contains(atual))) return null;
+    let melhor = null, menor = Infinity;
+    lista.forEach(el => {
+      if (tipoDe(el) !== lembrado.tipo) return;
+      const r = el.getBoundingClientRect();
+      const d = Math.hypot(r.left + r.width / 2 - lembrado.x, r.top + r.height / 2 - lembrado.y);
+      if (d < menor && d < Math.max(24, Math.min(r.width, r.height))) { menor = d; melhor = el; }
+    });
+    return melhor;
+  }
 
   // Vai para o elemento mais perto na direção pedida (o desalinhamento pesa mais que a distância)
   function mover([dx, dy]) {
     const lista = candidatos();
     if (!lista.length) return;
-    const daqui = focoValido();
-    if (!daqui) { focar(primeiro(lista)); return; }
+    let daqui = focoValido();
+    if (!daqui) {
+      daqui = substituto(lista);
+      if (!daqui) { focar(primeiro(lista)); return; }
+      focar(daqui);
+    }
     const r = daqui.getBoundingClientRect(), [cx, cy] = centro(r);
     let melhor = null, nota = Infinity;
     lista.forEach(el => {
@@ -151,6 +172,8 @@ const Controle = (() => {
       const lista = candidatos();
       if (!lista.length) return;
       const janela = document.querySelector(".ajuda-fundo, .sobreposta, .mundo-mochila, .arcade-fim, .blocos-fim, .plat-fim, .fim");
+      const mesmo = !janela && !jogoTeclas() && substituto(lista);
+      if (mesmo) { focar(mesmo); return; }
       if (jogoTeclas() && !janela) return; // durante a partida, nada de destaque
       focar(primeiro(lista));
     }, 120);
