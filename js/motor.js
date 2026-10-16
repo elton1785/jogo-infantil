@@ -108,6 +108,8 @@ const Motor = (() => {
   let ctx = null;
   function audio() {
     if (!ctx) {
+      // iPhone: som de "player" toca mesmo com a chave do silencioso (Safari 16.4+); quem cala é o 🔇 do app
+      try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) { /* ok */ }
       const C = window.AudioContext || window.webkitAudioContext;
       if (!C) return null;
       ctx = new C();
