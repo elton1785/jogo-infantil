@@ -51,7 +51,7 @@ const App = (() => {
   function mostrar(id) {
     telaAtual = id;
     telas.forEach(t => t.classList.toggle("ativa", t.id === id));
-    btnVoltar.style.display = id === "idades" ? "none" : "block";
+    btnVoltar.style.display = id === "idades" ? "none" : "flex";
     if (id !== "jogo") { Ajuda.fechar(); btnAjuda.hidden = true; cabecalho.hidden = true; }
   }
 
@@ -249,6 +249,8 @@ const App = (() => {
     if (faixaAtual) lembrar("ultimo", `${jogo.id}|${faixaAtual.id}`);
     history.pushState({ tela: "jogo" }, "");
     Motor.novaSessao();
+    [...areaJogo.childNodes].forEach(n => ignorar.add(n)); // telas do jogo anterior não entram no caminho
+    pilha = [];
     areaJogo.innerHTML = "";
     mostrar("jogo");
     Motor.falar(jogo.nome);
@@ -289,14 +291,49 @@ const App = (() => {
     cabecalho.querySelector("small").textContent = (CATALOGO[jogo.id] || [])[1] || "";
   }
 
+  // ---------- Voltar dentro do jogo ----------
+  // Telas de escolha do jogo (modos, opções, temas) por onde a criança passou: o voltar refaz o
+  // caminho uma de cada vez (Inglês → Explorar → Cores, e o voltar leva a Explorar, depois ao Inglês,
+  // depois à lista de jogos). Guarda o próprio elemento da tela, com os seus cliques, quando o jogo
+  // o tira da área para mostrar a tela seguinte.
+  const MENU = ".modos, .opcoes-jogo, .plat-menu";
+  let pilha = [];
+  const ignorar = new WeakSet(); // telas tiradas pelo próprio voltar (ou ao trocar de jogo)
+  const assinatura = el => el.className + "|" + el.textContent;
+  new MutationObserver(registros => {
+    registros.forEach(r => r.removedNodes.forEach(n => {
+      if (n.nodeType === 1 && !ignorar.has(n) && n.matches(MENU) && !areaJogo.contains(n)) pilha.push(n);
+    }));
+    // O jogo voltou sozinho a uma tela já guardada (ex.: "Opções" no fim da partida): o caminho para ali
+    const atual = [...areaJogo.children].find(e => e.matches(MENU));
+    if (atual) {
+      const s = assinatura(atual), i = pilha.findIndex(n => assinatura(n) === s);
+      if (i >= 0) pilha.length = i;
+    }
+  }).observe(areaJogo, { childList: true });
+  function voltarNoJogo() {
+    const tela = pilha.pop();
+    if (!tela) return false;
+    Ajuda.fechar();
+    [...areaJogo.childNodes].forEach(n => ignorar.add(n));
+    Motor.novaSessao(); // para sons, falas e laços da tela que sai
+    areaJogo.replaceChildren(tela);
+    return true;
+  }
+
   function voltar() {
     if (telaAtual === "jogo") noFavoritos ? abrirFavoritos() : abrirMenu(noLivre ? LIVRE : faixaAtual);
     else abrirIdades();
   }
 
   // Botão 🏠 e "voltar" do celular fazem a mesma coisa: voltam uma tela.
-  window.addEventListener("popstate", () => { if (telaAtual !== "idades") voltar(); });
+  // Dentro do jogo, primeiro refaz o caminho pelas telas de escolha (o histórico continua no jogo).
+  window.addEventListener("popstate", () => {
+    if (telaAtual === "jogo" && voltarNoJogo()) { history.pushState({ tela: "jogo" }, ""); return; }
+    if (telaAtual !== "idades") voltar();
+  });
   btnVoltar.addEventListener("click", () => {
+    if (telaAtual === "jogo" && voltarNoJogo()) return;
     if (history.state && history.state.tela) history.back(); // o popstate acima faz a navegação
     else voltar();
   });
@@ -311,28 +348,68 @@ const App = (() => {
   else if (ultima) abrirMenu(ultima);
 })();
 
+// Puxar a tela para baixo (no início e nos menus): procura versão nova e já instala.
+// Sem service worker (arquivo aberto direto), só recarrega a página.
+const Puxar = (() => {
+  const aviso = document.getElementById("puxar");
+  const seta = aviso.querySelector(".seta");
+  const texto = aviso.querySelector(".texto");
+  const LIMITE = 70; // quanto puxar (já com a resistência) para valer
+  let procurar = async () => { location.reload(); return "recarregando"; };
+  let inicioY = null, ocupado = false, pronto = false;
+  const posicionar = y => { aviso.style.transform = `translate(-50%, calc(-110% + ${y}px))`; };
+  function esconder() {
+    aviso.classList.remove("puxando", "pronto", "girando");
+    aviso.style.transform = "";
+    pronto = false;
+  }
+  async function executar() {
+    ocupado = true;
+    aviso.classList.remove("puxando", "pronto");
+    aviso.classList.add("girando");
+    seta.textContent = "🔄";
+    texto.textContent = "Procurando versão nova...";
+    posicionar(LIMITE);
+    const r = await procurar();
+    aviso.classList.remove("girando");
+    seta.textContent = { nova: "🆕", ok: "✅", off: "📵" }[r] || "⏳";
+    texto.textContent = { nova: "Atualizando...", ok: "Você já tem a versão mais nova!", off: "Sem internet agora" }[r] || "Carregando...";
+    if (r === "ok" || r === "off") setTimeout(() => { esconder(); ocupado = false; }, 2200);
+  }
+  document.querySelectorAll(".tela .rolagem").forEach(rol => {
+    rol.addEventListener("touchstart", e => {
+      inicioY = !ocupado && rol.scrollTop <= 0 && e.touches.length === 1 ? e.touches[0].clientY : null;
+    }, { passive: true });
+    rol.addEventListener("touchmove", e => {
+      if (inicioY == null) return;
+      const d = (e.touches[0].clientY - inicioY) * 0.5; // resistência: o aviso anda menos que o dedo
+      if (d <= 4 || rol.scrollTop > 0) { esconder(); return; }
+      aviso.classList.add("puxando");
+      seta.textContent = "⬇️";
+      pronto = d >= LIMITE;
+      aviso.classList.toggle("pronto", pronto);
+      texto.textContent = pronto ? "Solte para atualizar" : "Puxe para procurar versão nova";
+      posicionar(Math.min(d, LIMITE + 20));
+    }, { passive: true });
+    const soltar = () => {
+      if (inicioY == null) return;
+      inicioY = null;
+      if (pronto) executar(); else esconder();
+    };
+    rol.addEventListener("touchend", soltar);
+    rol.addEventListener("touchcancel", soltar);
+  });
+  // A função de procurar devolve "nova" (e instala), "ok" (já é a mais nova) ou "off" (sem internet)
+  return { definir(fn) { procurar = fn; } };
+})();
+
 // App instalável e offline (PWA). Só funciona em https ou localhost — abrindo o
 // arquivo direto ou por http na rede local, o jogo roda normal, só não instala.
-// Quando há versão nova, aparece o botão "Atualizar" (só fora dos jogos).
-// No menu ficam o número da versão e o botão "Procurar atualização".
+// Quando há versão nova, aparece o aviso "Nova versão!" (só fora dos jogos): tocar nele ou
+// puxar a tela para baixo atualiza.
 if ("serviceWorker" in navigator) {
   const botao = document.getElementById("btn-atualizar");
-  const rodape = document.getElementById("rodape-versao");
-  const numVersao = document.getElementById("num-versao");
-  const procurarBtn = document.getElementById("btn-procurar");
   let atualizando = false;
-
-  // Pergunta ao service worker que controla a página qual é a versão
-  // (versões antigas não respondem: aí o botão aparece sem o número)
-  function mostrarVersao() {
-    const sw = navigator.serviceWorker.controller;
-    if (!sw) return;
-    rodape.hidden = false;
-    const canal = new MessageChannel();
-    canal.port1.onmessage = e => { numVersao.textContent = `Versão ${e.data}`; };
-    sw.postMessage("versao", [canal.port2]);
-  }
-  mostrarVersao();
 
   navigator.serviceWorker.register("sw.js").then(reg => {
     // Só é atualização se já havia uma versão rodando (na 1ª instalação não há o que avisar)
@@ -342,29 +419,26 @@ if ("serviceWorker" in navigator) {
       return true;
     };
     avisar();
-
-    // Botão do menu: procura agora e diz o resultado
-    procurarBtn.addEventListener("click", async () => {
-      procurarBtn.disabled = true;
-      procurarBtn.textContent = "⏳ Procurando...";
-      try { await reg.update(); } catch (e) { /* sem internet */ }
-      const nova = reg.installing;
-      if (nova) await new Promise(r => { nova.addEventListener("statechange", () => { if (nova.state !== "installing") r(); }); setTimeout(r, 15000); });
-      procurarBtn.textContent = avisar() ? "🆕 Tem versão nova!" : navigator.onLine ? "✅ Já é a mais nova" : "📵 Sem internet";
-      setTimeout(() => { procurarBtn.textContent = "🔄 Procurar atualização"; procurarBtn.disabled = false; }, 3000);
-    });
-    reg.addEventListener("updatefound", () => {
-      const nova = reg.installing;
-      if (nova) nova.addEventListener("statechange", () => { if (nova.state === "installed") avisar(); });
-    });
-    botao.addEventListener("click", () => {
+    function instalar() {
       if (!reg.waiting) return location.reload();
       atualizando = true;
       botao.textContent = "⏳ Atualizando...";
       reg.waiting.postMessage("atualizar");
       // Se a troca demorar (versão antiga ainda ocupada), recarrega mesmo assim
       setTimeout(() => location.reload(), 4000);
+    }
+    Puxar.definir(async () => {
+      try { await reg.update(); } catch (e) { /* sem internet */ }
+      const nova = reg.installing;
+      if (nova) await new Promise(r => { nova.addEventListener("statechange", () => { if (nova.state !== "installing") r(); }); setTimeout(r, 15000); });
+      if (avisar()) { instalar(); return "nova"; }
+      return navigator.onLine ? "ok" : "off";
     });
+    reg.addEventListener("updatefound", () => {
+      const nova = reg.installing;
+      if (nova) nova.addEventListener("statechange", () => { if (nova.state === "installed") avisar(); });
+    });
+    botao.addEventListener("click", instalar);
     // Procura versão nova ao voltar para o app e a cada 30 minutos
     const procurar = () => reg.update().catch(() => {}).then(avisar);
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") procurar(); });

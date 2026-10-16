@@ -58,14 +58,14 @@
 </section>
 
 <!-- Voltar uma tela (o "voltar" do celular faz o mesmo) -->
-<button class="canto voltar" id="btn-voltar" aria-label="Voltar" style="display:none">🏠</button>
+<button class="canto voltar" id="btn-voltar" aria-label="Voltar" style="display:none"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M27 10 13 24l14 14" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 24h20" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg></button>
 <!-- Como jogar (só nos jogos que têm explicação, na tela inicial do jogo) -->
 <button class="canto ajuda" id="btn-ajuda" aria-label="Como jogar" hidden>❓</button>
 
 <!-- Aparece quando há uma versão nova do app (não aparece durante os jogos) -->
-<button id="btn-atualizar" hidden>🆕 Nova versão! Toque para atualizar</button>
-<!-- Número da versão e botão para procurar atualização (só nos menus) -->
-<div id="rodape-versao" hidden><span id="num-versao"></span><button id="btn-procurar">🔄 Procurar atualização</button></div>
+<button id="btn-atualizar" hidden>🆕 Nova versão! Toque aqui ou puxe a tela para baixo</button>
+<!-- Puxar a tela para baixo (no início e nos menus) procura e instala versão nova -->
+<div id="puxar" aria-live="polite"><span class="seta">⬇️</span><span class="texto"></span></div>
 
 <script src="js/motor.js"></script>
 <script src="js/dados.js"></script>

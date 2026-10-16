@@ -12,3 +12,22 @@
   .carros-metade .carros-botao.acel { width: 58px; height: 58px; }
   .carros-metade .carros-botao small { font-size: 10px; }
 }
+
+/* ---------- Pé na Estrada: pista na tela inteira, informações por cima da corrida ---------- */
+.carros-tela { inset: 0; display: block; }
+.carros-tela .arcade-palco { position: absolute; inset: 0; border-radius: 0; box-shadow: none; }
+/* faixa fina no alto, transparente, à direita do 🏠 */
+.carros-tela .arcade-topo { position: absolute; z-index: 3; top: max(6px, env(safe-area-inset-top, 0px)); left: calc(72px + env(safe-area-inset-left, 0px)); right: calc(6px + env(safe-area-inset-right, 0px));
+  min-height: 0; padding: 0; gap: 6px; flex-wrap: nowrap; align-items: flex-start; pointer-events: none; }
+.carros-tela .arcade-topo .chip { pointer-events: auto; min-width: 44px; min-height: 44px; font-size: 20px; padding: 2px 6px; background: rgba(255,255,255,.72); }
+.carros-tela .arcade-info { gap: 4px; flex-wrap: wrap; align-content: flex-start; }
+.carros-tela .arcade-info span { background: rgba(0,0,0,.42); color: #fff; font-size: 14px; padding: 3px 8px; border-radius: 10px; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+/* 🏠 menor durante a corrida, para sobrar pista */
+#jogo.ativa:has(.carros-tela) ~ #btn-voltar { top: max(6px, env(safe-area-inset-top, 0px)); left: calc(6px + env(safe-area-inset-left, 0px)); width: 56px; height: 56px; font-size: 28px; }
+/* botões de dirigir longe das bordas do aparelho (gesto do iPhone, entalhe) */
+.carros-tela > .arcade-palco > .carros-pad { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+.carros-tela > .arcade-palco > .carros-pad.volante { left: calc(10px + env(safe-area-inset-left, 0px)); }
+.carros-tela > .arcade-palco > .carros-pad.pedais { right: calc(10px + env(safe-area-inset-right, 0px)); }
+@media (max-height: 450px) { .carros-tela .arcade-info span { font-size: 13px; padding: 2px 7px; } }
+/* corrida a dois: cada metade já mostra o seu placar, então a faixa de cima fica só com os botões */
+.carros-tela.carros-dois .arcade-info { visibility: hidden; }

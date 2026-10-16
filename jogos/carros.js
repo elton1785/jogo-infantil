@@ -35,10 +35,14 @@
     const o1 = a.createOscillator(), o2 = a.createOscillator(), g2 = a.createGain();
     o1.type = "sawtooth"; o2.type = "square"; g2.gain.value = 0.45;
     o1.connect(filtro); o2.connect(g2).connect(filtro);
+    // alto-falante de celular quase não toca graves: um "rosnado" mais agudo leva o ronco até ele
+    const o3 = a.createOscillator(), g3 = a.createGain();
+    o3.type = "square"; g3.gain.value = 0.22;
+    o3.connect(g3).connect(filtro);
     const lfo = a.createOscillator(), lfoG = a.createGain();
     lfoG.gain.value = 0.35;
     lfo.connect(lfoG).connect(pulso.gain);
-    [o1, o2, lfo].forEach(o => o.start(t0));
+    [o1, o2, o3, lfo].forEach(o => o.start(t0));
     let parado = false;
     // app em segundo plano: o laço do jogo para, então o ronco também cala
     const aoEsconder = () => { if (document.hidden) saida.gain.setTargetAtTime(0, a.currentTime, 0.03); };
@@ -54,9 +58,10 @@
         const f = 42 + m * 10 + rot * 62 + (acelerando && pv < 0.05 ? 12 : 0);
         o1.frequency.setTargetAtTime(f, t, 0.06);
         o2.frequency.setTargetAtTime(f / 2, t, 0.06);
+        o3.frequency.setTargetAtTime(f * 3.01, t, 0.06);
         lfo.frequency.setTargetAtTime(f / 2, t, 0.06);
-        filtro.frequency.setTargetAtTime(260 + pv * 900 + (acelerando ? 350 : 0), t, 0.08);
-        saida.gain.setTargetAtTime((0.045 + pv * 0.05) * (acelerando ? 1.25 : 0.85), t, 0.08);
+        filtro.frequency.setTargetAtTime(650 + pv * 1500 + (acelerando ? 450 : 0), t, 0.08);
+        saida.gain.setTargetAtTime((0.07 + pv * 0.06) * (acelerando ? 1.25 : 0.85), t, 0.08);
       },
       parar() {
         if (parado) return;
@@ -64,7 +69,7 @@
         document.removeEventListener("visibilitychange", aoEsconder);
         const t = a.currentTime;
         saida.gain.setTargetAtTime(0, t, 0.05);
-        [o1, o2, lfo].forEach(o => { try { o.stop(t + 0.4); } catch (e) { /* ok */ } });
+        [o1, o2, o3, lfo].forEach(o => { try { o.stop(t + 0.4); } catch (e) { /* ok */ } });
       },
     };
   }
@@ -137,7 +142,7 @@
       b.className = "carros-botao " + (classe || "");
       b.innerHTML = rotulo;
       const liga = v => { alvo[chave] = v; b.classList.toggle("apertado", v); };
-      b.addEventListener("pointerdown", e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (er) { /* ok */ } liga(true); });
+      b.addEventListener("pointerdown", e => { e.preventDefault(); Motor.audio(); try { b.setPointerCapture(e.pointerId); } catch (er) { /* ok */ } liga(true); });
       ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => liga(false)));
       b.addEventListener("contextmenu", e => e.preventDefault());
       return b;
@@ -1025,12 +1030,12 @@
     // Tela dividida: placar de cada jogador no topo da sua metade
     function placarVista(j, W) {
       const lugar = lugarDe(j);
-      const t = `${j.emoji} Jogador ${j.n} · ${MEDALHA(lugar)} ${lugar}º de ${TOTAL_CARROS} · Volta ${Math.min(j.voltas + 1, TOTAL_VOLTAS)}/${TOTAL_VOLTAS}`;
+      const t = `${j.emoji} Jogador ${j.n} · ${MEDALHA(lugar)} ${lugar}º de ${TOTAL_CARROS} · Volta ${Math.min(j.voltas + 1, TOTAL_VOLTAS)}/${TOTAL_VOLTAS} · ⏱️ ${relogio()}`;
       let tam = 17;
       ctx.font = `bold ${tam}px Fredoka, sans-serif`;
       let l = ctx.measureText(t).width;
       if (l > W - 40) { tam = Math.max(12, Math.floor(tam * (W - 40) / l)); ctx.font = `bold ${tam}px Fredoka, sans-serif`; l = ctx.measureText(t).width; }
-      const pw = l + 24, ph = tam + 16, px = W / 2 - pw / 2, py = 8;
+      const pw = l + 24, ph = tam + 16, px = W / 2 - pw / 2, py = 62; // abaixo dos botões 🏠 ⏸️ 🔊, que ficam por cima da corrida
       ctx.fillStyle = "rgba(255,255,255,.92)"; ctx.beginPath(); ctx.roundRect(px, py, pw, ph, ph / 2); ctx.fill();
       ctx.strokeStyle = j.hex; ctx.lineWidth = 3; ctx.stroke();
       ctx.fillStyle = "#222"; ctx.textAlign = "center"; ctx.textBaseline = "middle";

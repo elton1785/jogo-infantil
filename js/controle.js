@@ -39,7 +39,7 @@ const Controle = (() => {
     // Janelas por cima (mochila do Mundo, fim de partida...): só o que está nelas
     const janela = !ajuda && raiz.querySelector(".mundo-mochila, .arcade-fim, .blocos-fim, .plat-fim");
     let lista = janela ? els.filter(el => janela.contains(el)) : els;
-    if (!ajuda && !janela) ["btn-ajuda", "btn-atualizar", "btn-procurar"].forEach(id => { const b = document.getElementById(id); if (b) lista.push(b); });
+    if (!ajuda && !janela) ["btn-ajuda", "btn-atualizar"].forEach(id => { const b = document.getElementById(id); if (b) lista.push(b); });
     return [...new Set(lista)].filter(visivel);
   }
 
