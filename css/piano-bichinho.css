@@ -1,0 +1,298 @@
+/* ===================== Piano e Cantigas ===================== */
+.pn-tela { position: absolute; inset: 10px 12px calc(30px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 10px; }
+.pn-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-left: 84px; min-height: 72px; }
+.pn-topo .chip, .pn-fim .chip { min-height: 48px; font-size: 17px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px; }
+.pn-topo .chip:disabled { opacity: .4; }
+.pn-ic { font-size: 1.25em; line-height: 1; }
+.pn-instrumentos, .pn-extras { display: flex; flex-wrap: wrap; gap: 6px; }
+.pn-titulo { font-size: clamp(19px, 3vw, 26px); font-weight: bold; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,.2); margin-right: auto; }
+.pn-redondo { min-width: 52px; justify-content: center; }
+
+.pn-palco { flex: 1 1 auto; min-height: 56px; position: relative; border-radius: 22px; background: rgba(255,255,255,.45); box-shadow: 0 6px 0 rgba(0,0,0,.08); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.pn-nota-grande { font-size: clamp(40px, 13vh, 120px); font-weight: bold; line-height: 1; color: #fff; text-shadow: 0 5px 0 rgba(0,0,0,.15); }
+.pn-pulo { animation: pn-pulo .45s ease; }
+@keyframes pn-pulo { 30% { transform: scale(1.15) translateY(-8px); } 70% { transform: scale(.97); } }
+.pn-notinha { position: absolute; font-size: 36px; font-weight: bold; pointer-events: none; text-shadow: 0 2px 0 rgba(255,255,255,.8); animation: pn-notinha 1.2s ease-out forwards; translate: -50% 0; }
+@keyframes pn-notinha { to { transform: translate(var(--dx), -110px) rotate(15deg); opacity: 0; } }
+
+.pn-caixa-teclado { flex: 0 0 auto; height: clamp(170px, 50vh, 430px); padding: 10px; border-radius: 24px; background: linear-gradient(#4a3b66, #2a2040); box-shadow: 0 8px 0 rgba(0,0,0,.2); }
+.pn-teclado { position: relative; display: flex; gap: 4px; width: 100%; height: 100%; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.pn-tecla { cursor: pointer; touch-action: none; }
+.pn-teclado.piano .branca { flex: 1; position: relative; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; border-radius: 4px 4px 14px 14px; background: linear-gradient(#ffffff 0%, #f6f2ea 82%, #e7dfd2 100%); box-shadow: inset 0 -8px 0 rgba(0,0,0,.08); transition: background .1s, transform .08s; }
+.pn-teclado .pn-nome { pointer-events: none; }
+.pn-teclado.piano .branca .pn-nome { background: var(--cor); color: #fff; border-radius: 999px; width: 86%; max-width: 74px; text-align: center; font-weight: bold; font-size: clamp(14px, 2.4vw, 24px); padding: 5px 0; text-shadow: 0 1px 2px rgba(0,0,0,.3); box-shadow: 0 3px 0 rgba(0,0,0,.12); }
+.pn-teclado.sem-nomes .pn-nome { font-size: 0 !important; width: 50% !important; max-width: 34px !important; aspect-ratio: 1; padding: 0 !important; }
+.pn-teclado.piano .branca.pn-ap { background: linear-gradient(#fff, color-mix(in srgb, var(--cor) 45%, #fff)); transform: translateY(3px); box-shadow: inset 0 -3px 0 rgba(0,0,0,.1); }
+.pn-teclado.piano .branca.tocando { background: linear-gradient(#fff, color-mix(in srgb, var(--cor) 55%, #fff)); }
+.pn-teclado .preta { position: absolute; top: 0; height: 58%; z-index: 2; border-radius: 0 0 9px 9px; background: linear-gradient(#45455a, #14141c); box-shadow: 0 4px 0 rgba(0,0,0,.35), inset 0 -6px 0 rgba(255,255,255,.08); }
+.pn-teclado .preta .pn-nome { display: none; }
+.pn-teclado .preta.pn-ap { background: linear-gradient(#45455a, color-mix(in srgb, var(--cor) 60%, #222)); transform: translateY(2px); }
+/* tecla que brilha (siga a luz) */
+.pn-teclado .branca.luz { background: linear-gradient(color-mix(in srgb, var(--cor) 25%, #fff), color-mix(in srgb, var(--cor) 70%, #fff)); animation: pn-luz 1s ease-in-out infinite; z-index: 1; }
+.pn-teclado .branca.luz::before { content: "👇"; position: absolute; top: 6px; left: 50%; translate: -50% 0; font-size: clamp(24px, 4vw, 40px); animation: pn-dedo .8s ease-in-out infinite; pointer-events: none; }
+@keyframes pn-luz { 50% { box-shadow: 0 0 0 5px var(--cor), 0 0 26px 8px var(--cor); } }
+@keyframes pn-dedo { 50% { transform: translateY(8px); } }
+/* xilofone */
+.pn-caixa-teclado:has(.xilo) { background: linear-gradient(#b5793f, #8a5328); }
+.pn-teclado.xilo { align-items: center; gap: 6px; background: linear-gradient(transparent 22%, #5d3517 22%, #5d3517 27%, transparent 27%, transparent 73%, #5d3517 73%, #5d3517 78%, transparent 78%); }
+.pn-teclado.xilo .branca { flex: 1; height: var(--alt); position: relative; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: linear-gradient(90deg, color-mix(in srgb, var(--cor) 80%, #000) 0%, var(--cor) 25%, color-mix(in srgb, var(--cor) 70%, #fff) 50%, var(--cor) 75%, color-mix(in srgb, var(--cor) 80%, #000) 100%); box-shadow: 0 5px 0 rgba(0,0,0,.3); transition: transform .08s, filter .1s; }
+.pn-teclado.xilo .branca::after, .pn-teclado.xilo .branca::before { content: ""; position: absolute; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #9aa0a6); }
+.pn-teclado.xilo .branca::before { top: 10%; }
+.pn-teclado.xilo .branca::after { bottom: 10%; }
+.pn-teclado.xilo .pn-nome { color: #fff; font-weight: bold; font-size: clamp(14px, 2.4vw, 24px); text-shadow: 0 2px 2px rgba(0,0,0,.45); writing-mode: horizontal-tb; }
+.pn-teclado.xilo .branca.pn-ap { transform: translateY(4px) scale(.98); filter: brightness(1.2); box-shadow: 0 1px 0 rgba(0,0,0,.3); }
+.pn-teclado.xilo .branca.tocando { filter: brightness(1.25); }
+.pn-teclado.xilo .branca.luz { animation: pn-luz-xilo 1s ease-in-out infinite; z-index: 1; }
+.pn-teclado.xilo .branca.luz::before { content: "👇"; top: -2px; width: auto; height: auto; background: none; font-size: clamp(24px, 4vw, 40px); margin: 0; translate: -50% -100%; animation: pn-dedo .8s ease-in-out infinite; }
+@keyframes pn-luz-xilo { 50% { box-shadow: 0 0 0 5px #fff, 0 0 26px 10px var(--cor); filter: brightness(1.2); } }
+/* a tecla que brilha também dá o pulinho de "é aqui!" */
+.pn-teclado.piano .branca.luz.pn-pulo { animation: pn-pulo .45s ease, pn-luz 1s ease-in-out infinite; }
+.pn-teclado.xilo .branca.luz.pn-pulo { animation: pn-pulo .45s ease, pn-luz-xilo 1s ease-in-out infinite; }
+
+/* letra em karaokê */
+.pn-palco-letra { padding: 6px 12px; }
+.pn-letra { width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pn-linha { font-size: clamp(22px, min(5vw, 7vh), 46px); font-weight: bold; color: #3a3a3a; line-height: 1.25; min-height: 1.25em; }
+.pn-linha.prox { font-size: clamp(15px, min(3vw, 4vh), 26px); opacity: .5; }
+.pn-sil { display: inline-block; transition: color .15s, transform .15s; }
+.pn-sil.cantada { color: var(--cor); }
+.pn-sil.agora { color: var(--cor); transform: scale(1.25) translateY(-3px); text-shadow: 0 3px 0 rgba(0,0,0,.12); }
+.pn-linha.prox .pn-sil { color: inherit; transform: none; }
+
+/* fim */
+.pn-fim .medalha-fim { font-size: 64px; }
+.pn-fim-botoes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.pn-fim .chip.jogar { font-size: 20px; padding: 8px 22px; }
+
+/* jogo de ritmo */
+.pn-ritmo-palco { flex: 1; min-height: 0; position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 6px 0 rgba(0,0,0,.15); }
+.pn-ritmo-palco canvas { position: absolute; left: 0; top: 0; display: block; touch-action: none; -webkit-user-select: none; user-select: none; }
+.pn-ritmo-info { display: flex; gap: 8px; margin-right: auto; }
+.pn-ritmo-info > div { background: rgba(255,255,255,.92); border-radius: 16px; padding: 6px 14px; font-weight: bold; font-size: 22px; }
+.pn-ritmo-info > div:empty { display: none; }
+.pn-letra-ritmo { position: absolute; top: 8px; left: 50%; translate: -50% 0; width: auto; max-width: calc(100% - 20px); background: rgba(255,255,255,.88); border-radius: 16px; padding: 4px 14px; pointer-events: none; }
+.pn-letra-ritmo .pn-linha { font-size: clamp(17px, 2.6vw, 26px); }
+.pn-letra-ritmo .pn-linha.prox { display: none; }
+.pn-ritmo-cabeca { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 12px; }
+.pn-ritmo-titulo { font-size: 24px; font-weight: bold; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,.2); }
+
+/* celular em pé: botões só com o ícone */
+@media (max-width: 600px) {
+  .pn-livre .pn-rot, .pn-cantiga .pn-extras .chip:not(.ativo) .pn-rot { display: none; }
+  .pn-topo .chip { padding: 6px 10px; }
+  .pn-titulo { width: 100%; }
+  .pn-caixa-teclado { padding: 8px 6px; }
+  .pn-teclado { gap: 3px; }
+}
+/* celular deitado: botões numa coluna à esquerda */
+@media (orientation: landscape) and (max-height: 520px) {
+  .pn-tela { display: grid; grid-template-columns: 150px 1fr; grid-template-rows: auto 1fr; gap: 8px; }
+  .pn-topo { grid-row: 1 / 3; flex-direction: column; flex-wrap: nowrap; align-items: stretch; padding: 80px 0 0; min-height: 0; overflow-y: auto; gap: 6px; }
+  .pn-topo .chip { min-height: 40px; font-size: 15px; justify-content: center; }
+  .pn-instrumentos { display: grid; grid-template-columns: 1fr 1fr; }
+  .pn-instrumentos .pn-rot, .pn-livre .pn-extras .pn-rot { display: none; }
+  .pn-livre .pn-extras { display: grid; grid-template-columns: 1fr 1fr; }
+  .pn-livre .pn-extras .chip:first-child { grid-column: 1 / -1; }
+  .pn-nota-grande { font-size: 46px; }
+  .pn-extras { flex-direction: column; }
+  .pn-titulo { font-size: 17px; text-align: center; margin: 0; }
+  .pn-caixa-teclado { height: auto; min-height: 0; grid-column: 2; }
+  .pn-palco { grid-column: 2; min-height: 40px; }
+  .pn-livre .pn-palco { max-height: 70px; }
+  .pn-cantiga .pn-palco { max-height: 110px; }
+  .pn-ritmo-palco { grid-column: 2; grid-row: 1 / 3; }
+  .pn-ritmo-info { flex-direction: column; margin: 0; }
+  .pn-ritmo-info > div { text-align: center; font-size: 18px; }
+  .pn-ritmo .pn-extras { flex-direction: row; justify-content: center; }
+  .pn-ritmo .pn-redondo { min-width: 42px; padding: 4px; }
+}
+
+/* ===================== Bichinho Virtual ===================== */
+.bv-tela { position: absolute; inset: 10px 12px calc(30px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "topo" "barras" "quarto" "painel"; gap: 8px; }
+.bv-topo { grid-area: topo; display: flex; align-items: center; gap: 8px; padding-left: 84px; min-height: 72px; }
+.bv-nome { font-size: clamp(22px, 4vw, 32px); font-weight: bold; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,.2); margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.bv-topo .chip { min-height: 50px; min-width: 52px; font-size: 20px; }
+.bv-barras { grid-area: barras; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; background: rgba(255,255,255,.88); border-radius: 18px; padding: 8px 12px; box-shadow: 0 4px 0 rgba(0,0,0,.08); }
+.bv-barra { display: flex; align-items: center; gap: 6px; cursor: pointer; min-width: 0; border-radius: 12px; }
+.bv-barra-icone { font-size: 24px; line-height: 1; }
+.bv-trilho { flex: 1; height: 14px; border-radius: 8px; background: #ece5da; overflow: hidden; box-shadow: inset 0 2px 0 rgba(0,0,0,.08); min-width: 20px; }
+.bv-cheio { height: 100%; border-radius: 8px; transition: width .6s, background .6s; }
+.bv-barra.baixa .bv-barra-icone { animation: bv-chama-icone 1.2s ease-in-out infinite; }
+@keyframes bv-chama-icone { 50% { transform: scale(1.25); } }
+
+.bv-quarto { grid-area: quarto; position: relative; overflow: hidden; border-radius: 24px; min-height: 0; box-shadow: 0 6px 0 rgba(0,0,0,.12); touch-action: none;
+  background: linear-gradient(#ffe9cf 0, #ffdcb5 66%, #c98b55 66%, #d9a06a 100%); }
+.bv-quarto::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34%; background: repeating-linear-gradient(90deg, transparent 0 58px, rgba(0,0,0,.08) 58px 61px); pointer-events: none; }
+.bv-quarto.noite { background: linear-gradient(#d9cbe8 0, #c7b6dd 66%, #9a7356 66%, #a8805f 100%); }
+.bv-janela { position: absolute; left: 5%; top: 8%; width: 20%; max-width: 150px; aspect-ratio: 1.1; border: 7px solid #fff; border-radius: 14px; background: linear-gradient(#69bdfc, #c4e8ff); box-shadow: 0 4px 0 rgba(0,0,0,.1); overflow: hidden; }
+.bv-janela::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 5px; margin-left: -2.5px; background: #fff; }
+.bv-astro::after { content: "☀️"; position: absolute; right: 8%; top: 6%; font-size: clamp(18px, 4vh, 38px); }
+.bv-nuvem::after { content: "☁️"; position: absolute; left: 4%; bottom: 8%; font-size: clamp(16px, 3.4vh, 32px); }
+.noite .bv-janela { background: linear-gradient(#141a4a, #3b3f8c); }
+.noite .bv-astro::after { content: "🌙"; }
+.noite .bv-nuvem::after { content: "✨"; }
+.bv-prateleira { position: absolute; right: 5%; top: 12%; font-size: clamp(18px, 3.6vh, 34px); border-bottom: 8px solid #b07a46; padding: 0 8px 2px; border-radius: 0 0 4px 4px; }
+.bv-planta { position: absolute; right: 3%; bottom: 6%; font-size: clamp(34px, 9vh, 76px); line-height: 1; }
+.bv-tapete { position: absolute; left: 50%; bottom: 3%; width: min(70%, 420px); height: 14%; translate: -50% 0; border-radius: 50%; background: radial-gradient(#ffc4dd 0 40%, #ff8dbb 41% 60%, #ffb3d1 61%); opacity: .85; }
+.bv-bicho { position: absolute; left: 50%; bottom: 3%; height: 82%; max-width: 76%; aspect-ratio: 200 / 210; translate: -50% 0; transition: transform .5s ease; cursor: pointer; z-index: 2; }
+.bv-bicho { transition: transform .5s ease, scale .5s ease; transform-origin: 50% 50%; }
+.modo-dentes .bv-bicho { scale: 1.7; transform-origin: 50% 40%; }
+.modo .icone .bv-svg { width: min(26vw, 120px) !important; height: min(26vw, 120px) !important; }
+.modos.pequenos .modo .icone .bv-svg { width: min(18vw, 84px) !important; height: min(18vw, 84px) !important; }
+.bv-bicho .bv-svg, .bv-nome-fig .bv-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.bv-escuro { position: absolute; inset: 0; z-index: 3; background: radial-gradient(circle at 80% 15%, rgba(255,240,170,.25), transparent 30%), rgba(12,14,48,.78); opacity: 0; pointer-events: none; transition: opacity 1s; }
+.bv-lua { position: absolute; right: 8%; top: 8%; font-size: clamp(34px, 9vh, 70px); filter: drop-shadow(0 0 14px #ffe9a8); }
+.apagado .bv-escuro { opacity: 1; }
+.bv-efeitos { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.bv-balao { position: absolute; top: 4%; left: 50%; translate: -50% 0; z-index: 6; max-width: min(84%, 520px); width: max-content; background: #fff; border-radius: 20px; padding: 8px 18px; font-size: clamp(16px, min(4vw, 3.2vh), 24px); font-weight: bold; text-align: center; box-shadow: 0 5px 0 rgba(0,0,0,.12); opacity: 0; transition: opacity .3s; pointer-events: none; }
+.bv-balao::after { content: ""; position: absolute; left: 50%; bottom: -12px; margin-left: -10px; border: 10px solid transparent; border-top-color: #fff; border-bottom: 0; }
+.bv-balao.ativo { opacity: 1; }
+.bv-surge { animation: bv-surge .35s ease; }
+@keyframes bv-surge { from { transform: scale(.7); } 70% { transform: scale(1.06); } }
+
+/* humor do bichinho */
+.bv-svg .palpebras, .bv-svg .olhos-fechados, .bv-svg .olhos-felizes, .bv-svg .sobrancelhas, .bv-svg .lagrima,
+.bv-svg .boca-triste, .bv-svg .boca-aberta, .bv-svg .boca-comendo, .bv-svg .boca-o, .bv-svg .boca-dentes, .bv-svg .doente-extra { display: none; }
+.bv-svg .bochechas { fill: #ff9eb5; opacity: .65; }
+.bv-svg .bv-sujeira { opacity: var(--sujo, 0); transition: opacity .6s; }
+.bv-svg .olhos-abertos { animation: bv-pisca 4.6s infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes bv-pisca { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+.bv-svg .bv-rabo { animation: bv-abana 1.4s ease-in-out infinite; }
+@keyframes bv-abana { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(9deg); } }
+.bv-svg .bv-respira { animation: bv-respira 3.2s ease-in-out infinite; transform-origin: 100px 200px; }
+@keyframes bv-respira { 50% { transform: scale(1.015, 1.03); } }
+.bv-svg .bv-cabeca { animation: bv-cabeca 7s ease-in-out infinite; transform-origin: 100px 125px; }
+@keyframes bv-cabeca { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-3deg); } 60% { transform: rotate(2.5deg); } }
+.bv-svg .mastiga { animation: bv-mastiga .28s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes bv-mastiga { 50% { transform: scaleY(.35); } }
+.bv-svg .mancha { transition: opacity .3s; }
+.bv-svg .mancha.limpa { opacity: 0; }
+[data-humor="feliz"] .bv-rabo, [data-humor="rindo"] .bv-rabo, [data-humor="comendo"] .bv-rabo { animation-duration: .45s; }
+[data-humor="triste"] .boca-sorriso, [data-humor="sono"] .boca-sorriso, [data-humor="dormindo"] .boca-sorriso, [data-humor="doente"] .boca-sorriso,
+[data-humor="rindo"] .boca-sorriso, [data-humor="comendo"] .boca-sorriso, [data-humor="dentes"] .boca-sorriso { display: none; }
+[data-humor="triste"] .sobrancelhas, [data-humor="triste"] .lagrima, [data-humor="triste"] .boca-triste { display: inline; }
+[data-humor="triste"] .bv-cabeca { animation: none; transform: rotate(-5deg) translateY(4px); }
+[data-humor="triste"] .bv-rabo { animation: none; }
+[data-humor="sono"] .palpebras, [data-humor="sono"] .boca-o { display: inline; }
+[data-humor="dormindo"] .olhos-abertos { display: none; }
+[data-humor="dormindo"] .olhos-fechados, [data-humor="dormindo"] .boca-o { display: inline; }
+[data-humor="dormindo"] .bv-rabo, [data-humor="dormindo"] .bv-cabeca { animation: none; }
+[data-humor="dormindo"] .bv-respira { animation-duration: 4.5s; }
+[data-humor="doente"] .palpebras, [data-humor="doente"] .boca-triste, [data-humor="doente"] .doente-extra { display: inline; }
+[data-humor="doente"] .bochechas { fill: #9bd38a; }
+[data-humor="doente"] .bv-svg { filter: saturate(.75); }
+[data-humor="rindo"] .olhos-abertos, [data-humor="comendo"] .olhos-abertos { display: none; }
+[data-humor="rindo"] .olhos-felizes, [data-humor="rindo"] .boca-aberta, [data-humor="comendo"] .olhos-felizes, [data-humor="comendo"] .boca-comendo { display: inline; }
+[data-humor="dentes"] .boca-dentes { display: inline; }
+.bv-pulinho > .bv-svg { animation: bv-pulinho .5s ease; }
+@keyframes bv-pulinho { 40% { transform: translateY(-14%) scale(1.03, .97); } 70% { transform: translateY(0) scale(1.05, .93); } }
+.bv-pulao > .bv-svg { animation: bv-pulao .6s ease; }
+@keyframes bv-pulao { 45% { transform: translateY(-45%) rotate(-8deg); } }
+.bv-treme > .bv-svg { animation: bv-treme .25s linear; }
+@keyframes bv-treme { 25% { transform: translateX(-2%); } 75% { transform: translateX(2%); } }
+.bv-espreguica > .bv-svg { animation: bv-espreguica 1s ease; transform-origin: bottom; }
+@keyframes bv-espreguica { 40% { transform: scale(.95, 1.1); } }
+
+/* efeitos */
+.bv-efeito { position: absolute; translate: -50% -50%; font-size: 34px; line-height: 1; }
+.bv-sobe { animation: bv-sobe 1.4s ease-out forwards; }
+.bv-sobe.pequeno { font-size: 22px; }
+@keyframes bv-sobe { from { transform: scale(.5); opacity: 1; } 30% { transform: scale(1.1); } to { transform: translateY(-90px) scale(1); opacity: 0; } }
+.bv-zzz { font-weight: bold; color: #fff; font-size: 30px; text-shadow: 0 2px 6px rgba(0,0,0,.4); animation: bv-zzz 1.6s ease-out forwards; z-index: 6; }
+@keyframes bv-zzz { from { transform: scale(.4); opacity: 0; } 20% { opacity: 1; } to { transform: translate(50px, -80px) scale(1.3); opacity: 0; } }
+.bv-ferramenta-uso { font-size: 64px; animation: bv-uso 1.5s ease forwards; }
+@keyframes bv-uso { from { transform: scale(.3); } 25% { transform: scale(1.15) rotate(-10deg); } 60% { transform: scale(1) rotate(8deg); opacity: 1; } to { opacity: 0; } }
+.bv-espuma { position: absolute; translate: -50% -50%; border-radius: 50%; z-index: 5; background: radial-gradient(circle at 35% 35%, #fff, #eef7ff 60%, #cfe6ff); box-shadow: 0 0 0 2px rgba(255,255,255,.7); animation: bv-nasce .25s ease; }
+@keyframes bv-nasce { from { transform: scale(.2); } }
+.bv-bolha { position: absolute; width: 30px; height: 30px; margin: -15px; border-radius: 50%; pointer-events: auto; cursor: pointer; border: 2px solid rgba(255,255,255,.95); background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.95), rgba(160,220,255,.3) 45%, rgba(255,170,230,.3)); animation: bv-bolha 3s linear forwards; }
+@keyframes bv-bolha { to { transform: translate(var(--dx), -220px); opacity: .2; } }
+.bv-bolha.estoura { animation: none; transform: scale(1.6); opacity: 0; transition: .18s; }
+.bv-gota { position: absolute; top: -30px; font-size: 24px; animation: bv-cai 1s linear forwards; opacity: 0; }
+@keyframes bv-cai { from { transform: translateY(0); opacity: 1; } to { transform: translateY(70vh); opacity: .8; } }
+.bv-quarto.chuveiro::after { content: "🚿"; position: absolute; top: 2%; left: 50%; translate: -50% 0; font-size: 56px; z-index: 6; }
+.bv-ferramenta { position: absolute; z-index: 7; font-size: 46px; translate: -30% -70%; pointer-events: none; display: none; }
+.bv-ferramenta.ativa { display: block; }
+.bv-bola { position: absolute; z-index: 4; font-size: clamp(30px, 7vh, 48px); translate: -50% -50%; pointer-events: none; }
+.bv-doutor { position: absolute; left: 5%; bottom: 5%; font-size: clamp(60px, 18vh, 130px); line-height: 1; animation: bv-surge .5s ease; }
+.bv-voando { position: fixed; z-index: 50; font-size: 56px; line-height: 1; transform: translate(-50%, -50%); transition: left .5s ease-in, top .5s ease-in, transform .5s; pointer-events: none; }
+.bv-aviso-conq { position: absolute; left: 50%; top: 40%; translate: -50% -50%; z-index: 20; background: #fff3b0; border: 4px solid #ffd166; border-radius: 22px; padding: 14px 24px; font-size: clamp(20px, 4vw, 30px); font-weight: bold; box-shadow: 0 10px 30px rgba(0,0,0,.25); animation: bv-surge .4s ease; text-align: center; max-width: 90%; }
+
+/* painel de ações */
+.bv-painel { grid-area: painel; display: grid; gap: 8px; }
+.bv-painel.principal { grid-template-columns: repeat(6, 1fr); }
+.bv-painel.banho, .bv-painel.dentes, .bv-painel.brincar, .bv-painel.medico, .bv-painel.dormir { grid-auto-flow: column; grid-auto-columns: 1fr; }
+.bv-painel.comida { grid-template-columns: 1fr auto; align-items: stretch; }
+.bv-acao { border: none; border-radius: 20px; background: var(--cor); box-shadow: 0 6px 0 rgba(0,0,0,.18); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 4px; min-height: 80px; cursor: pointer; font-family: inherit; color: #2b2233; transition: transform .1s; }
+.bv-acao:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.18); }
+.bv-acao-icone { font-size: clamp(32px, min(10vh, 8vw), 54px); line-height: 1.1; }
+.bv-acao-nome { font-size: 16px; font-weight: bold; }
+.bv-acao.chama { animation: bv-chama 1s ease-in-out infinite; }
+@keyframes bv-chama { 50% { box-shadow: 0 6px 0 rgba(0,0,0,.18), 0 0 0 5px #fff, 0 0 20px 8px #ffd166; transform: scale(1.04); } }
+.bv-acao.feito { opacity: .45; animation: none; }
+.bv-acao.pronto { max-width: 130px; justify-self: end; width: 100%; }
+.bv-comidas { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-content: center; }
+.bv-comida { font-size: clamp(30px, 5vh, 42px); width: clamp(52px, 8vw, 70px); height: clamp(56px, 9vh, 74px); border: none; border-radius: 18px; background: #fff; box-shadow: 0 5px 0 rgba(0,0,0,.15); cursor: pointer; padding: 0; line-height: 1; }
+.bv-comida:active { transform: translateY(3px); }
+
+/* dar o nome */
+.bv-nome-tela { position: absolute; inset: 84px 12px calc(30px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; overflow-y: auto; }
+.bv-nome-esq, .bv-nome-dir { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.bv-nome-fig { width: clamp(90px, 17vh, 170px); aspect-ratio: 200 / 210; }
+.bv-nome-pergunta { font-size: clamp(20px, 4vw, 28px); font-weight: bold; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,.2); }
+.bv-nome-caixa { font-size: clamp(26px, 5vw, 38px); font-weight: bold; background: #fff; border-radius: 18px; min-width: 240px; min-height: 58px; padding: 4px 22px; text-align: center; border: 4px dashed #ff8a5b; }
+.bv-nome-caixa.vazia { color: #bbb; }
+.bv-sugestoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.bv-sugestoes .chip { font-size: 19px; min-height: 46px; padding: 6px 16px; }
+.bv-teclado { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: min(100%, 560px); }
+.bv-letra { font-family: inherit; font-size: 22px; font-weight: bold; border: none; border-radius: 12px; background: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.15); min-height: 46px; cursor: pointer; padding: 0; }
+.bv-letra:active { transform: translateY(3px); }
+.bv-apagar { background: #ffd6d6; }
+.bv-nome-botoes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+.bv-nome-botoes .chip { min-height: 52px; font-size: 19px; padding: 6px 18px; }
+/* figura do bichinho no "Como jogar" */
+.ajuda-figura .bv-svg { width: 64px; height: 67px; }
+
+/* conquistas */
+.bv-conq-tela { position: absolute; inset: 84px 12px calc(30px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: center; }
+.bv-conq { background: rgba(255,255,255,.94); border-radius: 26px; padding: 16px; box-shadow: 0 8px 0 rgba(0,0,0,.12); display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 900px; width: 100%; max-height: 100%; overflow-y: auto; }
+.bv-conq-titulo { font-size: clamp(20px, 4vw, 30px); font-weight: bold; text-align: center; }
+.bv-conq-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; width: 100%; }
+.bv-medalha { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px; border-radius: 18px; background: #f1ece4; text-align: center; filter: grayscale(1); opacity: .5; }
+.bv-medalha.ganhou { background: #fff3b0; filter: none; opacity: 1; box-shadow: 0 4px 0 #ffd166; }
+.bv-medalha-icone { font-size: 46px; line-height: 1; }
+.bv-medalha-nome { font-size: 15px; font-weight: bold; }
+
+/* celular em pé */
+@media (max-width: 600px) {
+  .bv-barras { gap: 6px; padding: 6px 8px; }
+  .bv-barra { flex-direction: column; gap: 3px; }
+  .bv-trilho { width: 100%; height: 11px; flex: 0 0 auto; }
+  .bv-painel.principal { grid-template-columns: repeat(3, 1fr); }
+  .bv-acao { min-height: 70px; }
+  .bv-painel.comida { grid-template-columns: 1fr; }
+  .bv-painel.comida .pronto { max-width: none; min-height: 52px; flex-direction: row; gap: 8px; }
+  .bv-painel.comida .pronto .bv-acao-icone { font-size: 24px; }
+  .bv-topo .chip { min-width: 46px; padding: 6px 8px; font-size: 18px; }
+}
+/* celular deitado */
+@media (orientation: landscape) and (max-height: 520px) {
+  .bv-tela { grid-template-columns: minmax(0, 1fr) minmax(250px, 40%); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "topo barras" "quarto painel"; }
+  .bv-barras { align-self: center; }
+  .bv-barra { flex-direction: column; gap: 3px; }
+  .bv-trilho { width: 100%; height: 10px; flex: 0 0 auto; }
+  .bv-painel { align-content: stretch; }
+  .bv-painel.principal { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; }
+  .bv-painel.banho, .bv-painel.dentes, .bv-painel.brincar, .bv-painel.medico, .bv-painel.dormir { grid-auto-flow: row; grid-template-columns: 1fr 1fr; grid-auto-columns: auto; grid-auto-rows: 1fr; }
+  .bv-painel.comida { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .bv-painel.comida .pronto { max-width: none; min-height: 44px; flex-direction: row; gap: 8px; }
+  .bv-painel.comida .pronto .bv-acao-icone { font-size: 22px; }
+  .bv-comida { width: 54px; height: 52px; font-size: 30px; }
+  .bv-acao { min-height: 0; }
+  .bv-acao.pronto { justify-self: stretch; max-width: none; }
+  .bv-acao-nome { font-size: 14px; }
+  .bv-nome-tela { flex-direction: row; inset: 12px 12px calc(20px + env(safe-area-inset-bottom, 0px)) 96px; }
+  .bv-nome-esq { width: 42%; gap: 6px; }
+  .bv-nome-dir { width: 58%; }
+  .bv-letra { min-height: 40px; }
+  .bv-nome-caixa { min-width: 0; width: 100%; }
+}

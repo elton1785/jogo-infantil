@@ -1,7 +1,10 @@
 // Corrida dos Bichos: o bicho escolhido (dino, onça, caramelo ou capivara — desenhados em
 // jogos/corredor-personagens.js) corre sozinho e a criança faz ele pular os cactos (segurar = pulo
 // mais alto) e abaixar para passar por baixo dos pássaros. Os pontos são os metros corridos mais
-// as estrelas pegas no ar; a velocidade aumenta aos poucos. Tem dia e noite.
+// as estrelas pegas no ar. A corrida é dividida em FASES (a cada 400 m): em cada fase a velocidade
+// sobe um degrau, aparece uma faixa grande com o aviso (e a voz anuncia) e chega uma novidade —
+// pássaros, cactos em grupo, a noite, pássaros apressados, chuva de estrelas... A melhor fase fica
+// guardada.
 // Controles: tocar em qualquer lugar da pista pula; botões ⬆️ Pular e ⬇️ Abaixar; no computador,
 // espaço/seta para cima pula e seta para baixo abaixa.
 (() => {
@@ -14,12 +17,42 @@
   const VELOCIDADES = { calmo: 165, normal: 215, rapido: 275 };
   const FOLGA = { calmo: 1.35, normal: 1.12, rapido: 1 };  // distância extra entre obstáculos
   const recorde = () => { try { return +localStorage.getItem("corredor-recorde") || 0; } catch (e) { return 0; } };
+  const melhorFase = () => { try { return +localStorage.getItem("corredor-melhor-fase") || 0; } catch (e) { return 0; } };
+
+  // ---------- Fases ----------
+  const METROS_FASE = 400;
+  const DEGRAU = 0.12, DEGRAU_MAX = 0.85;  // a cada fase +12% de velocidade (no máximo +85%)
+  const ehNoite = n => n >= 4 && (n - 4) % 3 === 0; // fases 4, 7, 10... são de noite
+  // O que cada fase traz de novo (a partir da 8ª só fica mais rápido)
+  const NOVIDADE = {
+    2: ["Cuidado com os pássaros! 🦅", "Cuidado com os pássaros!"],
+    3: ["Cactos em grupo! 🌵🌵🌵 Abaixe para os pássaros!", "Cactos em grupo! E abaixe para passar por baixo dos pássaros!"],
+    5: ["Pássaros apressados! 🦅💨", "Os pássaros agora voam mais rápido!"],
+    6: ["Chuva de estrelas! ⭐⭐⭐", "Chuva de estrelas! Pegue todas!"],
+  };
+  // Regras de cada fase (a dificuldade que antes subia com os metros, agora em degraus claros)
+  const regras = n => ({
+    passaro: n >= 2 ? Math.min(0.45, 0.22 + (n - 2) * 0.04) : 0, // chance de vir pássaro
+    passaroMedio: n >= 3,                                          // pássaro na altura de abaixar
+    passaroExtra: n >= 5 ? 45 : 25,                                // pássaro voa mais rápido que o chão
+    cactos: n <= 1 ? 1 : n === 2 ? 2 : 3,                          // cactos juntos (no máximo)
+    grupo: n >= 3 ? 0.55 : 0,                                      // chance de forçar grupo grande
+    grande: n <= 1 ? 0.25 : 0.5,                                   // chance de cacto grande
+    estrela: n === 6 ? 0.8 : 0.4,                                  // chance de estrela no caminho
+  });
 
   JOGOS.push({
     id: "corredor", teclas: true,
     nome: "Corrida dos Bichos",
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="50" cy="13" r="7" fill="#ffd166"/><rect x="0" y="50" width="64" height="14" fill="#e9c46a"/><path d="M0 50h64" stroke="#8d6e3f" stroke-width="2"/><g fill="#2a9d55" stroke="#1b6b3a" stroke-width="1.5"><rect x="47" y="30" width="8" height="21" rx="4"/><rect x="41" y="34" width="5" height="10" rx="2.5"/><rect x="56" y="31" width="5" height="9" rx="2.5"/></g><g fill="#43aa8b" stroke="#1d5c4a" stroke-width="1.5"><path d="M8 40c2-9 9-13 16-13h4v-9c0-5 4-8 9-8h4c4 0 6 3 6 6v3c0 2-2 3-4 3h-6v4l4 2-2 3-3-1v7c0 6-4 10-9 11l2 6h-5l-2-5-4 0 1 5h-5l-1-6c-3-1-5-4-6-6z"/></g><circle cx="38" cy="15" r="1.8" fill="#151515"/></svg>',
     faixas: ["5-6", "6-8", "8-10"],
+    ajuda: [
+      { figura: "🦖🐆🐕", texto: "Escolha quem vai correr: o dino, a onça, o caramelo ou a capivara. Ele corre sozinho!" },
+      { figura: "👆🌵", texto: "Toque na tela para pular os cactos. Segure o dedo para pular mais alto." },
+      { figura: "⬇️🐦", texto: "Aperte abaixar para passar por baixo dos pássaros." },
+      { figura: "🏁🚀", texto: "A cada fase fica mais rápido e aparece uma novidade: pássaros, cactos em grupo, a noite... Até que fase você chega?" },
+      { figura: "⭐", texto: "Pegue as estrelas no ar para ganhar pontos. Quanto mais longe, mais pontos!" },
+    ],
     iniciar(area) { opcoes(area); },
   });
 
@@ -72,7 +105,10 @@
     const sessao = Motor.sessaoAtual();
     const vivo = () => sessao === Motor.sessaoAtual() && document.contains(tela);
     let fase, dino, obst, estrelinhas, nuvens, metros, estrelas, distProx, ultimoT, pausado, segurando, abaixar,
-      pularAte, marco, avisouPassaro, fimEm, tempo, rodando = false;
+      pularAte, fimEm, tempo, rodando = false;
+    // Fase atual (nivel), fator de velocidade (sobe suave até o degrau da fase), céu (0 dia, 1 noite)
+    // e a faixa de aviso na tela ({ txt, sub, ate })
+    let nivel = 1, fator = 1, ceuN = 0, aviso = null;
 
     // ---------- Tela ----------
     area.innerHTML = "";
@@ -120,7 +156,8 @@
     obs.observe(palco);
 
     // ---------- Regras ----------
-    const velocidade = () => VELOCIDADES[modo] * (1 + Math.min(0.85, metros / 1800));
+    const velocidade = () => VELOCIDADES[modo] * fator;
+    const fatorDaFase = n => 1 + Math.min(DEGRAU_MAX, (n - 1) * DEGRAU);
     const pontos = () => Math.floor(metros) + estrelas * 10;
     const noChao = () => dino.h <= 0;
     // Caixa de colisão do dino (um pouco menor que o desenho, para ser justo)
@@ -131,18 +168,18 @@
 
     function criarObstaculo() {
       const v = velocidade();
-      const podePassaro = metros > 300 && Math.random() < Math.min(0.4, 0.2 + metros / 4000);
+      const r = regras(nivel);
+      const podePassaro = Math.random() < r.passaro;
       let o;
       if (podePassaro) {
-        // Alturas: baixo (pular), alto (passa por baixo correndo) e, depois de 500 m, médio (abaixar!)
+        // Alturas: baixo (pular), alto (passa por baixo correndo) e, da fase 3 em diante, médio (abaixar!)
         const alturas = [3, 64];
-        if (metros > 500) alturas.push(30, 30);
-        o = { tipo: "passaro", x: W + 30, w: 42, a: 30, base: Motor.sortear(alturas), extra: 25 };
+        if (r.passaroMedio) alturas.push(30, 30);
+        o = { tipo: "passaro", x: W + 30, w: 42, a: 30, base: Motor.sortear(alturas), extra: r.passaroExtra };
       } else {
-        // Cactos: 1 a 3 juntos (grupos maiores só mais longe), pequenos ou grandes
-        const maxN = metros < 150 ? 1 : metros < 600 ? 2 : 3;
-        const n = Motor.aleatorio(1, maxN);
-        const grande = Math.random() < (metros < 100 ? 0.25 : 0.5);
+        // Cactos: 1 a 3 juntos (grupos maiores só nas fases seguintes), pequenos ou grandes
+        const n = r.cactos > 1 && Math.random() < r.grupo ? r.cactos : Motor.aleatorio(1, r.cactos);
+        const grande = Math.random() < r.grande;
         const cw = grande ? 22 : 18;
         o = { tipo: "cacto", x: W + 30, n, w: n * cw, a: grande ? 46 : 32, base: 0, extra: 0, cw };
       }
@@ -150,7 +187,7 @@
       // Distância até o próximo: cresce com a velocidade (o pulo cobre mais chão quando corre mais)
       distProx = o.w + v * (0.78 + Math.random() * 0.9) * FOLGA[modo] + 70;
       // Às vezes uma estrela no meio do caminho, no ar
-      if (Math.random() < 0.4) {
+      if (Math.random() < r.estrela) {
         estrelinhas.push({ x: o.x + o.w + distProx * 0.5, h: Motor.aleatorio(38, 78), pega: false });
       }
     }
@@ -207,11 +244,25 @@
           Motor.nota(1319, { dur: 0.2, tipo: "triangle", vol: 0.15, inicio: 0.08 });
         }
       }
-      // Marcos e avisos
-      const m = Math.floor(metros / 500);
-      if (m > marco) { marco = m; Motor.tim(); Motor.falar(`${m * 500} metros!`); }
-      if (!avisouPassaro && metros > 300) { avisouPassaro = true; Motor.falar("Cuidado com os pássaros!"); }
-      if (metros > 500 && avisouPassaro === true) { avisouPassaro = 2; Motor.depois(() => Motor.falar("Abaixe para passar por baixo dos pássaros!", { naFila: true }), 1200); }
+      // Fases: velocidade sobe suave até o degrau, o céu acompanha e a cada 400 m vem fase nova
+      fator += (fatorDaFase(nivel) - fator) * Math.min(1, dt * 1.5);
+      ceuN += ((ehNoite(nivel) ? 1 : 0) - ceuN) * Math.min(1, dt * 0.9);
+      const n = 1 + Math.floor(metros / METROS_FASE);
+      if (n > nivel) novaFase(n);
+    }
+    // Chegou numa fase nova: faixa grande na tela, voz e um respiro antes do próximo obstáculo
+    function novaFase(n) {
+      const antes = nivel;
+      nivel = n;
+      const subiu = fatorDaFase(n) > fatorDaFase(antes); // depois da velocidade máxima, só a fase sobe
+      const partes = [], falas = [`Fase ${n}! ${subiu ? "Mais rápido!" : "Continue assim!"}`];
+      if (ehNoite(n) && !ehNoite(antes)) { partes.push("Está anoitecendo! 🌙"); falas.push("Está anoitecendo!"); }
+      else if (!ehNoite(n) && ehNoite(antes)) { partes.push("Amanheceu! ☀️"); falas.push("Amanheceu!"); }
+      if (NOVIDADE[n]) { partes.push(NOVIDADE[n][0]); falas.push(NOVIDADE[n][1]); }
+      aviso = { txt: subiu ? `Fase ${n}! Mais rápido! 🚀` : `Fase ${n}! Continue assim! 💪`, sub: partes.join(" "), ate: tempo + 3 };
+      distProx = Math.max(distProx, 140);
+      Motor.tim();
+      Motor.falar(falas.join(" "));
     }
 
     function laco(t) {
@@ -236,14 +287,8 @@
       const pa = a.match(/\w\w/g).map(h => parseInt(h, 16)), pb = b.match(/\w\w/g).map(h => parseInt(h, 16));
       return `rgb(${pa.map((x, i) => Math.round(x + (pb[i] - x) * f)).join(",")})`;
     };
-    // 0 = dia, 1 = noite. A noite chega perto do fim de cada 900 m.
-    function noite() {
-      const p = (metros % 900) / 900;
-      if (p < 0.62) return 0;
-      if (p < 0.68) return (p - 0.62) / 0.06;
-      if (p < 0.94) return 1;
-      return 1 - (p - 0.94) / 0.06;
-    }
+    // 0 = dia, 1 = noite: as fases de noite (4, 7, 10...) escurecem o céu aos poucos
+    const noite = () => ceuN;
     const ceuEstrelas = Array.from({ length: 40 }, () => [Math.random(), Math.random() * 0.7, Math.random() * 1.2 + 0.4]);
     function emoji(txt, x, y, tam, viraX = false, sx = 1, sy = 1, rot = 0) {
       ctx.save();
@@ -327,21 +372,63 @@
       ctx.restore();
       if (fase === "fim") emoji("💥", DINO_X + DINO_L + 2, yc(dino.h + 30), 30);
       // Mensagens
-      if (fase === "pronto") faixa("👆 Toque para começar!");
+      if (fase === "pronto") faixa("👆 Toque para começar!", melhorFase() > 1 ? `🏁 Sua melhor fase: ${melhorFase()}` : "");
       else if (pausado) faixa("⏸️ Pausa");
+      else if (aviso && fase === "correndo") {
+        if (tempo > aviso.ate) aviso = null;
+        else faixaFase(aviso, tempo - (aviso.ate - 3), aviso.ate - tempo);
+      }
     }
-    function faixa(txt) {
+    // Faixa grande e colorida de fase nova: entra crescendo e some devagar
+    function faixaFase(av, desde, falta) {
+      const entra = Math.min(1, desde / 0.25), alfa = Math.min(1, falta / 0.4);
+      const fonte = tam => `bold ${tam}px Fredoka, "Comic Sans MS", sans-serif`;
+      const cabe = W - 30;
+      // Texto de baixo: se não couber numa linha (tela em pé), quebra em duas no espaço mais central
+      const tamSub = Math.min(18, W / 19);
+      let linhas = av.sub ? [av.sub] : [];
+      ctx.font = fonte(tamSub);
+      if (av.sub && ctx.measureText(av.sub).width > cabe) {
+        const meio = av.sub.length / 2;
+        let corte = -1;
+        for (let i = 0; i < av.sub.length; i++) if (av.sub[i] === " " && (corte < 0 || Math.abs(i - meio) < Math.abs(corte - meio))) corte = i;
+        if (corte > 0) linhas = [av.sub.slice(0, corte), av.sub.slice(corte + 1)];
+      }
+      const alt = 54 + linhas.length * 22, y = CHAO * 0.4;
+      ctx.save();
+      ctx.globalAlpha = alfa;
+      ctx.translate(W / 2, y);
+      ctx.scale(0.6 + 0.4 * entra, 0.6 + 0.4 * entra);
+      const g = ctx.createLinearGradient(-W / 2, 0, W / 2, 0);
+      g.addColorStop(0, "rgba(247,127,0,.92)"); g.addColorStop(1, "rgba(230,57,130,.92)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.roundRect(-W / 2 + 6, -alt / 2, W - 12, alt, 14); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      const caber = (txt, tam) => { ctx.font = fonte(tam); const l = ctx.measureText(txt).width; if (l > cabe) ctx.font = fonte(Math.floor(tam * cabe / l)); };
+      caber(av.txt, Math.min(30, W / 11));
+      ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.35)";
+      const y1 = -alt / 2 + 28;
+      ctx.strokeText(av.txt, 0, y1);
+      ctx.fillStyle = "#fff36b"; ctx.fillText(av.txt, 0, y1);
+      ctx.fillStyle = "#fff";
+      linhas.forEach((l, i) => { caber(l, tamSub); ctx.fillText(l, 0, y1 + 30 + i * 22); });
+      ctx.restore();
+    }
+    function faixa(txt, sub = "") {
+      const alt = sub ? 70 : 52;
       ctx.fillStyle = "rgba(0,0,0,.45)";
-      ctx.fillRect(0, CHAO / 2 - 26, W, 52);
+      ctx.fillRect(0, CHAO / 2 - alt / 2, W, alt);
       ctx.fillStyle = "#fff";
       ctx.font = `bold ${Math.min(28, W / 14)}px "Comic Sans MS", sans-serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(txt, W / 2, CHAO / 2 + 1);
+      ctx.fillText(txt, W / 2, CHAO / 2 + (sub ? -12 : 1));
+      if (sub) { ctx.fillStyle = "#ffd60a"; ctx.font = `bold ${Math.min(18, W / 20)}px "Comic Sans MS", sans-serif`; ctx.fillText(sub, W / 2, CHAO / 2 + 20); }
     }
 
     let infoAnt = "";
     function atualizarInfo() {
-      const txt = `📏 ${Math.floor(metros)} m|⭐ ${estrelas}|🏆 ${Math.max(recorde(), fase === "fim" ? pontos() : 0)}`;
+      const txt = `🏁 Fase ${nivel}|📏 ${Math.floor(metros)} m|⭐ ${estrelas}|🏆 ${Math.max(recorde(), fase === "fim" ? pontos() : 0)}`;
       if (txt === infoAnt) return;
       infoAnt = txt;
       info.innerHTML = "";
@@ -415,7 +502,8 @@
       obst = []; estrelinhas = [];
       nuvens = Array.from({ length: 4 }, (_, i) => ({ x: i * 110 + 40, y: 20 + (i * 37) % 70, s: 0.8 + (i % 3) * 0.25, vel: 0.12 + (i % 2) * 0.08 }));
       metros = 0; estrelas = 0; distProx = 260; pausado = false; segurando = false; abaixar = false;
-      pularAte = 0; marco = 0; avisouPassaro = false; tempo = 0; infoAnt = "";
+      pularAte = 0; tempo = 0; infoAnt = "";
+      nivel = 1; fator = 1; ceuN = 0; aviso = null;
       tela.querySelector(".arcade-fim")?.remove();
       atualizarInfo();
       desenhar();
@@ -423,6 +511,7 @@
     function iniciarCorrida() {
       if (fase !== "pronto") return;
       fase = "correndo";
+      aviso = { txt: "Fase 1! Vamos lá! 🏁", sub: "Pule os cactos! 🌵", ate: tempo + 2.4 };
       rodar();
     }
 
@@ -435,6 +524,9 @@
       const p = pontos();
       const novoRecorde = p > recorde();
       if (novoRecorde) { try { localStorage.setItem("corredor-recorde", p); } catch (e) { /* ok */ } }
+      const novaMelhorFase = nivel > 1 && nivel > melhorFase();
+      if (nivel > melhorFase()) { try { localStorage.setItem("corredor-melhor-fase", nivel); } catch (e) { /* ok */ } }
+      aviso = null;
       desenhar();
       atualizarInfo();
       const caixa = document.createElement("div");
@@ -442,21 +534,21 @@
       caixa.innerHTML = `<div class="titulo-fim"></div><div class="pontos-fim"></div><div class="detalhe-fim"></div>`;
       caixa.querySelector(".titulo-fim").textContent = novoRecorde ? "🏆 Novo recorde!" : "💥 Ops!";
       caixa.querySelector(".pontos-fim").textContent = `${p} pontos`;
-      caixa.querySelector(".detalhe-fim").textContent = `📏 ${Math.floor(metros)} m · ⭐ ${estrelas} · 🏆 ${recorde()}`;
+      caixa.querySelector(".detalhe-fim").textContent = `🏁 Fase ${nivel}${novaMelhorFase ? " · 🎉 sua melhor fase!" : ` · melhor: fase ${melhorFase()}`} · 📏 ${Math.floor(metros)} m · ⭐ ${estrelas} · 🏆 ${recorde()}`;
       const b = document.createElement("button");
       b.className = "chip executar";
       b.textContent = "🔁 Jogar de novo";
       b.addEventListener("click", comecar);
       caixa.appendChild(b);
       tela.appendChild(caixa);
-      if (novoRecorde) { Motor.comemorar(caixa); Motor.tim(); }
-      Motor.falar(novoRecorde ? `Novo recorde! ${p} pontos!` : `Ops! Você correu ${Math.floor(metros)} metros!`);
+      if (novoRecorde || novaMelhorFase) { Motor.comemorar(caixa); Motor.tim(); }
+      Motor.falar(novoRecorde ? `Novo recorde! ${p} pontos! Você chegou na fase ${nivel}!` : novaMelhorFase ? `Uau! Você chegou na fase ${nivel}, a sua melhor fase!` : `Ops! Você correu ${Math.floor(metros)} metros e chegou na fase ${nivel}!`);
     }
 
     // Gancho para os testes automáticos (só existe se a página de teste pedir)
     if (window.CORREDOR_TESTE) {
       window.CORREDOR_TESTE = {
-        estado: () => ({ fase, dino: { ...dino }, obst: obst.map(o => ({ ...o })), metros, estrelas, pontos: pontos(), v: velocidade(), W, CHAO, escala, DINO_X, DINO_L }),
+        estado: () => ({ fase, nivel, fator, ceuN, aviso, dino: { ...dino }, obst: obst.map(o => ({ ...o })), metros, estrelas, pontos: pontos(), v: velocidade(), W, CHAO, escala, DINO_X, DINO_L }),
         apertar: apertarPular, soltar: soltarPular, abaixar: v => { abaixar = v; }, comecar, iniciar: iniciarCorrida,
         irPara: m => { metros = m; },
       };

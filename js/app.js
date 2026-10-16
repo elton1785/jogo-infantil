@@ -140,6 +140,7 @@ const App = (() => {
       c.classList.add("continuar");
       atalhos.appendChild(c);
     }
+    atalhos.appendChild(Album.cartaoInicio());
     const nFav = favoritos().length;
     const fav = document.createElement("button");
     fav.className = "atalho-fav";
@@ -299,6 +300,9 @@ const App = (() => {
     if (history.state && history.state.tela) history.back(); // o popstate acima faz a navegação
     else voltar();
   });
+
+  // O cartão do álbum mostra os pacotinhos novos: redesenha o início quando o álbum muda
+  Album.aoMudar(() => { if (telaAtual === "idades") abrirIdades(); });
 
   abrirIdades();
   const ultima = FAIXAS.find(f => f.id === lembrado("faixa"));

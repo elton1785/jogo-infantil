@@ -193,7 +193,10 @@ const Motor = (() => {
     el.classList.add(classe);
   }
 
-  function comemorar(el) {
+  // Comemoração de acerto/vitória. Conta um ponto para o álbum de figurinhas (js/album.js),
+  // a não ser com `contar = false`.
+  function comemorar(el, contar = true) {
+    if (contar && typeof Album !== "undefined") Album.ponto();
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     for (let i = 0; i < 12; i++) {

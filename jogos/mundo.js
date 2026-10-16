@@ -14,7 +14,16 @@
 //   recolhe o bloco, colocar gasta. 10 corações de vida (voltam aos poucos; queda alta machuca).
 //   Blocos duros demoram mais (picareta e machado ajudam). Receitas: tábuas, ferramentas, tochas,
 //   vidro e tijolos. À noite aparecem gosmas e zumbis (somem de dia; tochas impedem que apareçam
-//   perto). Desmaiou? Volta para o começo sem perder nada.
+//   perto). Desmaiou? Volta para o começo sem perder nada. Nas cavernas escuras elas aparecem a
+//   qualquer hora: leve tochas!
+// 🔦 Luz (Novo e Sobrevivência): cada bloco tem dois níveis de luz de 0 a 15 — a luz do céu (desce
+//   pelas colunas abertas e se espalha para os lados perdendo 1 por bloco: a entrada da caverna
+//   fica meia-luz e o fundo, escuro) e a luz das tochas (14, amarelada; ouro e diamante brilham
+//   de leve). Folhas e água seguram um pouco da luz. Calculado uma vez ao abrir o mundo e, ao
+//   colocar/quebrar, só a vizinhança é refeita (apaga e reacende por "inundação", como nos jogos
+//   de blocos). No desenho a luz do céu é multiplicada pela luz do dia e a da tocha não (por isso a
+//   noite fica escura e perto da tocha fica quente e clarinho). Sempre sobra uma luz mínima, para a
+//   criança enxergar um pouco. Tocha escolhida na barra ilumina em volta do jogador.
 // O mundo fica salvo no aparelho (cada modo tem o seu).
 (() => {
   const M = MundoTexturas, B = M.ID;
@@ -25,7 +34,7 @@
         B.la, B.la + 1, B.la + 2, B.la + 3, B.la + 4, B.la + 8, B.ouro, B.florAmarela, B.florVermelha],
     },
     novo: {
-      nome: "Novo", X: 96, Z: 96, Y: 48, agua: 20, res: 32, hd: true, ao: true, diaNoite: true, bichos: true, nevoa: 0.019, cavernas: true,
+      nome: "Novo", X: 96, Z: 96, Y: 48, agua: 20, res: 32, hd: true, ao: true, diaNoite: true, bichos: true, nevoa: 0.019, cavernas: true, luz: true,
       paleta: [B.grama, B.terra, B.pedra, B.pedregulho, B.tabuas, B.tronco, B.folhas, B.areia, B.cascalho, B.vidro, B.tijolo, B.neve,
         ...Array.from({ length: 9 }, (_, i) => B.la + i), B.ouro, B.diamante, B.carvao, B.agua, B.cacto, B.florAmarela, B.florVermelha, B.gramaAlta, B.tocha],
     },
@@ -46,7 +55,7 @@
   // Receitas: o que precisa → o que dá. Ferramentas ficam guardadas (não são blocos).
   const RECEITAS = [
     { nome: "4 Tábuas", icone: "🪵", precisa: { [B.tronco]: 1 }, da: { [B.tabuas]: 4 } },
-    { nome: "4 Tochas", icone: "🔥", precisa: { [B.carvao]: 1, [B.tabuas]: 1 }, da: { [B.tocha]: 4 } },
+    { nome: "4 Tochas", icone: "🔥", precisa: { [B.carvao]: 1, [B.tabuas]: 1 }, da: { [B.tocha]: 4 }, dica: "iluminam a noite e as cavernas" },
     { nome: "Machado", icone: "🪓", precisa: { [B.tabuas]: 3 }, ferramenta: "machado", dica: "quebra madeira rapidinho" },
     { nome: "Picareta", icone: "⛏️", precisa: { [B.pedregulho]: 3, [B.tabuas]: 2 }, ferramenta: "picareta", dica: "quebra pedra rapidinho" },
     { nome: "Espada", icone: "🗡️", precisa: { [B.pedregulho]: 2, [B.tabuas]: 1 }, ferramenta: "espada", dica: "afasta as criaturas mais rápido" },
@@ -221,26 +230,44 @@
       return;
     }
 
-    // Shaders: textura × luz da face × luz do dia, com névoa. uCor (alfa > 0) desenha cor lisa.
-    const vs = `attribute vec3 aP; attribute vec2 aT; attribute float aL;
-      uniform mat4 uM; uniform vec3 uDesl; varying vec2 vT; varying float vL; varying float vD;
-      void main() { vec4 p = uM * vec4(aP + uDesl, 1.0); gl_Position = p; vT = aT; vL = aL; vD = p.w; }`;
-    const fs = `precision mediump float;
-      uniform sampler2D uTex; uniform float uLuz; uniform vec3 uNevoa; uniform float uDens; uniform vec4 uCor; uniform float uAlfa;
-      varying vec2 vT; varying float vL; varying float vD;
+    // Shaders: textura × luz da face (e sombrinha) × luz, com névoa. uCor (alfa > 0) desenha cor lisa.
+    // aN = (luz do céu, luz da tocha) de 0 a 1 (nível/15). A do céu é multiplicada pela luz do dia
+    // (uLuz); a da tocha não, e é amarelada e pisca de leve (uPisca). uMao: tocha na mão (posição e
+    // nível). uMin: luz mínima (para nunca ficar preto total). uHalo: desenha um brilho redondo.
+    const vs = `attribute vec3 aP; attribute vec2 aT; attribute float aL; attribute vec2 aN;
+      uniform mat4 uM; uniform vec3 uDesl; uniform float uLuz; uniform float uPisca; uniform vec4 uMao; uniform float uMin;
+      varying vec2 vT; varying vec3 vC; varying float vD;
       void main() {
+        vec3 w = aP + uDesl;
+        vec4 p = uM * vec4(w, 1.0); gl_Position = p; vT = aT; vD = p.w;
+        float ceu = pow(0.8, (1.0 - aN.x) * 15.0) * uLuz;
+        float t = aN.y > 0.01 ? pow(0.86, (1.0 - aN.y) * 15.0) : 0.0;
+        if (uMao.w > 0.0) { float m = uMao.w - distance(w, uMao.xyz); if (m > 0.0) t = max(t, pow(0.86, 15.0 - m)); }
+        vec3 cor = max(vec3(ceu), t * uPisca * vec3(1.12, 0.9, 0.6));
+        vC = max(cor, uMin * vec3(0.85, 0.92, 1.15)) * aL;
+      }`;
+    const fs = `precision mediump float;
+      uniform sampler2D uTex; uniform vec3 uNevoa; uniform float uDens; uniform vec4 uCor; uniform float uAlfa; uniform float uHalo;
+      varying vec2 vT; varying vec3 vC; varying float vD;
+      void main() {
+        float f = clamp(exp(-pow(vD * uDens, 2.0)), 0.0, 1.0);
+        if (uHalo > 0.5) {
+          float d = length(vT * 2.0 - 1.0), a = max(0.0, 1.0 - d);
+          gl_FragColor = vec4(uCor.rgb * a * a * uCor.a * f, 1.0);
+          return;
+        }
         vec4 c = uCor.a > 0.0 ? uCor : texture2D(uTex, vT);
         if (c.a < 0.45) discard;
-        float f = exp(-pow(vD * uDens, 2.0));
-        gl_FragColor = vec4(mix(uNevoa, c.rgb * vL * uLuz, clamp(f, 0.0, 1.0)), c.a * uAlfa);
+        gl_FragColor = vec4(mix(uNevoa, c.rgb * vC, f), c.a * uAlfa);
       }`;
     const sh = (tipo, src) => { const s = gl.createShader(tipo); gl.shaderSource(s, src); gl.compileShader(s); return s; };
     const prog = gl.createProgram();
     gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, fs));
     gl.linkProgram(prog); gl.useProgram(prog);
-    const A = { P: gl.getAttribLocation(prog, "aP"), T: gl.getAttribLocation(prog, "aT"), L: gl.getAttribLocation(prog, "aL") };
-    const U = {}; ["uM", "uDesl", "uTex", "uLuz", "uNevoa", "uDens", "uCor", "uAlfa"].forEach(n => { U[n] = gl.getUniformLocation(prog, n); });
-    [A.P, A.T, A.L].forEach(a => gl.enableVertexAttribArray(a));
+    const A = { P: gl.getAttribLocation(prog, "aP"), T: gl.getAttribLocation(prog, "aT"), L: gl.getAttribLocation(prog, "aL"), N: gl.getAttribLocation(prog, "aN") };
+    const U = {}; ["uM", "uDesl", "uTex", "uLuz", "uNevoa", "uDens", "uCor", "uAlfa", "uPisca", "uMao", "uMin", "uHalo"].forEach(n => { U[n] = gl.getUniformLocation(prog, n); });
+    [A.P, A.T, A.L, A.N].forEach(a => gl.enableVertexAttribArray(a));
+    gl.uniform1f(U.uPisca, 1); gl.uniform4fv(U.uMao, [0, 0, 0, 0]); gl.uniform1f(U.uMin, 0); gl.uniform1f(U.uHalo, 0);
 
     // Atlas de texturas
     const atlas = M.criarAtlas(cfg.res);
@@ -295,19 +322,30 @@
     function construir(cx, cz) {
       const p = pedacos[cz * NCX + cx];
       const op = [], ag = [];
-      const vert = (arr, x, y, z, t, a, b, l) => { const [s, q] = uv(t, a, b); arr.push(x, y, z, s, q, l); };
+      const vert = (arr, x, y, z, t, a, b, l, lc, lb) => { const [s, q] = uv(t, a, b); arr.push(x, y, z, s, q, l, lc, lb); };
+      // Luz suave num canto: média das (até 4) casas transparentes que encostam nele
+      const luzCanto = (x, y, z, ok) => {
+        if (!ok) return null;
+        if (y >= Y) return 15 * 16;
+        if (x < 0 || z < 0 || x >= X || z >= Z || y < 0) return null;
+        const i = I(x, y, z); return luzCeu[i] * 16 + luzBloco[i];
+      };
       for (let y = 0; y < Y; y++) for (let z = cz * CH; z < cz * CH + CH; z++) for (let x = cx * CH; x < cx * CH + CH; x++) {
         const b = mundo[I(x, y, z)];
         if (!b) continue;
         const def = M.BLOCOS[b];
         if (def.tipo === "cruz") {
           const t = M.tex(b, 0), e = 0.15;
+          // a tocha brilha sozinha (chama acesa mesmo à noite)
+          const tocha = comLuz && b === B.tocha;
+          const lc = comLuz ? luzCeu[I(x, y, z)] / 15 : 1, lb = tocha ? 1 : comLuz ? luzBloco[I(x, y, z)] / 15 : 0;
           [[[e, e], [1 - e, 1 - e]], [[e, 1 - e], [1 - e, e]]].forEach(([[x0, z0], [x1, z1]]) => {
             const c = [[x0, z0, 0, 0], [x1, z1, 1, 0], [x1, z1, 1, 1], [x0, z0, 0, 1]].map(([px, pz, a, bb]) => [x + px, y + bb * 0.95, z + pz, a, bb]);
-            [0, 1, 2, 0, 2, 3].forEach(k => vert(op, c[k][0], c[k][1], c[k][2], t, c[k][3], c[k][4], 0.95));
+            [0, 1, 2, 0, 2, 3].forEach(k => vert(op, c[k][0], c[k][1], c[k][2], t, c[k][3], c[k][4], tocha ? 1.3 : 0.95, lc, lb));
           });
           continue;
         }
+        const brilho = comLuz ? EMITE[b] : 0;
         const ehAgua = def.tipo === "agua";
         const arr = ehAgua ? ag : op;
         const aguaAcima = ehAgua && pegar(x, y + 1, z) === B.agua;
@@ -319,23 +357,31 @@
           const cantos = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, bb]) => {
             let px = x + F.o[0] + a * F.u[0] + bb * F.v[0], py = y + F.o[1] + a * F.u[1] + bb * F.v[1], pz = z + F.o[2] + a * F.u[2] + bb * F.v[2];
             if (ehAgua && !aguaAcima && py > y + 0.5) py -= 0.12; // a superfície da água fica um pouco abaixo
-            let l = F.luz;
-            if (cfg.ao && !ehAgua) {
+            let l = F.luz, lc = 1, lb = 0;
+            if (cfg.ao) {
               const nx = x + F.n[0], ny = y + F.n[1], nz = z + F.n[2];
               const du = F.u.map(c => (a ? c : -c)), dv = F.v.map(c => (bb ? c : -c));
               const s1 = fazOcl(nx + du[0], ny + du[1], nz + du[2]), s2 = fazOcl(nx + dv[0], ny + dv[1], nz + dv[2]);
               const cc = fazOcl(nx + du[0] + dv[0], ny + du[1] + dv[1], nz + du[2] + dv[2]);
-              l *= AO[s1 && s2 ? 0 : 3 - (s1 + s2 + cc)];
+              if (!ehAgua) l *= AO[s1 && s2 ? 0 : 3 - (s1 + s2 + cc)];
+              if (comLuz) {
+                let sc = 0, sb = 0, n = 0;
+                [luzCanto(nx, ny, nz, true), luzCanto(nx + du[0], ny + du[1], nz + du[2], !s1), luzCanto(nx + dv[0], ny + dv[1], nz + dv[2], !s2),
+                  luzCanto(nx + du[0] + dv[0], ny + du[1] + dv[1], nz + du[2] + dv[2], !cc && !(s1 && s2))].forEach(v => { if (v !== null) { sc += v >> 4; sb += v & 15; n++; } });
+                if (n) { lc = sc / n / 15; lb = sb / n / 15; }
+                if (brilho) lb = Math.max(lb, brilho / 15); // ouro e diamante brilham de leve
+              }
             }
-            return [px, py, pz, a, bb, l];
+            return [px, py, pz, a, bb, l, lc, lb];
           });
           // Diagonal do quadrado escolhida para a sombra ficar suave
-          const ordem = cantos[0][5] + cantos[2][5] < cantos[1][5] + cantos[3][5] ? [1, 2, 3, 1, 3, 0] : [0, 1, 2, 0, 2, 3];
-          ordem.forEach(k => vert(arr, cantos[k][0], cantos[k][1], cantos[k][2], t, cantos[k][3], cantos[k][4], cantos[k][5]));
+          const tom = c => c[5] * (0.3 + c[6] + c[7]);
+          const ordem = tom(cantos[0]) + tom(cantos[2]) < tom(cantos[1]) + tom(cantos[3]) ? [1, 2, 3, 1, 3, 0] : [0, 1, 2, 0, 2, 3];
+          ordem.forEach(k => vert(arr, cantos[k][0], cantos[k][1], cantos[k][2], t, cantos[k][3], cantos[k][4], cantos[k][5], cantos[k][6], cantos[k][7]));
         });
       }
-      gl.bindBuffer(gl.ARRAY_BUFFER, p.opaco); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(op), gl.STATIC_DRAW); p.nO = op.length / 6;
-      gl.bindBuffer(gl.ARRAY_BUFFER, p.agua); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ag), gl.STATIC_DRAW); p.nA = ag.length / 6;
+      gl.bindBuffer(gl.ARRAY_BUFFER, p.opaco); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(op), gl.STATIC_DRAW); p.nO = op.length / 8;
+      gl.bindBuffer(gl.ARRAY_BUFFER, p.agua); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ag), gl.STATIC_DRAW); p.nA = ag.length / 8;
       p.sujo = false;
     }
     const sujar = (x, z) => {
@@ -343,6 +389,126 @@
       marca(x, z); marca(x - 1, z); marca(x + 1, z); marca(x, z - 1); marca(x, z + 1);
       if (cfg.ao) { marca(x - 1, z - 1); marca(x + 1, z + 1); marca(x - 1, z + 1); marca(x + 1, z - 1); }
     };
+
+    // ---------- Luz (Novo e Sobrevivência): níveis 0–15 do céu e das tochas ----------
+    const comLuz = !!cfg.luz, XZ = X * Z;
+    const luzCeu = new Uint8Array(comLuz ? X * Y * Z : 0), luzBloco = new Uint8Array(comLuz ? X * Y * Z : 0);
+    const EMITE = new Uint8Array(256); EMITE[B.tocha] = 14; EMITE[B.ouro] = 5; EMITE[B.diamante] = 6;
+    // Quanto cada bloco segura de luz (além de 1 por passo); 15 = não deixa passar (blocos opacos)
+    const ABSORVE = new Uint8Array(256);
+    M.BLOCOS.forEach((d, b) => { if (b) ABSORVE[b] = M.opaco(b) ? 15 : d.tipo === "folha" ? 1 : d.tipo === "agua" ? 2 : 0; });
+    // Filas circulares: FILA (índices a espalhar) e REM (índice*16 + nível a apagar)
+    const MASC = (1 << 20) - 1, FILA = new Int32Array(comLuz ? MASC + 1 : 0), REM = new Int32Array(comLuz ? MASC + 1 : 0);
+    let fi = 0, ff = 0, ri = 0, rf = 0, mnX = 0, mxX = 0, mnZ = 0, mxZ = 0;
+    const tocou = i => { const x = i % X, z = ((i / X) | 0) % Z; if (x < mnX) mnX = x; if (x > mxX) mxX = x; if (z < mnZ) mnZ = z; if (z > mxZ) mxZ = z; };
+    // Vizinho de i na direção d (0 +x, 1 -x, 2 +z, 3 -z, 4 cima, 5 baixo), ou -1 fora do mundo
+    const viz = (i, d) => {
+      switch (d) {
+        case 0: return i % X < X - 1 ? i + 1 : -1;
+        case 1: return i % X > 0 ? i - 1 : -1;
+        case 2: return ((i / X) | 0) % Z < Z - 1 ? i + X : -1;
+        case 3: return ((i / X) | 0) % Z > 0 ? i - X : -1;
+        case 4: return i + XZ < X * Y * Z ? i + XZ : -1;
+        default: return i >= XZ ? i - XZ : -1;
+      }
+    };
+    // Espalha a luz pela fila (só aumenta níveis). No céu, descer a partir do 15 não perde nada.
+    function espalhar(L, ceu, marcar) {
+      while (fi !== ff) {
+        const i = FILA[fi]; fi = (fi + 1) & MASC;
+        const lv = L[i];
+        if (lv <= 1) continue;
+        for (let d = 0; d < 6; d++) {
+          const j = viz(i, d);
+          if (j < 0) continue;
+          const a = ABSORVE[mundo[j]];
+          if (a >= 15) continue;
+          const nv = lv - a - (ceu && d === 5 && lv === 15 ? 0 : 1);
+          if (nv > L[j]) { L[j] = nv; FILA[ff] = j; ff = (ff + 1) & MASC; if (marcar) tocou(j); }
+        }
+      }
+    }
+    // Apaga a luz que vinha de um lugar (fila REM) e devolve à FILA as bordas que ainda têm luz própria
+    function apagar(L, ceu) {
+      while (ri !== rf) {
+        const e = REM[ri]; ri = (ri + 1) & MASC;
+        const i = e >> 4, lv = e & 15;
+        for (let d = 0; d < 6; d++) {
+          const j = viz(i, d);
+          if (j < 0) continue;
+          const ln = L[j];
+          if (!ln) continue;
+          if (ln < lv || (ceu && d === 5 && lv === 15)) {
+            const em = ceu ? 0 : EMITE[mundo[j]];
+            L[j] = em; tocou(j);
+            REM[rf] = (j << 4) | ln; rf = (rf + 1) & MASC;
+            if (em) { FILA[ff] = j; ff = (ff + 1) & MASC; }
+          } else { FILA[ff] = j; ff = (ff + 1) & MASC; }
+        }
+      }
+    }
+    // Calcula a luz do mundo inteiro (ao abrir ou criar um mundo)
+    function calcularLuz() {
+      if (!comLuz) return;
+      const t0 = performance.now();
+      luzCeu.fill(0); luzBloco.fill(0);
+      fi = ff = 0;
+      // 1) desce pelas colunas
+      for (let c = 0; c < XZ; c++) {
+        let l = 15;
+        for (let y = Y - 1; y >= 0; y--) {
+          const i = y * XZ + c, a = ABSORVE[mundo[i]];
+          l = (l === 15 ? 15 : l - 1) - a;
+          if (l <= 0) break;
+          luzCeu[i] = l;
+        }
+      }
+      // 2) começa a espalhar só das bordas iluminadas que têm vizinho mais escuro
+      for (let i = 0; i < luzCeu.length; i++) {
+        const l = luzCeu[i];
+        if (l < 2) continue;
+        for (let d = 0; d < 6; d++) {
+          if (d === 4) continue;
+          const j = viz(i, d);
+          if (j >= 0 && ABSORVE[mundo[j]] < 15 && luzCeu[j] < l - 1) { FILA[ff] = i; ff = (ff + 1) & MASC; break; }
+        }
+      }
+      espalhar(luzCeu, true, false);
+      // 3) tochas e minérios que brilham
+      fi = ff = 0;
+      for (let i = 0; i < mundo.length; i++) { const em = EMITE[mundo[i]]; if (em) { luzBloco[i] = em; FILA[ff] = i; ff = (ff + 1) & MASC; } }
+      espalhar(luzBloco, false, false);
+      tempoLuz = Math.round(performance.now() - t0);
+    }
+    let tempoLuz = 0;
+    // Um bloco mudou em (x, y, z): refaz só a luz da vizinhança e marca os pedaços tocados
+    function luzMudou(x, y, z) {
+      if (!comLuz) return;
+      const i = I(x, y, z);
+      mnX = mxX = x; mnZ = mxZ = z;
+      [[luzCeu, true], [luzBloco, false]].forEach(([L, ceu]) => {
+        fi = ff = ri = rf = 0;
+        const velho = L[i];
+        if (velho) { L[i] = 0; REM[rf++] = (i << 4) | velho; }
+        apagar(L, ceu);
+        const em = ceu ? 0 : EMITE[mundo[i]];
+        if (em > L[i]) { L[i] = em; FILA[ff] = i; ff = (ff + 1) & MASC; }
+        for (let d = 0; d < 6; d++) { const j = viz(i, d); if (j >= 0 && L[j]) { FILA[ff] = j; ff = (ff + 1) & MASC; } }
+        // no alto do mundo, o céu está logo acima
+        if (ceu && y === Y - 1 && ABSORVE[mundo[i]] < 15) { L[i] = 15 - ABSORVE[mundo[i]]; FILA[ff] = i; ff = (ff + 1) & MASC; }
+        espalhar(L, ceu, true);
+      });
+      // pedaços onde a luz mudou (com 1 bloco de folga, porque os cantos olham os vizinhos)
+      for (let cz = Math.max(0, Math.floor((mnZ - 1) / CH)); cz <= Math.min(NCZ - 1, Math.floor((mxZ + 1) / CH)); cz++)
+        for (let cx = Math.max(0, Math.floor((mnX - 1) / CH)); cx <= Math.min(NCX - 1, Math.floor((mxX + 1) / CH)); cx++) pedacos[cz * NCX + cx].sujo = true;
+    }
+    // Luz num ponto [céu, tocha] (0–15); fora do mundo, acima: céu aberto
+    const luzEm = (x, y, z) => {
+      if (!comLuz || y >= Y) return [15, 0];
+      if (x < 0 || z < 0 || x >= X || z >= Z || y < 0) return [0, 0];
+      const i = I(x, y, z); return [luzCeu[i], luzBloco[i]];
+    };
+    calcularLuz();
 
     // ---------- Jogador ----------
     const LARG = 0.3, ALT = 1.8, OLHO = 1.62;
@@ -461,13 +627,16 @@
         if (alvo.b !== B.folhas || Math.random() < 0.35) ganhar(cai);
         const cima = pegar(alvo.x, alvo.y + 1, alvo.z);
         if (M.BLOCOS[cima]?.tipo === "cruz" && cima !== B.gramaAlta) ganhar(cima);
-        if (alvo.b === B.tocha) tochas.delete(`${alvo.x},${alvo.y},${alvo.z}`);
         desenharBarra();
       }
+      tochas.delete(`${alvo.x},${alvo.y},${alvo.z}`); tochas.delete(`${alvo.x},${alvo.y + 1},${alvo.z}`);
       mundo[I(alvo.x, alvo.y, alvo.z)] = 0;
-      if (M.BLOCOS[pegar(alvo.x, alvo.y + 1, alvo.z)]?.tipo === "cruz") mundo[I(alvo.x, alvo.y + 1, alvo.z)] = 0;
+      const plantaEmCima = M.BLOCOS[pegar(alvo.x, alvo.y + 1, alvo.z)]?.tipo === "cruz";
+      if (plantaEmCima) mundo[I(alvo.x, alvo.y + 1, alvo.z)] = 0;
       // Água em volta escorre para o buraco (um pouquinho)
       if ([[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]].some(([dx, dy, dz]) => pegar(alvo.x + dx, alvo.y + dy, alvo.z + dz) === B.agua)) mundo[I(alvo.x, alvo.y, alvo.z)] = B.agua;
+      luzMudou(alvo.x, alvo.y, alvo.z);
+      if (plantaEmCima) luzMudou(alvo.x, alvo.y + 1, alvo.z);
       sujar(alvo.x, alvo.z); mudou = true;
       Motor.ruido({ dur: 0.09, vol: 0.18, freq: alvo.b === B.vidro ? 2600 : 700 });
       return true;
@@ -483,8 +652,10 @@
       if (M.BLOCOS[b].tipo === "cruz" && !M.solido(pegar(x, y - 1, z))) return false;
       if (M.solido(b) && x + 1 > jog.x - LARG && x < jog.x + LARG && z + 1 > jog.z - LARG && z < jog.z + LARG && y + 1 > jog.y && y < jog.y + ALT) return false;
       if (bichos.some(a => x + 1 > a.x - 0.45 && x < a.x + 0.45 && z + 1 > a.z - 0.45 && z < a.z + 0.45 && y + 1 > a.y && y < a.y + 1)) return false;
+      if (atual === B.tocha) tochas.delete(`${x},${y},${z}`);
       mundo[I(x, y, z)] = b;
       if (b === B.tocha) tochas.add(`${x},${y},${z}`);
+      luzMudou(x, y, z);
       if (sobrev) { inv[b]--; desenharBarra(); }
       sujar(x, z); mudou = true;
       Motor.nota(220 + (b % 7) * 30, { dur: 0.07, tipo: "triangle", vol: 0.12 });
@@ -492,7 +663,11 @@
     }
     // Tochas do mundo (criaturas não aparecem perto delas)
     const tochas = new Set();
-    for (let i = 0; i < mundo.length; i++) if (mundo[i] === B.tocha) { const x = i % X, z = Math.floor(i / X) % Z, y = Math.floor(i / (X * Z)); tochas.add(`${x},${y},${z}`); }
+    function lerTochas() {
+      tochas.clear();
+      for (let i = 0; i < mundo.length; i++) if (mundo[i] === B.tocha) { const x = i % X, z = Math.floor(i / X) % Z, y = Math.floor(i / (X * Z)); tochas.add(`${x},${y},${z}`); }
+    }
+    lerTochas();
     const pertoDeTocha = (x, y, z) => [...tochas].some(t => { const [a, b, c] = t.split(",").map(Number); return Math.abs(a - x) + Math.abs(c - z) < 10 && Math.abs(b - y) < 6; });
 
     // ---------- Vida (Sobrevivência) ----------
@@ -531,21 +706,46 @@
     const ALTURA = { porco: 1, ovelha: 1, zumbi: 1.9, gosma: 0.85 };
     const noite = () => Math.sin(tempoDia * Math.PI * 2) < -0.08;
     let proximaCriatura = 0;
+    // Lugar escuro (caverna funda ou noite) e longe da luz das tochas?
+    const ceuAqui = (x, y, z) => luzEm(x, y, z)[0];
+    const escuroAli = (x, y, z) => !comLuz || luzEm(x, y, z)[1] < 6;
+    const noSubsolo = () => comLuz && ceuAqui(Math.floor(jog.x), Math.floor(jog.y + 1), Math.floor(jog.z)) < 7;
+    let avisouCaverna = false;
     function criaturasDaNoite(dt) {
-      // Aparecem à noite, longe da vista e longe das tochas; de dia somem numa fumacinha
-      if (noite() && relogio > proximaCriatura && bichos.filter(a => a.hostil).length < 6) {
+      // Aparecem à noite (ou a qualquer hora nas cavernas escuras), longe da vista e longe das
+      // tochas; com o sol batendo somem numa fumacinha
+      const caverna = noSubsolo();
+      if ((noite() || caverna) && relogio > proximaCriatura && bichos.filter(a => a.hostil).length < (caverna && !noite() ? 4 : 6)) {
         proximaCriatura = relogio + 3 + Math.random() * 4;
-        const ang = Math.random() * 6.28, d = 11 + Math.random() * 10;
+        const ang = Math.random() * 6.28, d = (caverna ? 8 : 11) + Math.random() * 10;
         const x = Math.floor(jog.x + Math.cos(ang) * d), z = Math.floor(jog.z + Math.sin(ang) * d);
         if (x > 1 && z > 1 && x < X - 2 && z < Z - 2) {
-          const y = alturaLivre(x, z);
-          if (M.solido(pegar(x, y - 1, z)) && !pertoDeTocha(x, y, z)) {
+          let y = -1;
+          if (caverna) {
+            // procura um chão escuro perto da altura do jogador, com lugar para ficar em pé
+            for (let k = 0; k < 14 && y < 0; k++) {
+              const yy = Math.floor(jog.y) + (k % 2 ? -1 : 1) * Math.ceil(k / 2);
+              if (yy > 1 && yy < Y - 2 && !M.solido(pegar(x, yy, z)) && !M.solido(pegar(x, yy + 1, z)) && pegar(x, yy, z) !== B.agua && M.solido(pegar(x, yy - 1, z)) && ceuAqui(x, yy, z) < 5) y = yy;
+            }
+          }
+          if (y < 0 && noite()) y = alturaLivre(x, z);
+          if (y > 0 && M.solido(pegar(x, y - 1, z)) && escuroAli(x, y, z) && !pertoDeTocha(x, y, z)) {
             const tipo = Math.random() < 0.6 ? "zumbi" : "gosma";
             bichos.push({ tipo, hostil: true, vida: tipo === "zumbi" ? 10 : 6, x: x + 0.5, y, z: z + 0.5, yaw: 0, vy: 0, anda: 0, pausa: 0, fase: 0, chao: false, pulo: 0, golpe: 0 });
           }
         }
       }
-      if (!noite()) for (let i = bichos.length - 1; i >= 0; i--) if (bichos[i].hostil && Math.random() < dt * 0.4) { fumaca(bichos[i]); bichos.splice(i, 1); }
+      // de dia, só as que estão no claro do céu vão embora (nas cavernas elas ficam)
+      if (!noite()) for (let i = bichos.length - 1; i >= 0; i--) {
+        const a = bichos[i];
+        if (a.hostil && (!comLuz || ceuAqui(Math.floor(a.x), Math.floor(a.y + 0.5), Math.floor(a.z)) >= 8) && Math.random() < dt * 0.4) { fumaca(a); bichos.splice(i, 1); }
+      }
+      // primeira vez num lugar bem escuro: dica da tocha
+      if (caverna && !avisouCaverna && luzEm(Math.floor(jog.x), Math.floor(jog.y + 1), Math.floor(jog.z))[1] < 4 && ceuAqui(Math.floor(jog.x), Math.floor(jog.y + 1), Math.floor(jog.z)) < 4) {
+        avisouCaverna = true;
+        Motor.falar("Está escuro aqui na caverna! Coloque tochas para iluminar. Escolha a tocha na barra e ela ilumina em volta de você.");
+        avisar("🔦 Escuro! Coloque tochas");
+      }
     }
     function fumaca(a) { Motor.ruido({ dur: 0.2, vol: 0.12, freq: 1800 }); }
     function atacar(a) {
@@ -610,11 +810,13 @@
             const l = [0, 1, 2].map(i => (F.o[i] + u * F.u[i] + v * F.v[i] - 0.5) * [sx, sy, sz][i]);
             return [...ponto(l[0], cy + l[1] + sy / 2, l[2]), u, v];
           });
-          [0, 1, 2, 0, 2, 3].forEach(k => { const [p, q] = uv(t, cs[k][3], cs[k][4]); out.push(cs[k][0], cs[k][1], cs[k][2], p, q, F.luz); });
+          [0, 1, 2, 0, 2, 3].forEach(k => { const [p, q] = uv(t, cs[k][3], cs[k][4]); out.push(cs[k][0], cs[k][1], cs[k][2], p, q, F.luz, a.lc, a.lb); });
         });
       };
       bichos.forEach(a => {
         const T = M.T, balanca = Math.sin(a.fase) * 0.6;
+        const [lc, lb] = luzEm(Math.floor(a.x), Math.floor(a.y + 0.5), Math.floor(a.z));
+        a.lc = lc / 15; a.lb = lb / 15;
         if (a.tipo === "zumbi") {
           // corpo de gente, braços esticados para a frente
           [[-0.13, 1], [0.13, -1]].forEach(([lx, s]) => caixa(a, lx, 0, 0, 0.24, 0.75, 0.24, [T.zumbiCalca], 0.75, balanca * s));
@@ -637,7 +839,7 @@
       });
       gl.bindBuffer(gl.ARRAY_BUFFER, bufBichos);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(out), gl.DYNAMIC_DRAW);
-      return out.length / 6;
+      return out.length / 8;
     }
     function bichoNoRaio(o, d, max) {
       let melhor = null;
@@ -662,9 +864,9 @@
         const pi = ((i % PER) + PER) % PER, pj = ((j % PER) + PER) % PER;
         if (R.h(pi, pj) < 0.72) continue;
         const x0 = i * CEL, z0 = j * CEL, x1 = x0 + CEL, z1 = z0 + CEL, y = Y + 14;
-        [[x0, z0], [x1, z0], [x1, z1], [x0, z0], [x1, z1], [x0, z1]].forEach(([x, z]) => v.push(x, y, z, 0, 0, 1));
+        [[x0, z0], [x1, z0], [x1, z1], [x0, z0], [x1, z1], [x0, z1]].forEach(([x, z]) => v.push(x, y, z, 0, 0, 1, 1, 0));
       }
-      gl.bindBuffer(gl.ARRAY_BUFFER, bufNuvens); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.STATIC_DRAW); nNuvens = v.length / 6;
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufNuvens); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.STATIC_DRAW); nNuvens = v.length / 8;
     }
     const bufExtra = gl.createBuffer();
     function desenharExtra(dados, modo, cor, alfa = 1) {
@@ -672,19 +874,20 @@
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(dados), gl.DYNAMIC_DRAW);
       atributos();
       gl.uniform4fv(U.uCor, cor); gl.uniform1f(U.uAlfa, alfa);
-      gl.drawArrays(modo, 0, dados.length / 6);
+      gl.drawArrays(modo, 0, dados.length / 8);
       gl.uniform4fv(U.uCor, [0, 0, 0, 0]); gl.uniform1f(U.uAlfa, 1);
     }
     const atributos = () => {
-      gl.vertexAttribPointer(A.P, 3, gl.FLOAT, false, 24, 0);
-      gl.vertexAttribPointer(A.T, 2, gl.FLOAT, false, 24, 12);
-      gl.vertexAttribPointer(A.L, 1, gl.FLOAT, false, 24, 20);
+      gl.vertexAttribPointer(A.P, 3, gl.FLOAT, false, 32, 0);
+      gl.vertexAttribPointer(A.T, 2, gl.FLOAT, false, 32, 12);
+      gl.vertexAttribPointer(A.L, 1, gl.FLOAT, false, 32, 20);
+      gl.vertexAttribPointer(A.N, 2, gl.FLOAT, false, 32, 24);
     };
     function contorno(x, y, z) {
       const e = 0.003, a = [x - e, y - e, z - e], b = [x + 1 + e, y + 1 + e, z + 1 + e], v = [];
       const P = (i, j, k) => [[a[0], b[0]][i], [a[1], b[1]][j], [a[2], b[2]][k]];
       const ar = [[0, 0, 0, 1, 0, 0], [0, 1, 0, 1, 1, 0], [0, 0, 1, 1, 0, 1], [0, 1, 1, 1, 1, 1], [0, 0, 0, 0, 1, 0], [1, 0, 0, 1, 1, 0], [0, 0, 1, 0, 1, 1], [1, 0, 1, 1, 1, 1], [0, 0, 0, 0, 0, 1], [1, 0, 0, 1, 0, 1], [0, 1, 0, 0, 1, 1], [1, 1, 0, 1, 1, 1]];
-      ar.forEach(([i, j, k, l, m, n]) => { v.push(...P(i, j, k), 0, 0, 1, ...P(l, m, n), 0, 0, 1); });
+      ar.forEach(([i, j, k, l, m, n]) => { v.push(...P(i, j, k), 0, 0, 1, 1, 0, ...P(l, m, n), 0, 0, 1, 1, 0); });
       return v;
     }
 
@@ -698,7 +901,7 @@
       gl.viewport(0, 0, w, h);
       // Luz do dia (o Clássico é sempre de dia)
       const ang = tempoDia * Math.PI * 2, alto = Math.sin(ang);
-      const luz = cfg.diaNoite ? Math.max(0.28, Math.min(1, 0.35 + alto * 1.3)) : 1;
+      const luz = cfg.diaNoite ? Math.max(comLuz ? 0.2 : 0.28, Math.min(1, 0.35 + alto * 1.3)) : 1;
       const tarde = cfg.diaNoite ? Math.max(0, 1 - Math.abs(alto) * 4) : 0;
       let ceu = cfg.diaNoite ? misturar([0.05, 0.08, 0.18], [0.55, 0.78, 1], Math.max(0, Math.min(1, alto * 2 + 0.3))) : [0.6, 0.8, 1];
       ceu = misturar(ceu, [0.98, 0.6, 0.38], tarde * 0.5);
@@ -713,6 +916,12 @@
       gl.uniform4fv(U.uCor, [0, 0, 0, 0]); gl.uniform1f(U.uAlfa, 1);
       gl.uniform3fv(U.uDesl, [0, 0, 0]);
       const [ex, ey, ez] = olho();
+      // Chama: a luz das tochas tremula de leve; tocha escolhida na barra ilumina em volta
+      const pisca = comLuz ? 0.93 + 0.04 * Math.sin(relogio * 9.1) + 0.03 * Math.sin(relogio * 23.7 + 1.3) : 1;
+      gl.uniform1f(U.uPisca, pisca);
+      gl.uniform1f(U.uMin, comLuz ? 0.13 : 0);
+      const tochaNaMao = comLuz && hotbar[escolhido] === B.tocha && temBloco(B.tocha);
+      gl.uniform4fv(U.uMao, tochaNaMao ? [ex, ey - 0.3, ez, 12.5] : [0, 0, 0, 0]);
       const vista = mat.mult(mat.rotX(-jog.pitch), mat.mult(mat.rotY(jog.yaw), mat.trans(-ex, -ey, -ez)));
       const proj = mat.persp(FOV, w / h, 0.05, 400);
       const mvp = mat.mult(proj, vista);
@@ -724,7 +933,7 @@
         gl.uniform1f(U.uDens, 0); gl.uniform1f(U.uLuz, 1);
         const astro = (dx, dy, tam, cor) => {
           const c = [ex + dx * 150, ey + dy * 150, ez - 40];
-          const q = [[-1, -1], [1, -1], [1, 1], [-1, -1], [1, 1], [-1, 1]].flatMap(([a, b]) => [c[0] - dy * b * tam, c[1] + dx * b * tam, c[2] + a * tam, 0, 0, 1]);
+          const q = [[-1, -1], [1, -1], [1, 1], [-1, -1], [1, 1], [-1, 1]].flatMap(([a, b]) => [c[0] - dy * b * tam, c[1] + dx * b * tam, c[2] + a * tam, 0, 0, 1, 1, 0]);
           desenharExtra(q, gl.TRIANGLES, cor);
         };
         gl.depthMask(false);
@@ -747,6 +956,33 @@
       // Água e nuvens (transparentes, por último)
       gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
       pedacos.forEach(p => { if (!p.nA) return; gl.bindBuffer(gl.ARRAY_BUFFER, p.agua); atributos(); gl.drawArrays(gl.TRIANGLES, 0, p.nA); });
+      // Brilho das tochas (halo que soma luz; mais forte no escuro)
+      if (comLuz && tochas.size) {
+        const cp = Math.cos(jog.pitch), sp = Math.sin(jog.pitch), sy = Math.sin(jog.yaw), cy = Math.cos(jog.yaw);
+        const dir = [cy, 0, sy], cima = [-sy * sp, cp, cy * sp];
+        const grande = [], miolo = [];
+        const quad = (arr, c, r) => [[0, 0], [1, 0], [1, 1], [0, 0], [1, 1], [0, 1]].forEach(([a, b]) => {
+          const u = (a * 2 - 1) * r, v = (b * 2 - 1) * r;
+          arr.push(c[0] + dir[0] * u + cima[0] * v, c[1] + dir[1] * u + cima[1] * v, c[2] + dir[2] * u + cima[2] * v, a, b, 1, 1, 0);
+        });
+        let k = 0;
+        for (const t of tochas) {
+          const [tx, ty, tz] = t.split(",").map(Number);
+          const dx = tx + 0.5 - ex, dy = ty + 0.7 - ey, dz = tz + 0.5 - ez;
+          if (dx * dx + dy * dy + dz * dz > 34 * 34) continue;
+          const f = Math.sin(relogio * 7 + tx * 1.7 + tz * 2.3) * 0.06 + Math.sin(relogio * 17 + ty) * 0.04;
+          const c = [tx + 0.5, ty + 0.72, tz + 0.5];
+          quad(grande, c, 1.25 + f * 4); quad(miolo, c, 0.32 + f);
+          if (++k > 60) break;
+        }
+        if (grande.length) {
+          const escuro = 1 - Math.min(1, luz) * 0.75;
+          gl.blendFunc(gl.ONE, gl.ONE); gl.uniform1f(U.uHalo, 1);
+          desenharExtra(grande, gl.TRIANGLES, [1, 0.62, 0.25, 0.42 * escuro]);
+          desenharExtra(miolo, gl.TRIANGLES, [1, 0.9, 0.55, 0.85]);
+          gl.uniform1f(U.uHalo, 0); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        }
+      }
       gl.uniform1f(U.uDens, 0.006);
       gl.uniform3fv(U.uDesl, [((relogio * 1.2) % 128) - 128, 0, 0]);
       gl.bindBuffer(gl.ARRAY_BUFFER, bufNuvens); atributos();
@@ -891,6 +1127,7 @@
         if (!certeza) { certeza = true; novo.textContent = "⚠️ Toque de novo: o mundo atual some!"; return; }
         seed = Math.floor(Math.random() * 1e9);
         mundo = gerar(cfg, seed);
+        calcularLuz(); lerTochas();
         pedacos.forEach(p => { p.sujo = true; });
         nascer(); mudou = true; salvar(); caixa.remove();
         Motor.falar("Um mundo novinho!");
@@ -1111,7 +1348,7 @@
         if (cfg.diaNoite) {
           const antes = noite();
           tempoDia = (tempoDia + dt / 480) % 1; // um dia inteiro em 8 minutos
-          if (sobrev && noite() && !antes) { Motor.falar("Está anoitecendo! Faça uma casinha ou coloque tochas para as criaturas não chegarem perto."); avisar("🌙 Anoiteceu: cuidado com as criaturas!"); }
+          if (sobrev && noite() && !antes) { Motor.falar("Está anoitecendo! Faça uma casinha ou coloque tochas: elas iluminam e as criaturas não chegam perto."); avisar("🌙 Anoiteceu: cuidado com as criaturas!"); }
           if (sobrev && !noite() && antes) { Motor.falar("Amanheceu! As criaturas foram embora."); avisar("☀️ Amanheceu!"); }
         }
         // vida volta aos pouquinhos se ninguém machucar por um tempo
@@ -1135,6 +1372,10 @@
       : "Mundo clássico! Ande com o joystick, arraste para olhar, toque para colocar um bloco e segure para quebrar.");
 
     // Gancho para testes automáticos
-    if (window.MUNDO_TESTE) window.MUNDO_TESTE = { jog, pegar, mirar, direcao, olho, colocar, quebrar, bichos, salvar, ent, cfg, inv, hora: t => { tempoDia = t; }, vida: () => vida, abrirMochila };
+    if (window.MUNDO_TESTE) window.MUNDO_TESTE = { jog, pegar, mirar, direcao, olho, colocar, quebrar, bichos, salvar, ent, cfg, inv, hora: t => { tempoDia = t; }, vida: () => vida, abrirMochila,
+      luzEm, tempoLuz: () => tempoLuz, tochas, hotbar, escolher: i => { escolhido = i; desenharBarra(); },
+      // põe um bloco direto (sem as regras do jogo), atualizando a luz e as malhas
+      por: (x, y, z, b) => { if (pegar(x, y, z) === B.tocha) tochas.delete(`${x},${y},${z}`); mundo[I(x, y, z)] = b; if (b === B.tocha) tochas.add(`${x},${y},${z}`); const t0 = performance.now(); luzMudou(x, y, z); sujar(x, z); return performance.now() - t0; },
+      bloco: () => mundo, I, X, Y, Z, calcularLuz, luzTudo: () => [luzCeu.slice(), luzBloco.slice()] };
   }
 })();

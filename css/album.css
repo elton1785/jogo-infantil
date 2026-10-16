@@ -1,0 +1,77 @@
+/* ---------- Álbum de figurinhas e perfis (js/album.js) ---------- */
+.album-camada { position: fixed; inset: 0; z-index: 18; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  background: radial-gradient(circle at 20% 10%, #fff6d6 0, transparent 40%), linear-gradient(160deg, #ffe8b6, #ffd1dc 55%, #d7e8ff); }
+.album-fechar { top: 12px; right: 12px; left: auto; z-index: 2; }
+.album-conteudo { min-height: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 16px calc(30px + env(safe-area-inset-bottom, 0px)); max-width: 980px; margin: 0 auto; }
+.album-conteudo > * { width: 100%; }
+.album-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-right: 80px; }
+.album-perfil { display: flex; align-items: center; gap: 10px; border: none; background: #fff; border-radius: 999px; padding: 6px 16px 6px 6px; box-shadow: 0 4px 0 rgba(0,0,0,.12); cursor: pointer; }
+.album-perfil .av, .album-cartao-perfil .av, .album-previa .av { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; flex: none; box-shadow: inset 0 -4px 0 rgba(0,0,0,.12); }
+.album-perfil .nm { font-size: 20px; font-weight: 700; color: #6b2c91; }
+.album-progresso { flex: 1 1 200px; display: flex; flex-direction: column; gap: 4px; }
+.album-progresso b { color: #6b2c91; font-size: 16px; }
+.album-progresso .barra { height: 14px; background: rgba(255,255,255,.7); border-radius: 999px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,.1); }
+.album-progresso .barra i { display: block; height: 100%; background: linear-gradient(90deg, #ffb703, #fb5607, #ff006e); border-radius: 999px; }
+.album-acoes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.album-pacote.tem { background: linear-gradient(180deg, #ffd84a, #ffb703); box-shadow: 0 4px 0 #d48a00; animation: pula 1.6s ease infinite; }
+.album-abas { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; justify-content: safe center; }
+.album-aba { flex: none; width: 66px; border: none; border-radius: 16px; background: #fff; box-shadow: 0 4px 0 var(--cor); cursor: pointer; display: flex; flex-direction: column; align-items: center; padding: 6px 4px; }
+.album-aba span { font-size: 30px; line-height: 1.1; }
+.album-aba small { font-size: 12px; font-weight: 700; color: #555; }
+.album-aba.ativa { background: var(--cor); }
+.album-aba.ativa small { color: #fff; }
+.album-aba.completa small::after { content: " ⭐"; }
+.album-folha { background: #fffdf6; border-radius: 26px; padding: 14px; box-shadow: 0 8px 0 rgba(0,0,0,.1), 0 0 0 6px var(--cor) inset; }
+.album-titulo-pagina { text-align: center; font-size: clamp(22px, 5vw, 30px); font-weight: 700; color: #6b2c91; margin: 4px 0 10px; }
+.album-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(27vw, 150px), 1fr)); gap: 12px; }
+.album-fig { position: relative; aspect-ratio: 3 / 4; border: 3px dashed rgba(0,0,0,.18); border-radius: 16px; background: rgba(0,0,0,.04); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.album-fig .num { font-size: clamp(22px, 6vw, 36px); font-weight: 700; color: rgba(0,0,0,.2); }
+.album-fig.colada { border: 5px solid #fff; background: linear-gradient(170deg, #fff, #f3f3f3); box-shadow: 0 5px 0 rgba(0,0,0,.15), 0 0 0 2px rgba(0,0,0,.06); transform: rotate(-1.5deg); }
+.album-fig.colada:nth-child(even) { transform: rotate(1.5deg); }
+.album-fig .e { font-size: clamp(44px, 13vw, 92px); line-height: 1; }
+.album-fig .n { font-size: clamp(12px, 3.2vw, 17px); font-weight: 700; color: #444; text-align: center; padding: 0 4px; }
+.album-fig .rep { position: absolute; top: 4px; right: 6px; background: #ff006e; color: #fff; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 1px 7px; }
+.album-fig.brilhante.colada { background: linear-gradient(135deg, #fff7c2, #ffe066 30%, #fff 50%, #ffd23f 70%, #fff3b0); border-color: #ffd23f; }
+.album-fig.brilhante.colada::after { content: "✨"; position: absolute; top: 2px; left: 6px; font-size: 18px; }
+/* Pacotinho: cartas que viram */
+.album-mesa { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; padding: 10px 0; }
+.album-carta { width: min(28vw, 190px); aspect-ratio: 3 / 4; border: none; background: none; padding: 0; perspective: 800px; cursor: pointer; position: relative; }
+.album-carta .verso, .album-carta .frente { position: absolute; inset: 0; border-radius: 18px; backface-visibility: hidden; -webkit-backface-visibility: hidden; transition: transform .6s cubic-bezier(.3,1.4,.5,1); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.album-carta .verso { background: repeating-linear-gradient(45deg, #ff006e 0 14px, #fb5607 14px 28px); border: 6px solid #fff; box-shadow: 0 8px 0 rgba(0,0,0,.18); font-size: 60px; }
+.album-carta .frente { transform: rotateY(180deg); background: #fff; border: 6px solid var(--cor); box-shadow: 0 8px 0 rgba(0,0,0,.18); gap: 4px; }
+.album-carta.virada .verso { transform: rotateY(-180deg); }
+.album-carta.virada .frente { transform: rotateY(0); }
+.album-carta .e { font-size: clamp(60px, 16vw, 110px); line-height: 1; }
+.album-carta .n { font-size: clamp(15px, 3.6vw, 20px); font-weight: 700; color: #333; }
+.album-carta small { font-size: 14px; font-weight: 700; color: var(--cor); }
+.album-carta.brilhante .frente { background: linear-gradient(135deg, #fff7c2, #ffe066 30%, #fff 50%, #ffd23f 70%, #fff3b0); }
+/* Perfis */
+.album-perfis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.album-cartao-perfil { display: flex; flex-direction: column; align-items: center; gap: 6px; border: none; border-radius: 24px; background: #fff; padding: 16px 8px; box-shadow: 0 6px 0 rgba(0,0,0,.12); cursor: pointer; }
+.album-cartao-perfil .av { width: 80px; height: 80px; font-size: 50px; }
+.album-cartao-perfil .nm { font-size: 20px; font-weight: 700; }
+.album-cartao-perfil small { font-size: 14px; color: #666; }
+.album-cartao-perfil.ativo { box-shadow: 0 6px 0 #ffb703, 0 0 0 4px #ffb703; }
+.album-cartao-perfil.novo .av { background: #eee; }
+.album-previa { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.album-previa .av { width: 90px; height: 90px; font-size: 56px; }
+.album-previa .nm { font-size: 30px; font-weight: 700; color: #6b2c91; }
+.album-rotulo { text-align: center; font-weight: 700; color: #6b2c91; font-size: 18px; }
+.album-escolhas { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.album-escolha { width: 56px; height: 56px; border: none; border-radius: 50%; background: #fff; font-size: 32px; box-shadow: 0 4px 0 rgba(0,0,0,.12); cursor: pointer; }
+.album-escolha.cor { border: 4px solid #fff; }
+.album-teclado { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px; }
+.album-tecla { height: 50px; border: none; border-radius: 12px; background: #fff; font-size: 22px; font-weight: 700; box-shadow: 0 4px 0 rgba(0,0,0,.12); cursor: pointer; }
+.album-camada .chip.jogar { align-self: center; width: auto; }
+/* Cartão do álbum no início e o aviso de pacotinho (em qualquer tela) */
+.atalho-album { position: relative; border: none; border-radius: 24px; cursor: pointer; display: flex; align-items: center; gap: 14px; text-align: left; padding: 12px 16px; color: #6b2c91;
+  background: linear-gradient(180deg, #f6e6ff, #fff); box-shadow: 0 6px 0 #9b5de5, 0 10px 18px rgba(0,0,0,.08); }
+.atalho-album .icone { width: 64px; height: 64px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 38px; box-shadow: 0 0 0 4px #f1e6fb, 0 0 0 6px #9b5de5; flex: none; }
+.atalho-album .textos { display: flex; flex-direction: column; }
+.atalho-album .rotulo { font-size: 20px; font-weight: 700; }
+.atalho-album .desc { font-size: 14px; color: #5f6b72; }
+.atalho-album .selo-pacote { position: absolute; top: -8px; right: -6px; background: #ff006e; color: #fff; font-weight: 700; border-radius: 999px; padding: 4px 10px; box-shadow: 0 3px 0 rgba(0,0,0,.2); animation: pula 1.6s ease infinite; }
+.album-aviso { position: fixed; z-index: 30; left: 50%; top: 12px; transform: translate(-50%, -140%); background: #fff; color: #6b2c91; font-weight: 700; border-radius: 999px; padding: 10px 18px; box-shadow: 0 6px 18px rgba(0,0,0,.25); transition: transform .4s; max-width: calc(100% - 200px); text-align: center; pointer-events: none; }
+.album-aviso.visivel { transform: translate(-50%, 0); }
+@media (max-width: 480px) { .album-aviso { max-width: calc(100% - 24px); top: 92px; } }
+@media (max-width: 640px) { .album-conteudo { padding-top: 96px; } .album-topo { padding-right: 0; } }

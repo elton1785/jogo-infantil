@@ -1,0 +1,14 @@
+/* ---------- Pé na Estrada: corrida a dois (tela dividida) ---------- */
+/* Cada metade da tela tem os seus botões, menores, nos cantos de baixo da sua estrada */
+.carros-metade { position: absolute; z-index: 2; pointer-events: none; }
+.carros-metade .carros-pad { pointer-events: auto; bottom: 8px; gap: 6px; }
+.carros-metade .carros-pad.volante { left: 8px; }
+.carros-metade .carros-pad.pedais { right: 8px; }
+.carros-metade .carros-botao { width: 58px; height: 58px; font-size: 26px; border-radius: 18px; }
+.carros-metade .carros-botao.acel { width: 66px; height: 66px; }
+.carros-metade .carros-botao small { font-size: 11px; }
+@media (max-width: 420px), (max-height: 420px) {
+  .carros-metade .carros-botao { width: 52px; height: 52px; font-size: 23px; }
+  .carros-metade .carros-botao.acel { width: 58px; height: 58px; }
+  .carros-metade .carros-botao small { font-size: 10px; }
+}

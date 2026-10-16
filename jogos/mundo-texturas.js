@@ -41,7 +41,7 @@ const MundoTexturas = (() => {
     { nome: "Grama alta", f: [T.gramaAlta], tipo: "cruz" },                 // 28
     { nome: "Cacto", f: [T.cactoTopo, T.cactoLado, T.cactoTopo] },          // 29
     { nome: "Cascalho", f: [T.cascalho] },                                  // 30
-    { nome: "Tocha", f: [T.tocha], tipo: "cruz" },                          // 31 (afasta as criaturas da noite)
+    { nome: "Tocha", f: [T.tocha], tipo: "cruz" },                          // 31 (ilumina e afasta as criaturas da noite)
   ];
   const ID = { ar: 0, pedra: 1, grama: 2, terra: 3, pedregulho: 4, tabuas: 5, tronco: 6, folhas: 7, areia: 8, agua: 9, vidro: 10,
     tijolo: 11, rochaMae: 12, neve: 13, la: 14, ouro: 23, diamante: 24, carvao: 25, florAmarela: 26, florVermelha: 27,
@@ -248,8 +248,13 @@ const MundoTexturas = (() => {
     };
     pinturas[T.tocha] = () => {
       vazio();
-      for (let v = 7; v < 16; v++) { ponto(7, v, [110, 80, 45]); ponto(8, v, [90, 64, 36]); }
-      [[7, 6, [255, 200, 40]], [8, 6, [255, 160, 30]], [7, 5, [255, 230, 120]], [8, 5, [255, 120, 20]], [7, 4, [255, 250, 200]]].forEach(([u, v, c]) => ponto(u, v, c));
+      // cabo de madeira com a ponta queimada e uma chama de 3 tons (o brilho e o tremor vêm do jogo)
+      for (let v = 8; v < 16; v++) { ponto(7, v, [130, 94, 52]); ponto(8, v, [98, 70, 40]); }
+      ponto(7, 8, [70, 50, 32]); ponto(8, 8, [58, 42, 28]);
+      [[7, 7, [255, 170, 40]], [8, 7, [240, 130, 30]],
+        [6, 6, [250, 130, 30]], [7, 6, [255, 215, 80]], [8, 6, [255, 190, 60]], [9, 6, [240, 110, 25]],
+        [6, 5, [255, 160, 40]], [7, 5, [255, 245, 170]], [8, 5, [255, 225, 110]], [9, 5, [255, 145, 35]],
+        [7, 4, [255, 252, 215]], [8, 4, [255, 205, 85]], [7, 3, [255, 225, 130]], [8, 2, [255, 190, 70]]].forEach(([u, v, c]) => ponto(u, v, c));
     };
     (pinturas[i] || (() => encher([255, 0, 255], 0)))();
     return buf;

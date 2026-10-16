@@ -30,7 +30,7 @@ const Controle = (() => {
     return cs.visibility !== "hidden" && cs.display !== "none" && !el.closest("[hidden]") && +cs.opacity > 0.05;
   };
   function candidatos() {
-    const ajuda = document.querySelector(".ajuda-fundo");
+    const ajuda = document.querySelector(".ajuda-fundo") || document.querySelector(".sobreposta");
     const raiz = ajuda || document.querySelector(".tela.ativa");
     if (!raiz) return [];
     const els = [...raiz.querySelectorAll("button, [data-toque], [tabindex], *")].filter(el =>
@@ -104,6 +104,7 @@ const Controle = (() => {
 
   function voltar() {
     if (Ajuda.aberta()) { Ajuda.fechar(); return; }
+    if (typeof Album !== "undefined" && Album.aberto()) { Album.fechar(); return; }
     const janela = document.querySelector(".mundo-mochila"); // janelas por cima do jogo: fecha primeiro
     if (janela) { janela.remove(); return; }
     const casa = document.getElementById("btn-voltar");
@@ -114,7 +115,7 @@ const Controle = (() => {
   window.addEventListener("keydown", e => {
     const k = e.key;
     const editando = e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName);
-    if (VOLTAR.has(k) || e.keyCode === 10009 || e.keyCode === 461 || (k === "Backspace" && !editando && !jogoTeclas()) || (k === "Escape" && !jogoTeclas())) {
+    if (VOLTAR.has(k) || e.keyCode === 10009 || e.keyCode === 461 || (k === "Backspace" && !editando && !document.querySelector("#jogo.ativa")) || (k === "Escape" && !jogoTeclas())) {
       e.preventDefault(); e.stopImmediatePropagation();
       voltar();
       return;
@@ -149,7 +150,7 @@ const Controle = (() => {
       if (focoValido()) return;
       const lista = candidatos();
       if (!lista.length) return;
-      const janela = document.querySelector(".ajuda-fundo, .mundo-mochila, .arcade-fim, .blocos-fim, .plat-fim, .fim");
+      const janela = document.querySelector(".ajuda-fundo, .sobreposta, .mundo-mochila, .arcade-fim, .blocos-fim, .plat-fim, .fim");
       if (jogoTeclas() && !janela) return; // durante a partida, nada de destaque
       focar(primeiro(lista));
     }, 120);
@@ -222,6 +223,14 @@ const Controle = (() => {
     usarTeclasDoJogo(fn) { jogoTeclas = fn; },
     // Estado do controle para jogos que o leem direto (null se não houver)
     pad: () => padAtual,
+    // Todos os controles ligados (jogos de 2 jogadores): [{ botao(i), eixo(i), indice }], na ordem
+    // em que foram conectados. O 1º também gera as teclas de seta (eventos com doControle = true):
+    // um jogo que lê os controles direto deve ignorar esses eventos.
+    pads: () => (navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : []).map(g => ({
+      indice: g.index,
+      botao: i => !!(g.buttons[i] && (g.buttons[i].pressed || g.buttons[i].value > 0.5)),
+      eixo: i => { const v = g.axes[i] || 0; return Math.abs(v) < 0.18 ? 0 : v; },
+    })),
     ativo: () => modoControle,
   };
 })();

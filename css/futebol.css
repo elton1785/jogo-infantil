@@ -1,0 +1,48 @@
+/* ---------- Futebol ---------- */
+.fut-previa { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 16px; }
+.fut-time { display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: bold; font-size: 16px; color: #2d3436; }
+.fut-time svg { width: 66px; height: 62px; filter: drop-shadow(0 3px 0 rgba(0,0,0,.18)); }
+.fut-time span { background: rgba(255,255,255,.85); border-radius: 12px; padding: 1px 10px; }
+.fut-x { font-size: 32px; font-weight: bold; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,.25); }
+
+.fut-tela { position: absolute; inset: 10px 12px calc(30px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; }
+.fut-topo { display: flex; align-items: center; gap: 8px; padding-left: 84px; min-height: 64px; }
+.fut-topo .chip { min-width: 56px; min-height: 52px; font-size: 24px; padding: 4px 10px; }
+.fut-info { flex: 1; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center; min-width: 0; }
+.fut-info > span { background: rgba(255,255,255,.94); border-radius: 16px; padding: 6px 12px; font-weight: bold; font-size: 18px; white-space: nowrap; box-shadow: 0 3px 0 rgba(0,0,0,.12); display: inline-flex; align-items: center; gap: 6px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.fut-info i { display: inline-block; flex: none; width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(0,0,0,.25); }
+.fut-info b { font-size: 24px; min-width: 18px; text-align: center; }
+.fut-placar { gap: 8px !important; }
+.fut-relogio.acabando { background: #ffe3e3 !important; color: #c92a2a; }
+
+.fut-palco { flex: 1; min-height: 0; position: relative; border-radius: 18px; overflow: hidden; box-shadow: 0 6px 0 rgba(0,0,0,.18); background: #1f3b2a; }
+.fut-palco canvas { position: absolute; left: 0; top: 0; display: block; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.fut-toque { position: absolute; inset: 0; pointer-events: none; }
+.fut-toque > * { pointer-events: auto; position: absolute; }
+.fut-joy { border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.14), rgba(255,255,255,.34)); border: 3px solid rgba(255,255,255,.75); touch-action: none; box-shadow: 0 4px 14px rgba(0,0,0,.3); -webkit-user-select: none; user-select: none; }
+.fut-joy i { position: absolute; left: 27%; top: 27%; width: 46%; height: 46%; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #d5dde6); box-shadow: 0 4px 0 rgba(0,0,0,.25); pointer-events: none; }
+.fut-bt { border: none; border-radius: 50%; background: rgba(255,255,255,.92); box-shadow: 0 5px 0 rgba(0,0,0,.28); font-size: 30px; font-family: inherit; color: #1d3557; display: flex; align-items: center; justify-content: center; touch-action: none; cursor: pointer; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.fut-bt.apertado { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,.28); }
+.fut-bt.chute { background: #ffd43b; }
+.fut-bt.largo { border-radius: 24px; padding: 0 22px; font-size: 24px; font-weight: bold; }
+.fut-bt.escolhido { background: #ffd43b; outline: 4px solid #fff; }
+.fut-bt.j1 { box-shadow: 0 5px 0 #e0b400; }
+.fut-bt.j2 { box-shadow: 0 5px 0 #1098ad; }
+.fut-bt[hidden] { display: none; }
+
+.fut-fim { gap: 6px; max-height: calc(100% - 16px); overflow-y: auto; }
+.fut-fim .fut-fim-trofeu { font-size: 72px; line-height: 1; animation: pula 1s ease infinite; }
+.fut-fim-placar { font-size: 22px; font-weight: bold; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.fut-fim-placar b { font-size: 34px; }
+.fut-fim-placar i { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(0,0,0,.25); }
+.fut-fim-botoes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+.fut-fim-botoes .chip { font-size: 20px; padding: 10px 18px; }
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .fut-topo { min-height: 56px; }
+  .fut-topo .chip { min-height: 48px; font-size: 22px; }
+  .fut-info > span { font-size: 16px; padding: 4px 10px; }
+  .fut-fim .fut-fim-trofeu { font-size: 44px; }
+  .fut-fim .titulo-fim { font-size: 22px; }
+  .fut-fim-placar b { font-size: 26px; }
+}

@@ -122,6 +122,7 @@
       { figura: "⬅️➡️", texto: "Os botões da esquerda viram o carro. No controle de videogame, use o direcional." },
       { figura: "⛽🛑", texto: "Os botões da direita aceleram e freiam (segurando o freio, dá ré). No modo fácil o carro acelera sozinho." },
       { figura: "🥇", texto: "Na corrida são 3 voltas: passe os outros carros e não saia da pista, que na grama o carro fica lento." },
+      { figura: "👥🎮🎮", texto: "Corrida a dois: a tela se divide e cada um tem a sua estrada e os seus botões. Jogador 1 usa o 1º controle (ou as setas e Enter); jogador 2 usa o 2º controle (ou W A S D e F)." },
       { figura: "📦➜🏠", texto: "Na cidade, siga a seta: busque a encomenda e leve até a casinha. Pegue as estrelas pelo caminho!" },
       { figura: "🚦", texto: "Respeite os semáforos: no vermelho a gente para e espera o verde, como os outros carros." },
     ],
@@ -130,7 +131,8 @@
       { figura: "🦖🐆🐕", texto: "Escolha quem vai correr: o dino, a onça, o caramelo ou a capivara. Ele corre sozinho!" },
       { figura: "👆🌵", texto: "Toque na tela para pular os cactos. Segure o dedo para pular mais alto." },
       { figura: "⬇️🐦", texto: "Aperte abaixar para passar por baixo dos pássaros." },
-      { figura: "⭐", texto: "Pegue as estrelas no ar para ganhar pontos. Quanto mais longe, mais pontos, e mais rápido fica!" },
+      { figura: "🏁🚀", texto: "A cada fase fica mais rápido e aparece uma novidade: pássaros, cactos em grupo, a noite... Até que fase você chega?" },
+      { figura: "⭐", texto: "Pegue as estrelas no ar para ganhar pontos. Quanto mais longe, mais pontos!" },
     ],
 
     plataforma: [

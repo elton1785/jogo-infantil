@@ -1,7 +1,10 @@
 // Pé na Estrada: jogo de carro com dois modos (tudo desenhado por código, sem imagens).
 // - 🏁 Corrida: estrada em 3D "de fliperama" (projeção por segmentos: curvas e morros), 5 carros
 //   adversários, 3 voltas, contagem regressiva, posição na corrida e pódio. Cenários: campo,
-//   praia, cidade à noite e neve.
+//   praia, cidade à noite e neve. Com 2 jogadores a tela se divide (lado a lado na tela larga,
+//   em cima/embaixo na estreita): cada metade mostra a estrada da câmera do seu carro, os dois
+//   correm na mesma pista contra 4 carros do computador; jogador 1 = 1º controle ou setas + Enter,
+//   jogador 2 = 2º controle ou W A S D + F; no toque, cada um tem os botões na sua metade.
 // - 🏙️ Cidade: dirigir livre numa cidade vista de cima, com quarteirões, semáforos e trânsito que
 //   respeita o sinal. Missões de entrega (buscar o 📦 e levar até a 🏠) com seta mostrando o caminho.
 //   Passar no sinal vermelho não tem castigo: a voz explica que é preciso esperar o verde.
@@ -16,13 +19,23 @@
     nome: "Pé na Estrada",
     icone: ICONE,
     faixas: ["5-6", "6-8", "8-10"],
+    ajuda: [
+      { figura: "🏁🏙️", texto: "Escolha: corrida contra outros carros, ou passear pela cidade fazendo entregas." },
+      { figura: "⬅️➡️", texto: "Os botões da esquerda viram o carro. No controle de videogame, use o direcional." },
+      { figura: "⛽🛑", texto: "Os botões da direita aceleram e freiam (segurando o freio, dá ré). No modo fácil o carro acelera sozinho." },
+      { figura: "🥇", texto: "Na corrida são 3 voltas: passe os outros carros e não saia da pista, que na grama o carro fica lento." },
+      { figura: "👥🎮🎮", texto: "Corrida a dois: a tela se divide e cada um tem a sua estrada e os seus botões. Jogador 1 usa o 1º controle (ou as setas e Enter); jogador 2 usa o 2º controle (ou W A S D e F)." },
+      { figura: "📦➜🏠", texto: "Na cidade, siga a seta: busque a encomenda e leve até a casinha. Pegue as estrelas pelo caminho!" },
+      { figura: "🚦", texto: "Respeite os semáforos: no vermelho a gente para e espera o verde, como os outros carros." },
+    ],
     iniciar(area, faixa) {
       const fid = (faixa && faixa.id) || "6-8";
       Motor.telaOpcoes(area, {
         chave: `carros-${fid}`,
-        padrao: { modo: "corrida", cor: "vermelho", pista: "campo", nivel: fid === "5-6" ? "facil" : "normal" },
+        padrao: { modo: "corrida", jogadores: "1", cor: "vermelho", pista: "campo", nivel: fid === "5-6" ? "facil" : "normal" },
         opcoes: [
           { chave: "modo", titulo: "O que vamos fazer?", valores: [["corrida", "🏁 Corrida"], ["cidade", "🏙️ Passear na cidade"]] },
+          { chave: "jogadores", titulo: "Jogadores (na corrida)", valores: [["1", "👤 1 jogador"], ["2", "👥 2 jogadores (tela dividida)"]] },
           { chave: "cor", titulo: "Cor do carro", valores: [["vermelho", "🔴 Vermelho"], ["azul", "🔵 Azul"], ["amarelo", "🟡 Amarelo"], ["verde", "🟢 Verde"], ["rosa", "🩷 Rosa"]] },
           { chave: "pista", titulo: "Pista da corrida", valores: [["campo", "🌳 Campo"], ["praia", "🏖️ Praia"], ["noite", "🌃 Cidade à noite"], ["neve", "❄️ Neve"]] },
           { chave: "nivel", titulo: "Jeito de dirigir", valores: [["facil", "🐢 Fácil (acelera sozinho)"], ["normal", "🐇 Normal"], ["dificil", "🚀 Rápido"]] },
@@ -33,10 +46,18 @@
   });
 
   // ---------- Tela comum: topo (informações), palco (canvas) e controles ----------
-  function montarTela(area, { aoPausar }) {
+  // Tela dividida (2 jogadores): lado a lado se o palco for largo, em cima/embaixo se for estreito.
+  // Devolve o retângulo [x, y, largura, altura] de cada metade (jogador 1 em cima / à esquerda).
+  const VAO = 6;
+  function dividir(W, H) {
+    if (W >= H) { const w = Math.floor((W - VAO) / 2); return [[0, 0, w, H], [W - w, 0, w, H]]; }
+    const h = Math.floor((H - VAO) / 2);
+    return [[0, 0, W, h], [0, H - h, W, h]];
+  }
+  function montarTela(area, { aoPausar, dois = false }) {
     area.innerHTML = "";
     const tela = document.createElement("div");
-    tela.className = "arcade-tela carros-tela";
+    tela.className = "arcade-tela carros-tela" + (dois ? " carros-dois" : "");
     const topo = document.createElement("div");
     topo.className = "arcade-topo";
     const info = document.createElement("div");
@@ -51,31 +72,54 @@
     palco.className = "arcade-palco";
     const canvas = document.createElement("canvas");
     palco.appendChild(canvas);
-    // Controles: volante à esquerda (⬅️ ➡️), pedais à direita (frear, acelerar)
-    const esq = document.createElement("div"), dir = document.createElement("div");
-    esq.className = "carros-pad volante";
-    dir.className = "carros-pad pedais";
-    palco.append(esq, dir);
     tela.append(topo, palco);
     area.appendChild(tela);
     const ctx = canvas.getContext("2d");
-    const ent = { esq: false, dir: false, acel: false, freio: false };
-    const botao = (rotulo, chave, classe) => {
+    const ent = { esq: false, dir: false, acel: false, freio: false };   // jogador 1
+    const ent2 = { esq: false, dir: false, acel: false, freio: false };  // jogador 2 (tela dividida)
+    const botao = (rotulo, alvo, chave, classe) => {
       const b = document.createElement("button");
       b.className = "carros-botao " + (classe || "");
       b.innerHTML = rotulo;
-      const liga = v => { ent[chave] = v; b.classList.toggle("apertado", v); };
+      const liga = v => { alvo[chave] = v; b.classList.toggle("apertado", v); };
       b.addEventListener("pointerdown", e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (er) { /* ok */ } liga(true); });
       ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => liga(false)));
       b.addEventListener("contextmenu", e => e.preventDefault());
       return b;
     };
-    esq.append(botao("⬅️", "esq"), botao("➡️", "dir"));
-    dir.append(botao("<span>🛑</span><small>frear</small>", "freio", "freio"), botao("<span>⛽</span><small>acelerar</small>", "acel", "acel"));
-    // Teclado / controle de videogame (setas; Enter e espaço também aceleram)
+    // Controles: volante à esquerda (⬅️ ➡️), pedais à direita (frear, acelerar).
+    // Com 2 jogadores, cada metade da tela ganha os seus (menores).
+    const controles = (alvo, onde) => {
+      const esq = document.createElement("div"), dir = document.createElement("div");
+      esq.className = "carros-pad volante";
+      dir.className = "carros-pad pedais";
+      esq.append(botao("⬅️", alvo, "esq"), botao("➡️", alvo, "dir"));
+      dir.append(botao("<span>🛑</span><small>frear</small>", alvo, "freio", "freio"), botao("<span>⛽</span><small>acelerar</small>", alvo, "acel", "acel"));
+      onde.append(esq, dir);
+    };
+    const metades = [];
+    if (!dois) controles(ent, palco);
+    else [ent, ent2].forEach((alvo, k) => {
+      const m = document.createElement("div");
+      m.className = `carros-metade j${k + 1}`;
+      controles(alvo, m);
+      palco.appendChild(m);
+      metades.push(m);
+    });
+    // Teclado / controle de videogame (setas; Enter e espaço também aceleram).
+    // Com 2 jogadores: jogador 1 = setas + Enter, jogador 2 = W A S D + F; os controles de videogame
+    // são lidos direto na corrida, então as teclas que o 1º controle gera (doControle) são ignoradas.
     const MAPA = { ArrowLeft: "esq", ArrowRight: "dir", ArrowUp: "acel", ArrowDown: "freio", Enter: "acel", " ": "acel", a: "esq", d: "dir", w: "acel", s: "freio" };
-    const desce = e => { const k = MAPA[e.key]; if (k) { e.preventDefault(); ent[k] = true; } else if (e.key === "p" || e.key === "Escape") aoPausar(); };
-    const sobe = e => { const k = MAPA[e.key]; if (k) ent[k] = false; };
+    const MAPA1 = { ArrowLeft: "esq", ArrowRight: "dir", ArrowUp: "acel", ArrowDown: "freio", Enter: "acel", " ": "acel" };
+    const MAPA2 = { a: "esq", d: "dir", w: "acel", s: "freio", f: "acel" };
+    const qual = e => {
+      if (!dois) return MAPA[e.key] ? [ent, MAPA[e.key]] : null;
+      if (e.doControle) return null;
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      return MAPA1[k] ? [ent, MAPA1[k]] : MAPA2[k] ? [ent2, MAPA2[k]] : null;
+    };
+    const desce = e => { const q = qual(e); if (q) { e.preventDefault(); q[0][q[1]] = true; } else if (e.key === "p" || e.key === "Escape") aoPausar(); };
+    const sobe = e => { const q = qual(e); if (q) q[0][q[1]] = false; };
     document.addEventListener("keydown", desce);
     document.addEventListener("keyup", sobe);
     const soltarTeclas = () => { document.removeEventListener("keydown", desce); document.removeEventListener("keyup", sobe); };
@@ -87,6 +131,7 @@
       canvas.width = Math.round(tam.w * dpr); canvas.height = Math.round(tam.h * dpr);
       Object.assign(canvas.style, { width: tam.w + "px", height: tam.h + "px" });
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (dois) dividir(tam.w, tam.h).forEach(([x, y, w, h], k) => Object.assign(metades[k].style, { left: x + "px", top: y + "px", width: w + "px", height: h + "px" }));
     };
     medir();
     const obs = new ResizeObserver(medir);
@@ -109,7 +154,7 @@
       caixa.append(b, o);
       tela.appendChild(caixa);
     };
-    return { tela, ctx, tam, ent, pausa, mostrarInfo, fim, soltarTeclas, desligar: () => { soltarTeclas(); obs.disconnect(); } };
+    return { tela, ctx, tam, ent, ent2, pausa, mostrarInfo, fim, soltarTeclas, desligar: () => { soltarTeclas(); obs.disconnect(); } };
   }
 
   // ---------- Desenho dos carros ----------
@@ -239,7 +284,8 @@
     const NIVEL = { facil: { max: 0.82, rivais: 0.7, auto: true }, normal: { max: 1, rivais: 0.86, auto: false }, dificil: { max: 1.12, rivais: 0.97, auto: false } }[op.nivel] || { max: 1, rivais: 0.86 };
     const sessao = Motor.sessaoAtual();
     let pausado = false;
-    const T = montarTela(area, { aoPausar: () => { if (fase !== "fim") { pausado = !pausado; T.pausa.textContent = pausado ? "▶️" : "⏸️"; } } });
+    const DOIS = op.jogadores === "2"; // corrida a dois, com a tela dividida
+    const T = montarTela(area, { dois: DOIS, aoPausar: () => alternarPausa() });
     const vivo = () => sessao === Motor.sessaoAtual() && document.contains(T.tela);
 
     // ----- Pista: segmentos com curva e altura -----
@@ -278,22 +324,102 @@
       if (Math.random() < 0.35) segs[n].enfeites.push({ tipo: Motor.sortear(tema.coisas), x: -lado * (1.4 + Math.random() * 1.6) });
     }
 
-    // ----- Jogador e adversários -----
+    // ----- Jogadores (1 ou 2, tela dividida) e adversários -----
     const VMAX = (SEG / (1 / 60)) * NIVEL.max;
-    const meuCarro = CORES[op.cor] || CORES.vermelho;
-    const sprites = { reto: carroDeTras(meuCarro, 0), esq: carroDeTras(meuCarro, -1), dir: carroDeTras(meuCarro, 1) };
-    const outrasCores = Object.values(CORES).filter(c => c !== meuCarro);
-    const rivais = outrasCores.slice(0, 5).map((cor, k) => ({
+    const CAM = ALT_CAMERA * PROF; // o carro do jogador fica esta distância à frente da câmera
+    const EMOJI_COR = { vermelho: "🔴", azul: "🔵", amarelo: "🟡", verde: "🟢", rosa: "🩷", laranja: "🟠" };
+    const cor1 = CORES[op.cor] ? op.cor : "vermelho", cor2 = cor1 === "azul" ? "laranja" : "azul";
+    const novoJogador = (n, cor, ent) => {
+      const hex = CORES[cor];
+      return {
+        n, cor, hex, tec: ent, ent, emoji: EMOJI_COR[cor],
+        sprites: { reto: carroDeTras(hex, 0), esq: carroDeTras(hex, -1), dir: carroDeTras(hex, 1) },
+        pos: 0, x: 0, vel: 0, voltas: 0, ceuDesl: 0, morroDesl: 0, sacode: 0, ultPos: 9, chegou: 0,
+      };
+    };
+    const jog = DOIS ? [novoJogador(1, cor1, T.ent), novoJogador(2, cor2, T.ent2)] : [novoJogador(1, cor1, T.ent)];
+    if (DOIS) { jog[0].x = -0.5; jog[1].x = 0.5; }
+    const usadas = jog.map(j => j.hex);
+    const outrasCores = Object.values(CORES).filter(c => !usadas.includes(c));
+    const rivais = outrasCores.slice(0, DOIS ? 4 : 5).map((cor, k) => ({
       cor, img: carroDeTras(cor), nome: ["Azulão", "Faísca", "Relâmpago", "Pipoca", "Trovão"][k],
-      // largada: dois atrás do jogador (ainda na volta "-1") e três na frente
+      // largada: dois atrás do jogador (ainda na volta "-1") e os outros na frente
       x: [-0.5, 0.5][k % 2], z: k < 2 ? VOLTA - (k + 1) * 4 * SEG : (k - 1) * 4 * SEG, voltas: k < 2 ? -1 : 0,
       vel: VMAX * NIVEL.rivais * (0.93 + k * 0.025), chegou: 0,
     }));
-    let pos = 0, x = 0, vel = 0, voltas = 0, tempo = 0, fase = "largada", contagem = 3.6, chegada = 0, ceuDesl = 0, morroDesl = 0, sacode = 0, ultPos = 6;
+    const TOTAL_CARROS = rivais.length + jog.length;
+    let tempo = 0, fase = "largada", contagem = 3.6, chegada = 0, primeiraChegada = 0;
     const TOTAL_VOLTAS = 3;
     const segDe = z => segs[Math.floor(((z % VOLTA) + VOLTA) % VOLTA / SEG) % N];
     const progresso = (v, z) => v * VOLTA + z;
-    const minhaPosicao = () => 1 + rivais.filter(r => progresso(r.voltas, r.z) > progresso(voltas, pos)).length;
+    const posicao = j => {
+      const meu = progresso(j.voltas, j.pos);
+      return 1 + rivais.filter(r => progresso(r.voltas, r.z) > meu).length + jog.filter(o => o !== j && progresso(o.voltas, o.pos) > meu).length;
+    };
+    const lugarDe = j => j.chegou || posicao(j);
+    const relogio = () => `${Math.floor(tempo / 60)}:${String(Math.floor(tempo % 60)).padStart(2, "0")}`;
+
+    // 2 jogadores: cada um lê o seu controle de videogame (o 1º e o 2º ligados), somado a teclado/toque
+    let startAnt = false;
+    function lerControles() {
+      const ps = window.Controle ? Controle.pads() : [];
+      jog.forEach((j, k) => {
+        const p = ps[k], t = j.tec;
+        if (!p) { j.ent = t; return; }
+        const ax = p.eixo(0), ay = p.eixo(1);
+        j.ent = {
+          esq: t.esq || p.botao(14) || ax < -0.4,
+          dir: t.dir || p.botao(15) || ax > 0.4,
+          acel: t.acel || p.botao(0) || p.botao(2) || p.botao(7) || p.botao(12) || ay < -0.6,
+          freio: t.freio || p.botao(13) || p.botao(6) || ay > 0.6,
+        };
+      });
+      // Start do 2º controle pausa (o do 1º já chega como a tecla "p")
+      const st = !!(ps[1] && ps[1].botao(9));
+      if (st && !startAnt) alternarPausa();
+      startAnt = st;
+    }
+
+    function moverJogador(j, dt) {
+      const seg = segDe(j.pos + CAM), pv = j.vel / VMAX;
+      const corre = fase === "correndo" && !j.chegou;
+      if (DOIS && j.chegou) {
+        // Já cruzou a chegada: segue devagar pela sua faixa, sem atrapalhar quem ainda corre
+        j.vel += (VMAX * 0.45 - j.vel) * Math.min(1, dt);
+        j.x += ((j.n === 1 ? -0.6 : 0.6) - j.x) * Math.min(1, dt * 1.5);
+      } else {
+        // Direção: vira mais rápido quando anda; nas curvas a força puxa para fora
+        const dx = dt * 2.2 * pv;
+        if (corre && j.ent.esq) j.x -= dx;
+        if (corre && j.ent.dir) j.x += dx;
+        j.x -= dx * pv * seg.curva * 0.28;
+        const acelera = corre && (j.ent.acel || (NIVEL.auto && !j.ent.freio));
+        if (acelera) j.vel += VMAX / 5 * dt;
+        else if (j.ent.freio) j.vel -= VMAX * dt;
+        else j.vel -= VMAX / 5 * dt;
+        if (fase === "fim") j.vel -= VMAX / 3 * dt;
+        // Fora da pista: mais devagar e sacudindo
+        if (Math.abs(j.x) > 1.05) { if (j.vel > VMAX / 4) j.vel -= VMAX / 1.6 * dt; j.sacode = 1.5; } else j.sacode = 0;
+        // Bateu num enfeite da beira
+        seg.enfeites.forEach(e => { if (Math.abs(j.x - e.x) < 0.35 && Math.abs(e.x) > 1) { j.vel = VMAX / 5; j.x = e.x > 0 ? e.x - 0.5 : e.x + 0.5; Motor.ruido({ dur: 0.15, vol: 0.2, freq: 400 }); } });
+        // Encostou num adversário (ou no outro jogador, que está na frente): perde velocidade
+        rivais.forEach(r => {
+          const dz = ((r.z - j.pos - CAM) % VOLTA + VOLTA) % VOLTA;
+          if (j.vel > r.vel && dz < SEG * 1.2 && Math.abs(j.x - r.x) < 0.45) { j.vel = r.vel * 0.7; Motor.ruido({ dur: 0.12, vol: 0.15, freq: 900 }); }
+        });
+        jog.forEach(o => {
+          if (o === j) return;
+          const dz = ((o.pos - j.pos) % VOLTA + VOLTA) % VOLTA;
+          if (j.vel > o.vel && dz > 0 && dz < SEG * 1.2 && Math.abs(j.x - o.x) < 0.45) { j.vel = o.vel * 0.7; Motor.ruido({ dur: 0.12, vol: 0.15, freq: 900 }); }
+        });
+      }
+      j.x = Math.max(-2.6, Math.min(2.6, j.x));
+      j.vel = Math.max(0, Math.min(VMAX, j.vel));
+      j.pos += j.vel * dt;
+      if (j.pos >= VOLTA) { j.pos -= VOLTA; j.voltas++; novaVolta(j); }
+      j.ceuDesl += seg.curva * pv * dt * 0.012;
+      j.morroDesl += seg.curva * pv * dt * 0.025;
+    }
 
     function atualizar(dt) {
       if (fase === "largada") {
@@ -303,71 +429,77 @@
         if (contagem <= 0) { fase = "correndo"; Motor.nota(880, { dur: 0.4, tipo: "square", vol: 0.1 }); Motor.falar("Já!"); }
         return;
       }
+      if (fase === "correndo" && contagem > -1.2) contagem -= dt; // o "JÁ!" fica um pouquinho na tela
       tempo += fase === "correndo" ? dt : 0;
-      const seg = segDe(pos + ALT_CAMERA * PROF), pv = vel / VMAX;
-      // Direção: vira mais rápido quando anda; nas curvas a força puxa para fora
-      const dx = dt * 2.2 * pv;
-      const corrida = fase === "correndo";
-      if (corrida && T.ent.esq) x -= dx;
-      if (corrida && T.ent.dir) x += dx;
-      x -= dx * pv * seg.curva * 0.28;
-      const acelera = corrida && (T.ent.acel || (NIVEL.auto && !T.ent.freio));
-      if (acelera) vel += VMAX / 5 * dt;
-      else if (T.ent.freio) vel -= VMAX * dt;
-      else vel -= VMAX / 5 * dt;
-      if (fase === "fim") vel -= VMAX / 3 * dt;
-      // Fora da pista: mais devagar e sacudindo
-      if (Math.abs(x) > 1.05) { if (vel > VMAX / 4) vel -= VMAX / 1.6 * dt; sacode = 1.5; } else sacode = 0;
-      // Bateu num enfeite da beira
-      seg.enfeites.forEach(e => { if (Math.abs(x - e.x) < 0.35 && Math.abs(e.x) > 1) { vel = VMAX / 5; x = e.x > 0 ? e.x - 0.5 : e.x + 0.5; Motor.ruido({ dur: 0.15, vol: 0.2, freq: 400 }); } });
-      // Encostou num adversário: perde velocidade
-      rivais.forEach(r => {
-        const dz = ((r.z - pos - ALT_CAMERA * PROF) % VOLTA + VOLTA) % VOLTA;
-        if (vel > r.vel && dz < SEG * 1.2 && Math.abs(x - r.x) < 0.45) { vel = r.vel * 0.7; Motor.ruido({ dur: 0.12, vol: 0.15, freq: 900 }); }
-      });
-      x = Math.max(-2.6, Math.min(2.6, x));
-      vel = Math.max(0, Math.min(VMAX, vel));
-      const antes = pos;
-      pos += vel * dt;
-      if (pos >= VOLTA) { pos -= VOLTA; voltas++; novaVolta(); }
+      let pvMax = 0;
+      jog.forEach(j => { const antes = j.pos; moverJogador(j, dt); if (antes !== j.pos) pvMax = Math.max(pvMax, j.vel / VMAX); });
       // Adversários: aceleram até a sua velocidade, freiam um pouco nas curvas e desviam
+      const carrosJog = jog.map(j => ({ x: j.x, z: j.pos + CAM, v: j.vel }));
       rivais.forEach(r => {
-        if (fase === "largada") return;
         const sr = segDe(r.z), alvo = r.vel * (1 - Math.min(0.25, Math.abs(sr.curva) * 0.05)) * (r.chegou ? 0.4 : 1);
         r.v = (r.v || 0) + (alvo - (r.v || 0)) * Math.min(1, dt * 1.2);
-        // desvia de quem está logo à frente (e do jogador)
-        const frente = [...rivais.filter(o => o !== r), { x, z: pos + ALT_CAMERA * PROF, v: vel }].find(o => { const d = ((o.z - r.z) % VOLTA + VOLTA) % VOLTA; return d > 0 && d < SEG * 6 && Math.abs(o.x - r.x) < 0.5 && (o.v || o.vel) < r.v; });
+        // desvia de quem está logo à frente (e dos jogadores)
+        const frente = [...rivais.filter(o => o !== r), ...carrosJog].find(o => { const d = ((o.z - r.z) % VOLTA + VOLTA) % VOLTA; return d > 0 && d < SEG * 6 && Math.abs(o.x - r.x) < 0.5 && (o.v ?? o.vel) < r.v; });
         if (frente) r.x += (r.x > frente.x ? 1 : -1) * dt * 0.9;
         r.x = Math.max(-0.8, Math.min(0.8, r.x));
         r.z += r.v * dt;
         if (r.z >= VOLTA) { r.z -= VOLTA; r.voltas++; if (r.voltas >= TOTAL_VOLTAS && !r.chegou) r.chegou = ++chegada; }
       });
-      ceuDesl += seg.curva * pv * dt * 0.012;
-      morroDesl += seg.curva * pv * dt * 0.025;
-      if (antes !== pos) Motor.nota(70 + pv * 90, { dur: 0.05, tipo: "sawtooth", vol: 0.012 }); // ronco do motor
+      if (pvMax > 0) Motor.nota(70 + pvMax * 90, { dur: 0.05, tipo: "sawtooth", vol: 0.012 }); // ronco do motor
+      // 2 jogadores: depois que o primeiro chega, o outro tem um tempinho para terminar
+      if (DOIS && fase === "correndo" && primeiraChegada && tempo - primeiraChegada > 25) terminarDois();
     }
-    function novaVolta() {
-      if (voltas >= TOTAL_VOLTAS && fase === "correndo") {
-        fase = "fim";
-        const lugar = minhaPosicao();
-        const medalha = lugar === 1 ? "🥇" : lugar === 2 ? "🥈" : lugar === 3 ? "🥉" : "🏁";
-        const t = `${Math.floor(tempo / 60)}:${String(Math.floor(tempo % 60)).padStart(2, "0")}`;
-        const chave = `carros-recorde-${op.pista}`;
-        let rec = 0; try { rec = +localStorage.getItem(chave) || 0; } catch (e) { /* ok */ }
-        const novo = !rec || tempo < rec;
-        if (novo) { try { localStorage.setItem(chave, tempo); } catch (e) { /* ok */ } }
+    const MEDALHA = l => (l === 1 ? "🥇" : l === 2 ? "🥈" : l === 3 ? "🥉" : "🏁");
+    function novaVolta(j) {
+      if (fase !== "correndo" || j.chegou) return;
+      if (j.voltas >= TOTAL_VOLTAS) {
+        j.chegou = posicao(j);
+        if (!DOIS) { fimUmJogador(); return; }
         Motor.tim();
-        Motor.falar(lugar === 1 ? "Você ganhou a corrida! Primeiro lugar!" : `Você chegou em ${lugar}º lugar! Muito bem!` + (novo ? " É o seu melhor tempo!" : ""));
-        setTimeout(() => { if (vivo()) T.fim(lugar === 1 ? "Você venceu!" : `${lugar}º lugar!`, medalha, `⏱️ ${t}` + (novo ? " · 🏆 melhor tempo!" : ""), () => corrida(area, op), () => JOGOS.find(j => j.id === "carros").iniciar(area)); }, 1200);
-      } else if (fase === "correndo") {
+        Motor.falar(`Jogador ${j.n} chegou em ${j.chegou}º lugar!`);
+        if (jog.every(o => o.chegou)) terminarDois();
+        else if (!primeiraChegada) primeiraChegada = tempo;
+      } else {
         Motor.tim();
-        Motor.falar(voltas === TOTAL_VOLTAS - 1 ? "Última volta!" : `Volta ${voltas + 1}!`);
+        const msg = j.voltas === TOTAL_VOLTAS - 1 ? "Última volta" : `Volta ${j.voltas + 1}`;
+        Motor.falar(DOIS ? `${msg}, jogador ${j.n}!` : msg + "!");
       }
     }
+    function fimUmJogador() {
+      fase = "fim";
+      const lugar = jog[0].chegou;
+      const t = relogio();
+      const chave = `carros-recorde-${op.pista}`;
+      let rec = 0; try { rec = +localStorage.getItem(chave) || 0; } catch (e) { /* ok */ }
+      const novo = !rec || tempo < rec;
+      if (novo) { try { localStorage.setItem(chave, tempo); } catch (e) { /* ok */ } }
+      Motor.tim();
+      Motor.falar(lugar === 1 ? "Você ganhou a corrida! Primeiro lugar!" : `Você chegou em ${lugar}º lugar! Muito bem!` + (novo ? " É o seu melhor tempo!" : ""));
+      setTimeout(() => { if (vivo()) T.fim(lugar === 1 ? "Você venceu!" : `${lugar}º lugar!`, MEDALHA(lugar), `⏱️ ${t}` + (novo ? " · 🏆 melhor tempo!" : ""), () => corrida(area, op), () => JOGOS.find(j => j.id === "carros").iniciar(area)); }, 1200);
+    }
+    function terminarDois() {
+      fase = "fim";
+      jog.forEach(j => { if (!j.chegou) j.chegou = posicao(j); });
+      const [a, b] = jog;
+      const venc = a.chegou <= b.chegou ? a : b;
+      Motor.tim();
+      Motor.falar(`O jogador ${venc.n}, do carro ${venc.cor}, ganhou!` + (venc.chegou === 1 ? " E chegou em primeiro lugar na corrida!" : ""));
+      const detalhe = jog.map(j => `${j.emoji} Jogador ${j.n}: ${MEDALHA(j.chegou)} ${j.chegou}º lugar`).join(" · ") + ` · ⏱️ ${relogio()}`;
+      setTimeout(() => { if (vivo()) T.fim(`${venc.emoji} Jogador ${venc.n} venceu!`, "🏆", detalhe, () => corrida(area, op), () => JOGOS.find(j => j.id === "carros").iniciar(area)); }, 1200);
+    }
+    function alternarPausa() { if (fase !== "fim") { pausado = !pausado; T.pausa.textContent = pausado ? "▶️" : "⏸️"; } }
 
     // ----- Desenho -----
     const ctx = T.ctx;
     const misturar = (a, b, f) => { const pa = a.match(/\w\w/g).map(h => parseInt(h, 16)), pb = b.match(/\w\w/g).map(h => parseInt(h, 16)); return `rgb(${pa.map((v, i) => Math.round(v + (pb[i] - v) * f)).join(",")})`; };
+    // Cor misturada com a névoa (guardada em cache: a tela dividida desenha a estrada duas vezes)
+    const cacheNevoa = new Map();
+    const nevoa = (c, f) => {
+      const q = Math.round(f * 64), k = c + q;
+      let r = cacheNevoa.get(k);
+      if (!r) { r = misturar(c.replace("#", ""), tema.nevoa.replace("#", ""), q / 64); cacheNevoa.set(k, r); }
+      return r;
+    };
     const poligono = (pts, cor) => { ctx.fillStyle = cor; ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.closePath(); ctx.fill(); };
     function projetar(p, camX, camY, camZ, W, H) {
       const cx = (p.x || 0) - camX, cy = p.y - camY, cz = p.z - camZ;
@@ -377,21 +509,36 @@
       p.sw = Math.round(p.escala * LARGURA * W / 2);
       p.cz = cz;
     }
+    const virandoDe = e => (e.esq && !e.dir ? "esq" : e.dir && !e.esq ? "dir" : "reto");
     function desenhar() {
       const W = T.tam.w, H = T.tam.h;
       if (!W || !H) return;
+      if (!DOIS) { desenharVista(jog[0], W, H); return; }
+      // Tela dividida: cada metade é uma "vista" recortada, com a câmera do seu carro
+      ctx.fillStyle = "#1d1d2b"; ctx.fillRect(0, 0, W, H);
+      dividir(W, H).forEach(([vx, vy, vw, vh], k) => {
+        ctx.save();
+        ctx.beginPath(); ctx.rect(vx, vy, vw, vh); ctx.clip();
+        ctx.translate(vx, vy);
+        desenharVista(jog[k], vw, vh);
+        ctx.restore();
+      });
+    }
+    // Desenha a estrada vista da câmera do jogador `j`, num retângulo W × H (já transladado)
+    function desenharVista(j, W, H) {
+      const { pos, x } = j;
       // Céu e morros (com paralaxe nas curvas)
       const gc = ctx.createLinearGradient(0, 0, 0, H * 0.6);
       gc.addColorStop(0, tema.ceu[0]); gc.addColorStop(1, tema.ceu[1]);
       ctx.fillStyle = gc; ctx.fillRect(0, 0, W, H);
-      if (tema.noite) { ctx.fillStyle = "#fff"; for (let i = 0; i < 50; i++) ctx.fillRect(((i * 97 + ceuDesl * 300) % W + W) % W, (i * 53) % (H * 0.45), 2, 2); ctx.fillStyle = "#f4f1c9"; ctx.beginPath(); ctx.arc(W * 0.78, H * 0.16, 22, 0, 7); ctx.fill(); }
-      else { ctx.fillStyle = "#fff6b0"; ctx.beginPath(); ctx.arc(W * 0.8, H * 0.15, 26, 0, 7); ctx.fill(); ctx.fillStyle = "rgba(255,255,255,.85)"; for (let i = 0; i < 4; i++) { const cx = ((i * 260 - ceuDesl * 400) % (W + 200) + W + 200) % (W + 200) - 100, cy = 40 + (i % 2) * 40; ctx.beginPath(); ctx.ellipse(cx, cy, 50, 16, 0, 0, 7); ctx.ellipse(cx + 26, cy - 10, 30, 16, 0, 0, 7); ctx.fill(); } }
-      const segJ = segDe(pos + ALT_CAMERA * PROF), pj = ((pos + ALT_CAMERA * PROF) % SEG) / SEG;
+      if (tema.noite) { ctx.fillStyle = "#fff"; for (let i = 0; i < 50; i++) ctx.fillRect(((i * 97 + j.ceuDesl * 300) % W + W) % W, (i * 53) % (H * 0.45), 2, 2); ctx.fillStyle = "#f4f1c9"; ctx.beginPath(); ctx.arc(W * 0.78, H * 0.16, 22, 0, 7); ctx.fill(); }
+      else { ctx.fillStyle = "#fff6b0"; ctx.beginPath(); ctx.arc(W * 0.8, H * 0.15, 26, 0, 7); ctx.fill(); ctx.fillStyle = "rgba(255,255,255,.85)"; for (let i = 0; i < 4; i++) { const cx = ((i * 260 - j.ceuDesl * 400) % (W + 200) + W + 200) % (W + 200) - 100, cy = 40 + (i % 2) * 40; ctx.beginPath(); ctx.ellipse(cx, cy, 50, 16, 0, 0, 7); ctx.ellipse(cx + 26, cy - 10, 30, 16, 0, 0, 7); ctx.fill(); } }
+      const segJ = segDe(pos + CAM), pj = ((pos + CAM) % SEG) / SEG;
       const yJ = segJ.p1.y + (segJ.p2.y - segJ.p1.y) * pj;
       const horiz = H / 2 + yJ / 30;
       [[tema.morros[0], 0.5, 70], [tema.morros[1], 1, 40]].forEach(([cor, par, amp]) => {
         ctx.fillStyle = cor; ctx.beginPath(); ctx.moveTo(0, H);
-        for (let i = 0; i <= W; i += 8) ctx.lineTo(i, horiz - amp * 0.5 - amp * 0.5 * Math.sin((i + morroDesl * 900 * par) / 90) - amp * 0.3 * Math.sin((i + morroDesl * 600 * par) / 37));
+        for (let i = 0; i <= W; i += 8) ctx.lineTo(i, horiz - amp * 0.5 - amp * 0.5 * Math.sin((i + j.morroDesl * 900 * par) / 90) - amp * 0.3 * Math.sin((i + j.morroDesl * 600 * par) / 37));
         ctx.lineTo(W, H); ctx.fill();
       });
       // Estrada: de perto para longe, cortando o que fica atrás dos morros (maxy)
@@ -408,7 +555,7 @@
         if (s.p1.cz <= PROF || s.p2.sy >= s.p1.sy || s.p2.sy >= maxy) continue;
         const { sx: x1, sy: y1, sw: w1 } = s.p1, { sx: x2, sy: y2, sw: w2 } = s.p2;
         const f = s.nevoa ** 2;
-        const cor = c => (f > 0.02 ? misturar(c.replace("#", ""), tema.nevoa.replace("#", ""), f) : c);
+        const cor = c => (f > 0.02 ? nevoa(c, f) : c);
         ctx.fillStyle = cor(tema.grama[s.cor]); ctx.fillRect(0, y2, W, y1 - y2 + 1);
         const z1 = w1 / Math.max(6, 2 * FAIXAS), z2 = w2 / Math.max(6, 2 * FAIXAS);
         poligono([x1 - w1 - z1, y1, x1 - w1, y1, x2 - w2, y2, x2 - w2 - z2, y2], cor(tema.zebra[s.cor]));
@@ -434,37 +581,61 @@
         if (corte >= h || w < 1) return;
         ctx.drawImage(imagem, 0, 0, imagem.width, imagem.height * (1 - corte / h), dxp, dyp, w, h - corte);
       };
+      const carroNaPista = (imagem, s, z, xr) => {
+        const pr = (z % SEG) / SEG;
+        const esc = s.p1.escala + (s.p2.escala - s.p1.escala) * pr;
+        const sx = s.p1.sx + (s.p2.sx - s.p1.sx) * pr + esc * xr * LARGURA * W / 2;
+        const sy = s.p1.sy + (s.p2.sy - s.p1.sy) * pr;
+        coisa(imagem, 560, esc, sx, sy, s.clip);
+      };
+      // O outro jogador (tela dividida) aparece como mais um carro na estrada
+      const outros = [], atras = [];
+      if (DOIS) jog.forEach(o => {
+        if (o === j) return;
+        const z = ((o.pos + CAM) % VOLTA + VOLTA) % VOLTA, d = ((o.pos - pos) % VOLTA + VOLTA) % VOLTA;
+        (d < VOLTA / 2 ? outros : atras).push({ o, z, s: segDe(z), img: o.sprites[virandoDe(o.ent)] });
+      });
       for (let n = VISTA - 1; n > 0; n--) {
         const s = segs[(base.i + n) % N];
         if (!s.p1.escala || s.p1.cz <= PROF) continue;
         s.enfeites.forEach(e => coisa(img(e.tipo), TAM_ENFEITE[e.tipo] || 1000, s.p1.escala, s.p1.sx + s.p1.escala * e.x * LARGURA * W / 2, s.p1.sy, s.clip));
-        rivais.forEach(r => {
-          if (segDe(r.z) !== s) return;
-          const pr = (r.z % SEG) / SEG;
-          const esc = s.p1.escala + (s.p2.escala - s.p1.escala) * pr;
-          const sx = s.p1.sx + (s.p2.sx - s.p1.sx) * pr + esc * r.x * LARGURA * W / 2;
-          const sy = s.p1.sy + (s.p2.sy - s.p1.sy) * pr;
-          coisa(r.img, 560, esc, sx, sy, s.clip);
-        });
+        rivais.forEach(r => { if (segDe(r.z) === s) carroNaPista(r.img, s, r.z, r.x); });
+        outros.forEach(c => { if (c.s === s) carroNaPista(c.img, s, c.z, c.o.x); });
       }
       // O seu carro
-      const virando = T.ent.esq && !T.ent.dir ? "esq" : T.ent.dir && !T.ent.esq ? "dir" : "reto";
-      const im = sprites[virando];
+      const im = j.sprites[virandoDe(j.ent)];
       const cw = Math.min(W * 0.36, 260), ch = cw * im.height / im.width;
-      const balanca = (sacode ? (Math.random() - 0.5) * 6 : 0) + Math.sin(tempo * 30) * (vel / VMAX) * 1.2;
+      const balanca = (j.sacode ? (Math.random() - 0.5) * 6 : 0) + Math.sin(tempo * 30) * (j.vel / VMAX) * 1.2;
       ctx.drawImage(im, W / 2 - cw / 2, H - ch - 8 + balanca, cw, ch);
+      // O outro jogador logo atrás (entre a câmera e o seu carro) fica na frente do desenho
+      atras.forEach(c => { if (c.s.p1.escala && c.s.p1.cz > PROF) carroNaPista(c.img, c.s, c.z, c.o.x); });
       // Contagem regressiva e mensagens
-      const pos1 = minhaPosicao();
-      if (pos1 < ultPos && fase === "correndo") Motor.nota(990, { dur: 0.12, tipo: "triangle", vol: 0.08 });
-      ultPos = pos1;
+      const p = posicao(j);
+      if (p < j.ultPos && fase === "correndo" && !j.chegou) Motor.nota(990, { dur: 0.12, tipo: "triangle", vol: 0.08 });
+      j.ultPos = p;
       if (fase === "largada") {
         const n = Math.ceil(contagem);
-        texto(n > 3 ? "Prepare-se!" : String(n), n > 3 ? 40 : 110, n === 1 ? "#2a9d55" : n === 2 ? "#ffc21a" : "#e63946");
-      } else if (fase === "correndo" && contagem > -1.2) { contagem -= 1 / 60; texto("JÁ!", 110, "#2a9d55"); }
-      if (pausado) texto("⏸️ Pausa", 50, "#fff");
+        texto(n > 3 ? "Prepare-se!" : String(n), n > 3 ? 40 : 110, n === 1 ? "#2a9d55" : n === 2 ? "#ffc21a" : "#e63946", W, H);
+      } else if (fase === "correndo" && contagem > -1.2) texto("JÁ!", 110, "#2a9d55", W, H);
+      else if (DOIS && j.chegou) texto(`${MEDALHA(j.chegou)} ${j.chegou}º lugar!`, 48, "#ffd60a", W, H);
+      if (DOIS) placarVista(j, W);
+      if (pausado) texto("⏸️ Pausa", 50, "#fff", W, H);
     }
-    function texto(t, tamanho, cor) {
-      const W = T.tam.w, H = T.tam.h;
+    // Tela dividida: placar de cada jogador no topo da sua metade
+    function placarVista(j, W) {
+      const lugar = lugarDe(j);
+      const t = `${j.emoji} Jogador ${j.n} · ${MEDALHA(lugar)} ${lugar}º de ${TOTAL_CARROS} · Volta ${Math.min(j.voltas + 1, TOTAL_VOLTAS)}/${TOTAL_VOLTAS}`;
+      let tam = 17;
+      ctx.font = `bold ${tam}px Fredoka, sans-serif`;
+      let l = ctx.measureText(t).width;
+      if (l > W - 40) { tam = Math.max(12, Math.floor(tam * (W - 40) / l)); ctx.font = `bold ${tam}px Fredoka, sans-serif`; l = ctx.measureText(t).width; }
+      const pw = l + 24, ph = tam + 16, px = W / 2 - pw / 2, py = 8;
+      ctx.fillStyle = "rgba(255,255,255,.92)"; ctx.beginPath(); ctx.roundRect(px, py, pw, ph, ph / 2); ctx.fill();
+      ctx.strokeStyle = j.hex; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = "#222"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(t, W / 2, py + ph / 2 + 1);
+    }
+    function texto(t, tamanho, cor, W, H) {
       ctx.font = `bold ${Math.min(tamanho, W / 6)}px Fredoka, sans-serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.lineWidth = 8; ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.strokeText(t, W / 2, H * 0.38);
@@ -477,15 +648,29 @@
       if (!vivo()) { T.desligar(); return; }
       const dt = Math.min(0.05, (t - ultimo) / 1000);
       ultimo = t;
+      if (DOIS) lerControles();
       if (!pausado) atualizar(dt);
       desenhar();
-      const kmh = Math.round(vel / VMAX * 220 * NIVEL.max);
-      const inf = `🏁 Volta ${Math.min(voltas + 1, TOTAL_VOLTAS)}/${TOTAL_VOLTAS}|${["", "🥇", "🥈", "🥉"][minhaPosicao()] || "🚗"} ${minhaPosicao()}º de 6|💨 ${kmh} km/h|⏱️ ${Math.floor(tempo / 60)}:${String(Math.floor(tempo % 60)).padStart(2, "0")}`;
+      let inf;
+      if (DOIS) inf = `👥 Corrida a dois|${jog.map(j => `${j.emoji} ${lugarDe(j)}º`).join(" ")}|⏱️ ${relogio()}`;
+      else {
+        const j = jog[0], lugar = posicao(j);
+        const kmh = Math.round(j.vel / VMAX * 220 * NIVEL.max);
+        inf = `🏁 Volta ${Math.min(j.voltas + 1, TOTAL_VOLTAS)}/${TOTAL_VOLTAS}|${["", "🥇", "🥈", "🥉"][lugar] || "🚗"} ${lugar}º de ${TOTAL_CARROS}|💨 ${kmh} km/h|⏱️ ${relogio()}`;
+      }
       if (inf !== infoAnt) { infoAnt = inf; T.mostrarInfo(inf.split("|")); }
       requestAnimationFrame(laco);
     }
+    // Gancho para os testes automáticos (só existe se a página de teste pedir)
+    if (window.CARROS_TESTE) {
+      window.CARROS_TESTE = {
+        estado: () => ({ fase, VOLTA, jog: jog.map(j => ({ n: j.n, pos: j.pos, x: j.x, vel: j.vel, voltas: j.voltas, chegou: j.chegou, lugar: lugarDe(j) })) }),
+        levar: (k, voltas, pos) => { jog[k].voltas = voltas; jog[k].pos = pos; },
+      };
+    }
     requestAnimationFrame(laco);
-    Motor.falar(NIVEL.auto ? "Corrida! O carro acelera sozinho: use as setas para virar." : "Corrida! Acelere, faça as curvas e passe os outros carros!");
+    if (DOIS) Motor.falar("Corrida a dois! Jogador 1 usa o primeiro controle ou as setas. Jogador 2 usa o segundo controle ou as letras W A S D.");
+    else Motor.falar(NIVEL.auto ? "Corrida! O carro acelera sozinho: use as setas para virar." : "Corrida! Acelere, faça as curvas e passe os outros carros!");
   }
 
   // =====================================================================
