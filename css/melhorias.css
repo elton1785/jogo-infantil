@@ -31,3 +31,33 @@
 @media (max-height: 450px) { .carros-tela .arcade-info span { font-size: 13px; padding: 2px 7px; } }
 /* corrida a dois: cada metade já mostra o seu placar, então a faixa de cima fica só com os botões */
 .carros-tela.carros-dois .arcade-info { visibility: hidden; }
+
+/* ---------- Pé na Estrada: escolhas passo a passo, com figuras ---------- */
+.modos.carros-passo { gap: 18px; max-width: 1100px; align-content: center; }
+.carros-passo-titulo { flex-basis: 100%; text-align: center; font-weight: bold; font-size: clamp(22px, 3.4vw, 38px); color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.18); margin-bottom: 2px; }
+.carros-passo .modo { width: min(42vw, 30vh, 250px); aspect-ratio: auto; padding: 12px 10px 14px; gap: 8px; border-radius: 28px; }
+.carros-passo .modo .icone { font-size: min(16vw, 12vh, 104px); display: flex; align-items: center; justify-content: center; }
+.carros-passo .modo .icone canvas { display: block; width: 100%; height: auto; border-radius: 18px; }
+.carros-passo .modo .icone .fig-carro { border-radius: 0; filter: drop-shadow(0 4px 4px rgba(0,0,0,.15)); }
+.carros-passo .modo .rotulo { font-size: clamp(16px, 2.2vw, 24px); }
+.carros-passo .modo.ativo { outline: 5px solid #ffd60a; outline-offset: 2px; }
+.carros-passo .modo .icone:has(canvas) { width: 100%; }
+.carros-nomes { flex-direction: column; align-items: center; flex-wrap: nowrap; }
+.carros-nome { display: flex; align-items: center; gap: 12px; background: var(--cartao); border-radius: 26px; padding: 10px 18px; box-shadow: 0 6px 0 var(--sombra); width: min(92vw, 520px); }
+.carros-nome .capacete { font-size: 44px; }
+.carros-nome input { flex: 1; min-width: 0; font: inherit; font-weight: bold; font-size: clamp(24px, 4vw, 36px); border: 3px solid #cfe3f7; border-radius: 16px; padding: 8px 14px; color: #1d3557; background: #fff; }
+.carros-nome input:focus { outline: none; border-color: #2f80ed; }
+.carros-nomes .chip.jogar { font-size: 26px; padding: 12px 34px; }
+/* As informações de cima (cidade) ficam maiores em tela grande */
+@media (min-width: 1000px) and (min-height: 600px) {
+  .carros-tela .arcade-info span { font-size: 22px; padding: 6px 14px; border-radius: 14px; }
+  .carros-tela .arcade-topo .chip { min-width: 56px; min-height: 56px; font-size: 26px; }
+}
+/* Fim da corrida: classificação como na Fórmula 1 */
+.carros-fim { max-height: calc(100% - 24px); overflow-y: auto; }
+.carros-classif { list-style: none; margin: 4px 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; min-width: min(78vw, 300px); }
+.carros-classif li { display: flex; align-items: center; gap: 8px; background: #1d2333; color: #fff; border-radius: 10px; padding: 5px 10px; font-weight: bold; font-size: 18px; }
+.carros-classif li b { width: 26px; text-align: center; }
+.carros-classif li i { width: 6px; align-self: stretch; border-radius: 3px; background: var(--cor); }
+.carros-classif li span { flex: 1; text-align: left; }
+.carros-classif li.eu { background: #ffd60a; color: #1d2333; }
