@@ -42,7 +42,8 @@ const Progresso = (() => {
 
   const k = (jogo, faixaId) => `${jogo.id || jogo}|${faixaId}`;
   const estrelas = (d, jogo, faixaId) => d.estrelas[k(jogo, faixaId)] || 0;
-  const guiado = (p = perfil()) => p.modo === "guiado" && !!p.faixa && !pequeno(p.faixa);
+  // Guiado: o padrão de toda criança com idade a partir de 3 anos, até os pais escolherem o Livre
+  const guiado = (p = perfil()) => (p.modo === "guiado" || !p.modoEscolhido) && !!p.faixa && !pequeno(p.faixa);
   const minutosParque = (p = perfil()) => (p.parqueMin == null ? MINUTOS_PARQUE : p.parqueMin); // 0 = sem limite
   const liberadoHoje = d => d.liberado === hoje();
 
@@ -381,7 +382,7 @@ const Progresso = (() => {
       return l;
     };
     corpo.appendChild(linha("Idade", FAIXAS.map(f => [f.id, f.nome]), p.faixa, v => salvarP({ faixa: v })));
-    corpo.appendChild(linha("Modo", [["livre", "🌟 Livre"], ["guiado", "🧭 Guiado"]], guiado(p) ? "guiado" : "livre", v => salvarP({ modo: v }), pequeno(p.faixa) || !p.faixa ? ["guiado"] : []));
+    corpo.appendChild(linha("Modo", [["livre", "🌟 Livre"], ["guiado", "🧭 Guiado"]], guiado(p) ? "guiado" : "livre", v => salvarP({ modo: v, modoEscolhido: true }), pequeno(p.faixa) || !p.faixa ? ["guiado"] : []));
     if (guiado(p)) {
       corpo.appendChild(linha("Parque por dia", [[10, "10 min"], [15, "15 min"], [20, "20 min"], [30, "30 min"], [0, "Sem limite"]], minutosParque(p), v => salvarP({ parqueMin: v })));
       const lib = el("button", "chip" + (liberadoHoje(d) ? " ativo" : ""), liberadoHoje(d) ? "🔓 Tudo liberado hoje (tocar para desfazer)" : "🔓 Liberar tudo só hoje");
@@ -429,6 +430,62 @@ const Progresso = (() => {
     return b;
   }
 
+  // ---------- 🙂 Página da criança (tocar no nome dela, no início) ----------
+  function paginaCrianca() {
+    const p = perfil(), d = dados();
+    if (p.id === "visitante") { Album.telaPerfis({ inicio: true }); return; }
+    const c = novaCamada("crianca");
+    const topo = el("div", "prog-crianca-topo");
+    topo.innerHTML = `<span class="av"></span><div class="textos"><b></b><small></small></div>`;
+    topo.querySelector(".av").textContent = p.avatar; topo.querySelector(".av").style.background = p.cor;
+    topo.querySelector("b").textContent = p.nome;
+    topo.querySelector("small").textContent = `${p.faixa ? faixaObj(p.faixa).nome : "sem idade"} · ${guiado(p) ? "🧭 Modo Guiado" : "🌟 Modo Livre"}`;
+    const numeros = el("div", "prog-crianca-numeros");
+    [["⭐", totalEstrelas(d), "estrelas"], ["🪙", d.moedas, "moedas"]].forEach(([i, n, t]) => {
+      const b = el("div", "prog-numero"); b.innerHTML = `<span></span><b></b><small></small>`;
+      b.querySelector("span").textContent = i; b.querySelector("b").textContent = n; b.querySelector("small").textContent = t;
+      numeros.appendChild(b);
+    });
+    c.append(topo, numeros);
+    // Como funciona (em palavras de criança, a voz lê)
+    const como = el("div", "prog-como");
+    if (guiado(p)) {
+      const m = missao(d);
+      como.innerHTML = `<b>Como funciona</b>
+        <p>🎯 Todo dia tem uma <b>missão</b> com 3 atividades.</p>
+        <p>🎡 Cumpriu a missão? O <b>Parque de diversões</b> abre!</p>
+        <p>📚 As lições vão abrindo uma de cada vez, como uma trilha.</p>
+        <p>🪙 Ganhe moedas e troque na <b>Loja</b> por figurinhas e enfeites.</p>`;
+      if (m) como.appendChild(el("p", "prog-como-missao", m.completa ? "🎉 A missão de hoje está cumprida!" : `🎯 Missão de hoje: ${m.feitos.length} de ${m.ids.length}`));
+    } else {
+      como.innerHTML = `<b>Modo Livre</b><p>🌟 Todos os jogos estão abertos.</p><p>Para usar trilhas de lições e missão do dia, um adulto liga o <b>modo Guiado</b> na Área dos pais (no fim da tela inicial).</p>`;
+    }
+    c.appendChild(como);
+    // Trilhas
+    if (p.faixa) {
+      const prog = el("div", "prog-pais-trilhas");
+      prog.appendChild(el("b", null, "🗺️ Minhas trilhas"));
+      trilhasDa(p.faixa).forEach(t => {
+        const feitas = t.jogos.filter(j => estrelas(d, j, p.faixa)).length;
+        const l = el("div", "prog-pais-trilha");
+        l.innerHTML = `<span></span><span class="barra"><i></i></span><small></small>`;
+        l.querySelector("span").textContent = `${t.icone} ${t.nome}`;
+        l.querySelector("i").style.width = (feitas / t.jogos.length * 100) + "%";
+        l.querySelector("i").style.background = t.cor;
+        l.querySelector("small").textContent = `${feitas} de ${t.jogos.length}`;
+        prog.appendChild(l);
+      });
+      c.appendChild(prog);
+    }
+    const acoes = el("div", "prog-crianca-acoes");
+    const botao = (txt, fn) => { const b = el("button", "chip", txt); b.addEventListener("click", fn); acoes.appendChild(b); };
+    botao("📒 Meu álbum", () => { fechar(); setTimeout(() => Album.abrir(), 50); });
+    botao("🛍️ Loja", () => loja());
+    botao("🔄 Trocar de criança", () => { fechar(); setTimeout(() => Album.telaPerfis({ inicio: true }), 50); });
+    c.appendChild(acoes);
+    Motor.falar(guiado(p) ? `Oi, ${p.nome}! Cumpra a missão do dia para abrir o Parque de diversões!` : `Oi, ${p.nome}! Todos os jogos estão abertos.`);
+  }
+
   // ---------- Para o App e os jogos ----------
   const moedas = () => dados().moedas;
   function infoParque(fx) {
@@ -445,6 +502,6 @@ const Progresso = (() => {
   const avataresExtras = () => dados().compras.avatares;
 
   return { situacao, missao: () => missao(), trilhasDa, guiado, pequeno, entrar, sair, acerto, fimDeRodada, partida, concluir,
-    loja, pais, botaoPais, moedas, infoParque, totalEstrelas, enfeite, avataresExtras, fechar, aberto: () => !!camada,
+    loja, pais, botaoPais, paginaCrianca, moedas, infoParque, totalEstrelas, enfeite, avataresExtras, fechar, aberto: () => !!camada,
     estrelasDe: (jogo, faixa) => estrelas(dados(), jogo, faixa.id), aoMudar: fn => { aoMudar = fn; } };
 })();

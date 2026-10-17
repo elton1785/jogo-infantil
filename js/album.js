@@ -198,7 +198,10 @@ const Album = (() => {
   }
 
   // ---------- Perfis: escolher, criar ----------
-  function telaPerfis() {
+  let paraInicio = false; // veio da página da criança: escolher/criar volta para o início
+  function depoisDeEscolher() { if (paraInicio) { paraInicio = false; fechar(); } else abrir(); }
+  function telaPerfis({ inicio = false } = {}) {
+    paraInicio = inicio;
     const c = novaCamada("perfis");
     const t = Object.assign(document.createElement("div"), { className: "album-titulo-pagina", textContent: "👋 Quem está jogando?" });
     const lista = document.createElement("div");
@@ -211,18 +214,19 @@ const Album = (() => {
       b.querySelector(".nm").textContent = p.nome;
       const dd = ler(`album-${p.id}`, { figs: {} });
       b.querySelector("small").textContent = `📒 ${FIGS.filter(f => dd.figs[f.id] > 0).length}/${FIGS.length}`;
-      b.addEventListener("click", () => { gravar("perfil-atual", p.id); Motor.falar(`Oi, ${p.nome}!`); abrir(); });
+      b.addEventListener("click", () => { gravar("perfil-atual", p.id); Motor.falar(`Oi, ${p.nome}!`); depoisDeEscolher(); });
       lista.appendChild(b);
     });
     const novo = document.createElement("button");
     novo.className = "album-cartao-perfil novo";
     novo.innerHTML = `<span class="av">➕</span><span class="nm">Nova criança</span>`;
-    novo.addEventListener("click", criarPerfil);
+    novo.addEventListener("click", () => criarPerfil());
     lista.appendChild(novo);
     c.append(t, lista);
     Motor.falar("Quem está jogando?");
   }
-  function criarPerfil() {
+  function criarPerfil({ inicio } = {}) {
+    if (inicio != null) paraInicio = inicio;
     const c = novaCamada("perfis");
     let nome = "", avatar = AVATARES[0], cor = CORES[0], faixa = null;
     const t = Object.assign(document.createElement("div"), { className: "album-titulo-pagina", textContent: "✨ Nova criança" });
@@ -255,11 +259,11 @@ const Album = (() => {
     ok.addEventListener("click", () => {
       if (!nome) { Motor.falar("Escreva o nome primeiro!"); return; }
       if (!faixa) { Motor.falar("Quantos anos você tem? Toque na sua idade!"); return; }
-      const p = { id: "p" + Date.now(), nome, avatar, cor, faixa, modo: "livre" };
+      const p = { id: "p" + Date.now(), nome, avatar, cor, faixa }; // modo: Guiado (a partir de 3 anos) até os pais mudarem
       gravar("perfis", [...perfis(), p]);
       gravar("perfil-atual", p.id);
-      Motor.tim(); Motor.falar(`Oi, ${nome}! Este é o seu álbum!`);
-      abrir();
+      Motor.tim(); Motor.falar(`Oi, ${nome}!`);
+      depoisDeEscolher();
     });
     c.append(t, previa, rotulo("Escolha um bichinho"), avs, rotulo("Escolha uma cor"), cores, rotulo("Escreva o nome"), teclado, rotulo("Quantos anos?"), idades, ok);
     Motor.falar("Escolha um bichinho, uma cor, escreva o seu nome e a sua idade!");

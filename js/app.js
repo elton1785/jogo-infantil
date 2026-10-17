@@ -232,9 +232,9 @@ const App = (() => {
     quem.querySelector(".av").textContent = p.avatar;
     quem.querySelector(".av").style.background = p.cor;
     quem.querySelector("b").textContent = p.id === "visitante" ? "Quem está jogando?" : `Oi, ${p.nome}!`;
-    quem.querySelector("small").textContent = p.id === "visitante" ? "Toque para escolher ou criar" : `${guiado ? "🧭 " + faixaP.nome : "🌟 Livre"} · ⭐ ${Progresso.totalEstrelas()}`;
+    quem.querySelector("small").textContent = p.id === "visitante" ? "Toque para escolher ou criar" : `${guiado ? "🧭 " + faixaP.nome : "🌟 Livre: tudo aberto"} · ⭐ ${Progresso.totalEstrelas()} · toque para ver`;
     quem.querySelector(".prog-moedas").textContent = `🪙 ${Progresso.moedas()}`;
-    quem.addEventListener("click", () => { telaCheia(); Album.telaPerfis(); });
+    quem.addEventListener("click", () => { telaCheia(); Progresso.paginaCrianca(); });
     painel.appendChild(quem);
     if (guiado) painel.appendChild(blocoMissao(faixaP));
 
@@ -303,8 +303,9 @@ const App = (() => {
       if (m.feitos.includes(id)) { c.classList.add("feito"); c.appendChild(novo("span", "feito-marca", "✅")); }
       grade.appendChild(c);
     });
-    box.append(cab, grade);
     const info = Progresso.infoParque(faixa.id);
+    if (!m.completa) box.append(cab, novo("p", "missao-dica", info ? "Faça as 3 atividades para abrir o 🎡 Parque de diversões!" : "Faça as 3 atividades e ganhe 5 moedas extras!"), grade);
+    else box.append(cab, grade);
     if (info) {
       const pq = novo("button", "parque-cartao" + (info.aberto ? " aberto" : ""));
       pq.innerHTML = `<span class="icone">🎡</span><span class="textos"><b>Parque de diversões</b><small></small></span><span class="estado"></span>`;
