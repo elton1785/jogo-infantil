@@ -46,3 +46,6 @@
 .carros-classif li i { width: 6px; align-self: stretch; border-radius: 3px; background: var(--cor); }
 .carros-classif li span { flex: 1; text-align: left; }
 .carros-classif li.eu { background: #ffd60a; color: #1d2333; }
+.carros-classif li small { font-size: 15px; opacity: .85; font-variant-numeric: tabular-nums; }
+.carros-classif li.correndo small { font-style: italic; opacity: .55; }
+.carros-classif li em { width: 22px; font-style: normal; }

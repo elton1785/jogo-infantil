@@ -54,6 +54,11 @@ const App = (() => {
     if (!podeTelaCheia || document.fullscreenElement || !(forcar || querTelaCheia)) return;
     el.requestFullscreen().catch(() => {});
   }
+  // O botão fica no canto nas telas de início e menus; dentro do jogo só aparece fora da tela cheia
+  // (embaixo da seta de voltar), para dar para voltar à tela cheia depois de apertar Esc
+  function mostrarBotaoTelaCheia() {
+    btnTelaCheia.hidden = !podeTelaCheia || (telaAtual === "jogo" && !!document.fullscreenElement);
+  }
   if (podeTelaCheia) {
     const primeiroGesto = e => {
       if (e.key === "Escape") return;
@@ -71,6 +76,7 @@ const App = (() => {
       btnTelaCheia.classList.toggle("ligada", ligada);
       btnTelaCheia.setAttribute("aria-label", ligada ? "Sair da tela cheia" : "Tela cheia");
       if (!ligada) querTelaCheia = false; // saiu (Esc, botão ou gesto do celular)
+      mostrarBotaoTelaCheia();
     });
   }
 
@@ -78,7 +84,7 @@ const App = (() => {
     telaAtual = id;
     telas.forEach(t => t.classList.toggle("ativa", t.id === id));
     btnVoltar.style.display = id === "idades" ? "none" : "flex";
-    btnTelaCheia.hidden = !podeTelaCheia || id === "jogo";
+    mostrarBotaoTelaCheia();
     if (id !== "jogo") { Ajuda.fechar(); btnAjuda.hidden = true; cabecalho.hidden = true; }
   }
 

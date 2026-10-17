@@ -278,16 +278,21 @@
       if (lista) {
         const ol = document.createElement("ol");
         ol.className = "carros-classif";
-        lista.forEach((c, i) => {
+        const montar = () => { ol.innerHTML = ""; (typeof lista === "function" ? lista() : lista).forEach((c, i) => {
           const li = document.createElement("li");
           if (c.j) li.className = "eu";
           li.style.setProperty("--cor", c.hex);
-          li.innerHTML = `<b></b><i></i><span></span><em></em>`;
+          li.innerHTML = `<b></b><i></i><span></span><small></small><em></em>`;
           li.querySelector("b").textContent = i + 1;
           li.querySelector("span").textContent = c.nome;
-          li.querySelector("em").textContent = ["🥇", "🥈", "🥉"][i] || "";
+          li.querySelector("small").textContent = c.txt || "";
+          if (!c.tempo && c.txt) li.classList.add("correndo");
+          li.querySelector("em").textContent = c.tempo ? ["🥇", "🥈", "🥉"][i] || "" : "";
           ol.appendChild(li);
-        });
+        }); };
+        montar();
+        // os carros de trás ainda estão chegando: a lista vai ganhando os tempos
+        if (typeof lista === "function") { const iv = setInterval(() => { if (!document.contains(ol)) clearInterval(iv); else montar(); }, 300); }
         caixa.appendChild(ol);
       }
       const b = Object.assign(document.createElement("button"), { className: "chip executar", textContent: "🔁 Correr de novo" });
@@ -644,6 +649,8 @@
     }));
     const TOTAL_CARROS = rivais.length + jog.length;
     let tempo = 0, fase = "largada", contagem = 3.6, chegada = 0, primeiraChegada = 0;
+    // relógio da prova: continua depois que você chega, para cada carro ter o seu tempo de chegada
+    let relogioProva = 0;
     const TOTAL_VOLTAS = 3;
     const segDe = z => segs[Math.floor(((z % VOLTA) + VOLTA) % VOLTA / SEG) % N];
     const progresso = (v, z) => v * VOLTA + z;
@@ -736,6 +743,7 @@
       }
       if (fase === "correndo" && contagem > -1.2) contagem -= dt; // o "JÁ!" fica um pouquinho na tela
       tempo += fase === "correndo" ? dt : 0;
+      relogioProva += dt;
       let pvMax = 0;
       jog.forEach(j => { const antes = j.pos; moverJogador(j, dt); if (antes !== j.pos) pvMax = Math.max(pvMax, j.vel / VMAX); });
       // Adversários: aceleram até a sua velocidade, freiam um pouco nas curvas e desviam
@@ -749,7 +757,7 @@
         if (frente) r.x += (r.x > frente.x ? 1 : -1) * dt * 0.9;
         r.x = Math.max(-0.8, Math.min(0.8, r.x));
         r.z += r.v * dt;
-        if (r.z >= VOLTA) { r.z -= VOLTA; r.voltas++; if (r.voltas >= TOTAL_VOLTAS && !r.chegou) { r.chegou = ++chegada; r.tFim = tempo; } }
+        if (r.z >= VOLTA) { r.z -= VOLTA; r.voltas++; if (r.voltas >= TOTAL_VOLTAS && !r.chegou) { r.chegou = ++chegada; r.tFim = relogioProva; } }
       });
       // 2 jogadores: depois que o primeiro chega, o outro tem um tempinho para terminar
       if (DOIS && fase === "correndo" && primeiraChegada && tempo - primeiraChegada > 25) terminarDois();
@@ -757,19 +765,21 @@
     const MEDALHA = l => (l === 1 ? "🥇" : l === 2 ? "🥈" : l === 3 ? "🥉" : "🏁");
     // Semáforo da largada (como na Fórmula 1): as 5 luzes vermelhas acendem uma a uma e, ao apagar, é largada
     function luzesAcesas() { return Math.max(0, Math.min(5, Math.floor((3.6 - contagem - 0.3) / 0.6) + 1)); }
-    // Classificação: quem já chegou (pela ordem de chegada) e depois quem anda mais à frente
+    // Classificação: quem já chegou (pela ordem e o tempo de chegada) e depois quem anda mais à frente.
+    // `tempo` só existe para quem já cruzou a chegada.
     function classificacao() {
       return [
-        ...rivais.map(r => ({ nome: r.nome, hex: r.cor, prog: progresso(r.voltas, r.z), fim: r.tFim || 1e9, j: null })),
-        ...jog.map(j => ({ nome: j.nome, hex: j.hex, prog: progresso(j.voltas, j.pos), fim: j.tFim || 1e9, j })),
-      ].sort((a, b) => a.fim - b.fim || b.prog - a.prog);
+        ...rivais.map(r => ({ nome: r.nome, hex: r.cor, prog: progresso(r.voltas, r.z), tempo: r.tFim || 0, j: null })),
+        ...jog.map(j => ({ nome: j.nome, hex: j.hex, prog: progresso(j.voltas, j.pos), tempo: j.tFim || 0, j })),
+      ].sort((a, b) => (a.tempo && b.tempo ? a.tempo - b.tempo : a.tempo ? -1 : b.tempo ? 1 : b.prog - a.prog));
     }
+    const tempoTxt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")},${Math.floor(t * 10 % 10)}`;
     const avisar = (j, txt, cor, dur = 1.4) => { j.aviso = { txt, cor, t: dur, dur }; };
     function novaVolta(j) {
       if (fase !== "correndo" || j.chegou) return;
       if (j.voltas >= TOTAL_VOLTAS) {
         j.chegou = posicao(j);
-        j.tFim = tempo;
+        j.tFim = relogioProva;
         if (!DOIS) { fimUmJogador(); return; }
         Motor.tim();
         avisar(j, `🏁 ${j.chegou}º lugar!`, "#ffd60a", 3);
@@ -795,8 +805,7 @@
       Motor.tim();
       const quem = op.nome1 ? `${op.nome1}, você` : "Você";
       Motor.falar(lugar === 1 ? `${quem} ganhou a corrida! Primeiro lugar!` : `${quem} chegou em ${lugar}º lugar! Muito bem!` + (novo ? " É o seu melhor tempo!" : ""));
-      const final = classificacao();
-      setTimeout(() => { if (vivo()) T.fim(lugar === 1 ? "Você venceu!" : `${lugar}º lugar!`, MEDALHA(lugar), `⏱️ ${t}` + (novo ? " · 🏆 melhor tempo!" : ""), () => corrida(area, op), opcoes, final); }, 1200);
+      setTimeout(() => { if (vivo()) T.fim(lugar === 1 ? "Você venceu!" : `${lugar}º lugar!`, MEDALHA(lugar), `⏱️ ${t}` + (novo ? " · 🏆 melhor tempo!" : ""), () => corrida(area, op), opcoes, listaFinal); }, 1200);
     }
     function terminarDois() {
       fase = "fim";
@@ -805,10 +814,11 @@
       const venc = a.chegou <= b.chegou ? a : b;
       Motor.tim();
       Motor.falar(`${venc.nome}, do carro ${venc.cor}, ganhou!` + (venc.chegou === 1 ? " E chegou em primeiro lugar na corrida!" : ""));
-      const final = classificacao();
-      setTimeout(() => { if (vivo()) T.fim(`${venc.emoji} ${venc.nome} venceu!`, "🏆", `⏱️ ${relogio()}`, () => corrida(area, op), opcoes, final); }, 1200);
+      setTimeout(() => { if (vivo()) T.fim(`${venc.emoji} ${venc.nome} venceu!`, "🏆", `⏱️ ${relogio()}`, () => corrida(area, op), opcoes, listaFinal); }, 1200);
     }
     const opcoes = () => JOGOS.find(j => j.id === "carros").iniciar(area, { id: op.fid });
+    // classificação do fim: com o tempo de cada um (quem ainda não chegou aparece "chegando...")
+    const listaFinal = () => classificacao().map(c => ({ ...c, txt: c.tempo ? tempoTxt(c.tempo) : "chegando..." }));
     function alternarPausa() { if (fase !== "fim") { pausado = !pausado; T.pausa.textContent = pausado ? "▶️" : "⏸️"; } }
 
     // ----- Desenho -----
@@ -1216,7 +1226,8 @@
           ctx.fillStyle = c.hex; ctx.fillRect(x0 + 30 * s, y + 4 * s, 5 * s, lh - 11 * s);
           ctx.fillStyle = eu || outro ? "#1d2333" : "#fff"; ctx.font = `bold ${15 * s}px Fredoka, sans-serif`;
           ctx.textAlign = "center"; ctx.fillText(String(i + 1), x0 + 15 * s, y + lh * 0.66);
-          ctx.textAlign = "left"; ctx.fillText(c.nome.toUpperCase().slice(0, 12), x0 + 42 * s, y + lh * 0.66);
+          ctx.textAlign = "left"; ctx.fillText(c.nome.toUpperCase().slice(0, c.tempo ? 7 : 12), x0 + 42 * s, y + lh * 0.66);
+          if (c.tempo) { ctx.textAlign = "right"; ctx.font = `bold ${11 * s}px Fredoka, sans-serif`; ctx.fillText(tempoTxt(c.tempo), x0 + w - 7 * s, y + lh * 0.64); } // já chegou: o tempo dele
           y += lh;
         });
       }

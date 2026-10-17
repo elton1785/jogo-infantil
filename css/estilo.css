@@ -110,6 +110,8 @@ button { font-family: inherit; color: inherit; }
 .canto.voltar:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
 .tela-cheia { top: 12px; right: 12px; display: flex; align-items: center; justify-content: center; padding: 0; width: 60px; height: 60px; }
 .tela-cheia[hidden] { display: none; }
+#jogo.ativa ~ .tela-cheia { top: calc(78px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); right: auto; width: 52px; height: 52px; z-index: 26; }
+#jogo.ativa:has(.carros-tela) ~ .tela-cheia { top: calc(68px + env(safe-area-inset-top, 0px)); left: calc(8px + env(safe-area-inset-left, 0px)); }
 .tela-cheia svg { width: 62%; height: 62%; }
 .tela-cheia .fechar, .tela-cheia.ligada .abrir { display: none; }
 .tela-cheia.ligada .fechar { display: inline; }
