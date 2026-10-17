@@ -43,15 +43,42 @@ const App = (() => {
     try { return localStorage.getItem(chave); } catch (e) { return null; }
   }
 
-  function telaCheia() {
+  // Tela cheia: entra no primeiro toque, clique ou tecla depois de abrir o app (o navegador só deixa
+  // entrar depois de um gesto). Quem sai (Esc ou botão) fica sem tela cheia até ligar de novo no botão
+  // ou abrir o app outra vez.
+  const btnTelaCheia = document.getElementById("btn-tela-cheia");
+  const podeTelaCheia = !!(document.documentElement.requestFullscreen && document.fullscreenEnabled);
+  let querTelaCheia = true;
+  function telaCheia(forcar) {
     const el = document.documentElement;
-    if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    if (!podeTelaCheia || document.fullscreenElement || !(forcar || querTelaCheia)) return;
+    el.requestFullscreen().catch(() => {});
+  }
+  if (podeTelaCheia) {
+    const primeiroGesto = e => {
+      if (e.key === "Escape") return;
+      ["pointerdown", "keydown"].forEach(t => window.removeEventListener(t, primeiroGesto, true));
+      if (e.target && e.target.closest && e.target.closest("#btn-tela-cheia")) return; // o botão cuida disso
+      telaCheia();
+    };
+    ["pointerdown", "keydown"].forEach(t => window.addEventListener(t, primeiroGesto, true));
+    btnTelaCheia.addEventListener("click", () => {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      else { querTelaCheia = true; telaCheia(true); }
+    });
+    document.addEventListener("fullscreenchange", () => {
+      const ligada = !!document.fullscreenElement;
+      btnTelaCheia.classList.toggle("ligada", ligada);
+      btnTelaCheia.setAttribute("aria-label", ligada ? "Sair da tela cheia" : "Tela cheia");
+      if (!ligada) querTelaCheia = false; // saiu (Esc, botão ou gesto do celular)
+    });
   }
 
   function mostrar(id) {
     telaAtual = id;
     telas.forEach(t => t.classList.toggle("ativa", t.id === id));
     btnVoltar.style.display = id === "idades" ? "none" : "flex";
+    btnTelaCheia.hidden = !podeTelaCheia || id === "jogo";
     if (id !== "jogo") { Ajuda.fechar(); btnAjuda.hidden = true; cabecalho.hidden = true; }
   }
 

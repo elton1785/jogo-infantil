@@ -357,6 +357,115 @@
     }
   }
 
+  // O mesmo boneco visto de lado, olhando para a direita (quem chama espelha com scale(-1, 1)).
+  // o.pes = [perto, longe] e o.maos = [perto, longe], em metros: { x } do pé (y = altura do pé no ar), [x, y] da mão.
+  function bonecoPerfil(c, o) {
+    c.lineCap = "round"; c.lineJoin = "round";
+    const peleSombra = tom(o.pele, -0.18);
+    const perna = (pe, longe) => {
+      const fx = pe.x, fy = -pe.y, lev = clamp(pe.y / 0.3, 0, 1);
+      // o joelho sempre dobra para a frente
+      const jx = fx * 0.5 + 0.05 + lev * 0.1, jy = lerp(-0.92, fy, 0.5) - lev * 0.04;
+      c.strokeStyle = longe ? tom(o.pele, -0.32) : peleSombra; c.lineWidth = 0.18;
+      c.beginPath(); c.moveTo(0, -0.92); c.lineTo(jx, jy); c.lineTo(fx, fy - 0.05); c.stroke();
+      if (!longe) { c.strokeStyle = o.pele; c.lineWidth = 0.07; c.beginPath(); c.moveTo(0.03, -0.92); c.lineTo(jx + 0.03, jy); c.stroke(); }
+      const mx = lerp(jx, fx, 0.12), my = lerp(jy, fy, 0.12);
+      c.strokeStyle = longe ? tom(o.meiao, -0.3) : o.meiao; c.lineWidth = 0.2;
+      c.beginPath(); c.moveTo(mx, my); c.lineTo(fx, fy - 0.07); c.stroke();
+      c.strokeStyle = longe ? tom(o.faixaMeiao || "#ffffff", -0.3) : o.faixaMeiao || "#fff"; c.lineWidth = 0.21; c.lineCap = "butt";
+      c.beginPath(); c.moveTo(lerp(mx, fx, 0.12), lerp(my, fy, 0.12)); c.lineTo(lerp(mx, fx, 0.24), lerp(my, fy, 0.24)); c.stroke();
+      c.lineCap = "round";
+      // chuteira comprida, de bico para a frente
+      c.fillStyle = "#1b1e22";
+      c.beginPath(); c.ellipse(fx + 0.06, fy - 0.045, 0.16, 0.075, 0, 0, Math.PI * 2); c.fill();
+      if (!longe) {
+        c.fillStyle = o.camisa; c.fillRect(fx - 0.06, fy - 0.08, 0.2, 0.025);
+        c.fillStyle = "rgba(255,255,255,.3)";
+        c.beginPath(); c.ellipse(fx + 0.08, fy - 0.09, 0.07, 0.02, 0, 0, Math.PI * 2); c.fill();
+      }
+    };
+    const oy = -1.47;
+    const braco = (m, longe) => {
+      // cotovelo dobrado, um pouco atrás e abaixo do ombro
+      const ex = lerp(0, m[0], 0.35) - 0.07, ey = lerp(oy, m[1], 0.55) + 0.06;
+      c.strokeStyle = longe ? tom(o.pele, -0.32) : peleSombra; c.lineWidth = 0.12;
+      c.beginPath(); c.moveTo(ex, ey); c.lineTo(m[0], m[1]); c.stroke();
+      c.strokeStyle = longe ? tom(o.camisa, -0.3) : o.camisa; c.lineWidth = 0.18;
+      c.beginPath(); c.moveTo(0, oy); c.lineTo(lerp(0, ex, 0.8), lerp(oy, ey, 0.8)); c.stroke();
+      c.strokeStyle = o.escuro; c.lineWidth = 0.19; c.lineCap = "butt";
+      c.beginPath(); c.moveTo(lerp(0, ex, 0.6), lerp(oy, ey, 0.6)); c.lineTo(lerp(0, ex, 0.8), lerp(oy, ey, 0.8)); c.stroke();
+      c.lineCap = "round";
+      if (o.luvas) {
+        c.fillStyle = longe ? "#d5d8dc" : "#f8f9fa"; c.strokeStyle = "#ff922b"; c.lineWidth = 0.05;
+        c.beginPath(); c.arc(m[0], m[1], 0.14, 0, Math.PI * 2); c.fill(); c.stroke();
+      } else {
+        c.fillStyle = longe ? peleSombra : o.pele; c.beginPath(); c.arc(m[0], m[1], 0.075, 0, Math.PI * 2); c.fill();
+      }
+    };
+    const pes = o.pes || [{ x: 0, y: 0 }, { x: 0, y: 0 }], maos = o.maos || [[0.1, -1.0], [0.1, -1.0]];
+    braco(maos[1], true);
+    perna(pes[1], true);
+    perna(pes[0], false);
+    // calção (de lado é mais estreito) com a faixa lateral e o número na frente
+    c.fillStyle = degrade("pc" + o.calcao, () => { const g = c.createLinearGradient(-0.2, 0, 0.2, 0);
+      g.addColorStop(0, tom(o.calcao, -0.25)); g.addColorStop(0.6, o.calcao); g.addColorStop(1, tom(o.calcao, 0.1)); return g; });
+    c.beginPath();
+    c.moveTo(-0.19, -1.12); c.lineTo(0.2, -1.12); c.lineTo(0.23, -0.8); c.lineTo(-0.2, -0.78); c.closePath(); c.fill();
+    c.strokeStyle = o.calcao === "#ffffff" ? o.camisa : o.escuro; c.lineWidth = 0.05;
+    c.beginPath(); c.moveTo(0, -1.1); c.lineTo(0.01, -0.8); c.stroke();
+    // tronco: peito arredondado na frente, costas retas, faixa do lado
+    c.fillStyle = degrade("pt" + o.camisa, () => { const g = c.createLinearGradient(-0.22, 0, 0.24, 0);
+      g.addColorStop(0, tom(o.camisa, -0.3)); g.addColorStop(0.55, o.camisa); g.addColorStop(1, tom(o.camisa, 0.18)); return g; });
+    c.beginPath();
+    c.moveTo(-0.1, -1.63); c.quadraticCurveTo(-0.22, -1.6, -0.21, -1.42);
+    c.lineTo(-0.19, -1.1); c.lineTo(0.2, -1.1);
+    c.quadraticCurveTo(0.27, -1.4, 0.18, -1.58); c.quadraticCurveTo(0.12, -1.64, -0.1, -1.63); c.closePath(); c.fill();
+    c.strokeStyle = o.escuro; c.lineWidth = 0.03; c.stroke();
+    c.lineWidth = 0.06;
+    c.beginPath(); c.moveTo(-0.01, -1.55); c.lineTo(0, -1.13); c.stroke();
+    c.beginPath(); c.moveTo(-0.19, -1.12); c.lineTo(0.2, -1.12); c.stroke();
+    c.save(); c.scale(o.espelho ? -0.01 : 0.01, 0.01); // desfaz o espelho para o número não sair invertido
+    c.font = `bold 13px ${FONTE}`;
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.strokeStyle = o.escuro; c.lineWidth = 2.5;
+    const nx = o.espelho ? -11 : 11;
+    c.strokeText(o.numero, nx, -96); c.fillStyle = o.textoCor; c.fillText(o.numero, nx, -96);
+    c.restore();
+    // pescoço e cabeça de perfil: nariz e olho na frente, orelha no meio, cabelo atrás
+    c.fillStyle = peleSombra; c.fillRect(-0.05, -1.7, 0.13, 0.11);
+    const est = o.estilo || 0, hx = 0.03, hy = -1.82;
+    c.fillStyle = degrade("ph" + o.pele, () => { const g = c.createRadialGradient(0.1, -1.89, 0.03, hx, hy, 0.22);
+      g.addColorStop(0, tom(o.pele, 0.15)); g.addColorStop(0.7, o.pele); g.addColorStop(1, peleSombra); return g; });
+    c.beginPath(); c.arc(hx, hy, 0.2, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(hx + 0.2, hy + 0.02, 0.035, 0, Math.PI * 2); c.fill(); // nariz
+    c.fillStyle = o.cabelo;
+    const nuca = (r, a1) => { c.beginPath(); c.moveTo(hx, hy); c.arc(hx, hy - 0.02, r, a1, Math.PI * 0.72, true); c.closePath(); c.fill(); };
+    if (est === 1) {
+      nuca(0.235, Math.PI * 1.85);
+      for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(hx - 0.15 + i * 0.08, hy - 0.18 - Math.sin(i / 3 * Math.PI) * 0.05, 0.075, 0, Math.PI * 2); c.fill(); }
+    } else if (est === 2) {
+      c.globalAlpha = 0.75; nuca(0.2, Math.PI * 1.8); c.globalAlpha = 1;
+    } else {
+      nuca(0.21, Math.PI * 1.8);
+      c.beginPath(); c.moveTo(hx + 0.05, hy - 0.2); c.quadraticCurveTo(hx + 0.2, hy - 0.17, hx + 0.19, hy - 0.08); c.lineTo(hx + 0.08, hy - 0.12); c.fill(); // franja
+      if (est === 3) { c.beginPath(); c.arc(hx - 0.17, hy - 0.15, 0.08, 0, Math.PI * 2); c.fill(); }
+    }
+    c.fillStyle = peleSombra;
+    c.beginPath(); c.ellipse(hx - 0.02, hy + 0.01, 0.045, 0.06, 0, 0, Math.PI * 2); c.fill(); // orelha
+    c.fillStyle = "#fff";
+    c.beginPath(); c.ellipse(hx + 0.12, hy - 0.01, 0.035, 0.035, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#222";
+    c.beginPath(); c.arc(hx + 0.135, hy - 0.01, 0.02, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = o.cabelo; c.lineWidth = 0.022;
+    c.beginPath(); c.moveTo(hx + 0.08, hy - 0.07); c.lineTo(hx + 0.16, hy - 0.065); c.stroke();
+    c.strokeStyle = "#5a2a1a";
+    c.beginPath(); c.moveTo(hx + 0.11, hy + 0.08); c.quadraticCurveTo(hx + 0.15, hy + 0.1, hx + 0.18, hy + 0.07); c.stroke();
+    // gola
+    c.strokeStyle = o.escuro; c.lineWidth = 0.05;
+    c.beginPath(); c.moveTo(-0.06, -1.63); c.quadraticCurveTo(0.04, -1.6, 0.11, -1.63); c.stroke();
+    braco(maos[0], false);
+  }
+
   // =====================================================================================
   // Jogo: tela, entradas (teclado, controles, toque), laço e tela de fim
   // =====================================================================================
@@ -2078,6 +2187,27 @@
       const e = k * ES * J.dpr;
       c.setTransform(e, 0, 0, e, q.x * J.dpr, q.y * J.dpr);
       c.translate(0, -bob - lift);
+      // correndo para os lados: o jogador aparece de perfil, olhando para onde vai
+      // (com folga entre os limites para não ficar trocando de vista na diagonal)
+      const ax = Math.abs(p.fx);
+      p.perfil = p.perfil ? ax > 0.5 : ax > 0.68;
+      if (p.perfil && !p.pulo && !lift && !(gk && ang)) {
+        const pa = a * amp, passo = 0.36;
+        let perto = { x: pa * passo, y: Math.max(0, -pa) * 0.32 }, longe = { x: -pa * passo, y: Math.max(0, pa) * 0.32 };
+        if (chute > 0) perto = { x: 0.55 * chute, y: 0.45 * chute };
+        const maoP = gk && sp < 3 ? [0.32, -1.25] : [0.12 - pa * 0.3, -1.05 - Math.max(0, -pa) * 0.25],
+          maoL = gk && sp < 3 ? [0.28, -1.22] : [0.12 + pa * 0.3, -1.05 - Math.max(0, pa) * 0.25];
+        c.scale(lado, 1);
+        const incl = chute > 0 ? -0.1 * chute : 0.1 * amp;
+        if (incl) { c.translate(0, -0.95); c.rotate(incl); c.translate(0, 0.95); }
+        bonecoPerfil(c, {
+          camisa: gk ? GOLEIRO_COR[p.t] : cor.c, escuro: gk ? "#2b2f36" : cor.e, calcao: gk ? "#2b2f36" : "#ffffff",
+          meiao: gk ? GOLEIRO_COR[p.t] : cor.c, faixaMeiao: gk ? "#2b2f36" : "#ffffff",
+          pele: p.pele, cabelo: p.cabelo, estilo: p.estilo, numero: String(p.num), textoCor: gk ? "#fff" : cor.texto || "#fff",
+          luvas: gk, pes: [perto, longe], maos: [maoP, maoL], espelho: lado < 0,
+        });
+        return;
+      }
       if (ang) { c.translate(0, -0.95); c.rotate(ang); c.translate(0, 0.95); }
       boneco(c, {
         camisa: gk ? GOLEIRO_COR[p.t] : cor.c, escuro: gk ? "#2b2f36" : cor.e, calcao: gk ? "#2b2f36" : "#ffffff",

@@ -108,6 +108,12 @@ button { font-family: inherit; color: inherit; }
 .canto.voltar { display: flex; align-items: center; justify-content: center; padding: 0; background: #ff7a3d; border: 4px solid #fff; box-shadow: 0 4px 0 rgba(0,0,0,.25), 0 0 0 2px rgba(0,0,0,.08); }
 .canto.voltar svg { width: 60%; height: 60%; }
 .canto.voltar:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.tela-cheia { top: 12px; right: 12px; display: flex; align-items: center; justify-content: center; padding: 0; width: 60px; height: 60px; }
+.tela-cheia[hidden] { display: none; }
+.tela-cheia svg { width: 62%; height: 62%; }
+.tela-cheia .fechar, .tela-cheia.ligada .abrir { display: none; }
+.tela-cheia.ligada .fechar { display: inline; }
+.tela-cheia:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--sombra); }
 .proximo { bottom: 16px; right: 16px; width: 88px; height: 88px; font-size: 44px; }
 .repetir { top: 12px; right: 12px; }
 
