@@ -186,14 +186,24 @@ const App = (() => {
   }
 
   // ---------- Favoritos: lista de "idDoJogo|idDaFaixa" ----------
+  // Favoritos e "Continuar" são de cada criança (perfil do álbum)
+  const chaveDe = nome => `${nome}-${Album.perfilAtual().id}`;
+  function todosFavoritos() {
+    try {
+      const meus = localStorage.getItem(chaveDe("favoritos"));
+      return JSON.parse(meus != null ? meus : localStorage.getItem("favoritos")) || []; // antes eram de todos
+    } catch (e) { return []; }
+  }
+  // No Guiado, só os favoritos da idade da criança
   function favoritos() {
-    try { return JSON.parse(localStorage.getItem("favoritos")) || []; } catch (e) { return []; }
+    const p = Album.perfilAtual();
+    return Progresso.guiado(p) ? todosFavoritos().filter(k => k.split("|")[1] === p.faixa) : todosFavoritos();
   }
   const chaveFav = (jogo, faixa) => `${jogo.id}|${faixa.id}`;
   function alternarFavorito(jogo, faixa) {
-    const lista = favoritos(), k = chaveFav(jogo, faixa);
+    const lista = todosFavoritos(), k = chaveFav(jogo, faixa);
     const nova = lista.includes(k) ? lista.filter(x => x !== k) : [...lista, k];
-    lembrar("favoritos", JSON.stringify(nova));
+    lembrar(chaveDe("favoritos"), JSON.stringify(nova));
     return nova.includes(k);
   }
 
@@ -245,9 +255,10 @@ const App = (() => {
     painel.appendChild(quem);
     if (guiado) painel.appendChild(blocoMissao(faixaP));
 
-    const [uid, ufx] = (lembrado("ultimo") || "").split("|");
+    const [uid, ufx] = (lembrado(chaveDe("ultimo")) || "").split("|");
     const ultJogo = JOGOS.find(j => j.id === uid), ultFaixa = FAIXAS.find(f => f.id === ufx);
-    if (ultJogo && ultFaixa) {
+    // "Continuar" só se o último jogo dela ainda for da idade dela (no Guiado)
+    if (ultJogo && ultFaixa && !Progresso.situacao(ultJogo, ultFaixa).foraDaIdade) {
       const c = cartaoJogo(ultJogo, () => { telaCheia(); tentarAbrir(ultJogo, ultFaixa, c, () => abrirDoInicio(ultJogo, ultFaixa)); }, `▶️ Continuar · ${ultFaixa.nome}`);
       c.classList.add("continuar");
       atalhos.appendChild(c);
@@ -460,7 +471,7 @@ const App = (() => {
 
   function abrirJogo(jogo) {
     jogoAtual = jogo;
-    if (faixaAtual) lembrar("ultimo", `${jogo.id}|${faixaAtual.id}`);
+    if (faixaAtual) lembrar(chaveDe("ultimo"), `${jogo.id}|${faixaAtual.id}`);
     if (faixaAtual) guardarOnde({ t: "jogo", f: doInicio ? "inicio" : noFavoritos ? "favoritos" : noLivre ? "livre" : faixaAtual.id, j: jogo.id, fx: faixaAtual.id });
     history.pushState({ tela: "jogo" }, "");
     Motor.novaSessao();

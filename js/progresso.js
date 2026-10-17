@@ -99,7 +99,10 @@ const Progresso = (() => {
       if (!(m && m.completa)) { r.aberto = false; r.motivo = "Complete a missão do dia para abrir o Parque!"; }
       else if (minutosParque() && d.parque.dia === hoje() && d.parque.seg <= 0) { r.aberto = false; r.motivo = "O tempo do Parque de hoje acabou. Amanhã tem mais!"; r.acabou = true; }
     }
-    if (!guiado() || liberadoHoje(d)) { r.aberto = true; r.motivo = ""; }
+    // Guiado: só os jogos da idade da criança (o "Continuar", os favoritos ou recarregar a página
+    // não podem abrir um jogo de outra idade, jogado quando ela estava no Livre)
+    if (guiado() && fx !== perfil().faixa) { r.aberto = false; r.foraDaIdade = true; r.motivo = "Este jogo é de outra idade. Escolha um dos seus jogos!"; }
+    if (!guiado() || liberadoHoje(d)) { r.aberto = true; r.motivo = ""; r.foraDaIdade = false; }
     return r;
   }
 
