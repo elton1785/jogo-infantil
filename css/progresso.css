@@ -62,7 +62,8 @@
 
 /* Menu: seções por tipo e subtítulos das trilhas */
 .secao-tipo > .secao-titulo { font-size: clamp(19px, 4.4vw, 24px); padding: 6px 18px; }
-.secao-frase { margin: -2px 0 12px; font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.2); font-size: 16px; }
+.secao-frase { display: inline-block; margin: 0 0 12px 8px; font-weight: 600; color: #34495e; background: rgba(255,255,255,.9); border-radius: 12px; padding: 4px 12px; font-size: clamp(14px, 1.8vw, 17px); box-shadow: 0 2px 0 rgba(0,0,0,.08); }
+.sub-trilha-conta { background: rgba(255,255,255,.9); color: #34495e !important; text-shadow: none !important; border-radius: 999px; padding: 2px 10px; }
 .sub-trilha { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; }
 .sub-trilha-titulo { margin: 0; font-size: 19px; color: var(--cor); background: #fff; border-radius: 999px; padding: 4px 14px; box-shadow: 0 3px 0 var(--cor); }
 .sub-trilha-conta { font-weight: 700; color: #fff; font-size: 15px; text-shadow: 0 2px 0 rgba(0,0,0,.2); }

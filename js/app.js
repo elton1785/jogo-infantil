@@ -331,7 +331,7 @@ const App = (() => {
   // Lista de jogos separada por tipo de atividade: 📚 Aprender (uma trilha por matéria, na ordem de
   // ensino), 🧠 Desafios (do fácil ao difícil), 🎨 Brincar à vontade e 🎡 Parque de diversões.
   // `faixaDe(jogo)`: a idade em que o jogo abre (no Livre, cada jogo tem a sua).
-  function porTipo(jogos, cartao, faixaDe) {
+  function porTipo(jogos, cartao, faixaDe, faixa) {
     listaJogos.innerHTML = "";
     const grade = lista => { const g = novo("div", "grade-jogos"); lista.forEach(j => g.appendChild(cartao(j))); return g; };
     ORDEM_TIPOS.forEach(t => {
@@ -342,6 +342,13 @@ const App = (() => {
       secao.id = "secao-" + t;
       secao.style.setProperty("--cor", tp.cor);
       secao.appendChild(novo("h2", "secao-titulo", `${tp.icone} ${tp.nome}`));
+      // A regra de cada seção, em uma linha (no Guiado; no Livre tudo está aberto)
+      const guiado = Progresso.guiado() && faixa !== LIVRE;
+      const REGRA = guiado
+        ? { licao: "Cada lição terminada abre a próxima · ganhe ⭐ e 🪙", desafio: "Os fáceis estão abertos · 2 fáceis abrem os médios · 2 médios abrem os difíceis · ganhe ⭐ e 🪙",
+            livre: "Sempre aberto · vale para a missão do dia" }
+        : { licao: "Lições na ordem de ensino · ganhe ⭐ e 🪙", desafio: "Do fácil ao difícil · ganhe ⭐ e 🪙", livre: "Para brincar à vontade" };
+      if (REGRA[t]) secao.appendChild(novo("p", "secao-frase", REGRA[t]));
       if (t === "parque") {
         const info = Progresso.infoParque(faixaDe(daqui[0]).id);
         if (info) secao.appendChild(novo("p", "secao-frase", info.aberto ? `🔓 ${info.texto}` : info.acabou ? `🌙 ${info.texto}` : `🔒 Abre depois da missão do dia (${info.texto})`));
@@ -362,7 +369,21 @@ const App = (() => {
         const resto = daqui.filter(j => !usados.has(j));
         if (resto.length) secao.appendChild(grade(resto));
       } else if (t === "desafio") {
-        secao.appendChild(grade(daqui.slice().sort((a, b) => (NIVEL_DESAFIO[a.id] || 1) - (NIVEL_DESAFIO[b.id] || 1))));
+        // Um bloco por nível, cada um dizendo quantos feitos ou o que falta para abrir
+        const COR_NIVEL = { 1: ["🟢", "#2a9d55"], 2: ["🟠", "#f08c00"], 3: ["🔴", "#d62839"] };
+        const fx = faixa === LIVRE ? null : faixa;
+        const niveis = fx ? Progresso.niveisDesafio(fx.id) : null;
+        [1, 2, 3].forEach(n => {
+          const lista = daqui.filter(j => (NIVEL_DESAFIO[j.id] || 1) === n);
+          if (!lista.length) return;
+          const info = niveis && niveis.find(x => x.nivel === n);
+          const sub = novo("div", "sub-trilha");
+          sub.style.setProperty("--cor", COR_NIVEL[n][1]);
+          const estado = !info ? "" : info.aberto ? `✅ ${info.feitos} de ${info.lista.length} feitos`
+            : `🔒 Abre com ${info.precisa} ${info.precisa > 1 ? { 1: "fáceis", 2: "médios" }[n - 1] : NOMES_NIVEL[n - 1].toLowerCase()} (${info.feitosAntes} de ${info.precisa})`;
+          sub.append(novo("h3", "sub-trilha-titulo", `${COR_NIVEL[n][0]} ${NOMES_NIVEL[n]}`), novo("span", "sub-trilha-conta", estado));
+          secao.append(sub, grade(lista));
+        });
       } else secao.appendChild(grade(daqui));
       listaJogos.appendChild(secao);
     });
@@ -387,7 +408,7 @@ const App = (() => {
       const fx = faixaDe(j);
       const c = cartaoJogo(j, () => tentarAbrir(j, fx, c, () => { faixaAtual = fx; abrirJogo(j); }));
       return comEstrela(decorar(c, j, fx), j, fx);
-    }, faixaDe);
+    }, faixaDe, faixa);
     if (jogos.length === 0) {
       const aviso = document.createElement("div");
       aviso.className = "aviso";

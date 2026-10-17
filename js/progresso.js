@@ -103,6 +103,19 @@ const Progresso = (() => {
     return r;
   }
 
+  // Níveis dos desafios da idade: quantos feitos e o que falta para abrir cada um (para o menu)
+  function niveisDesafio(faixaId, d = dados()) {
+    const des = desafiosDa(faixaId);
+    return [1, 2, 3].map(n => {
+      const lista = des.filter(j => nivelDe(j) === n);
+      const antes = des.filter(j => nivelDe(j) === n - 1);
+      const precisa = n === 1 ? 0 : Math.min(2, antes.length);
+      const feitosAntes = antes.filter(j => estrelas(d, j, faixaId)).length;
+      return { nivel: n, lista, feitos: lista.filter(j => estrelas(d, j, faixaId)).length,
+        aberto: n === 1 || feitosAntes >= precisa || !guiado() || liberadoHoje(d), precisa, feitosAntes };
+    }).filter(x => x.lista.length);
+  }
+
   // ---------- Missão do dia: 1 lição, 1 desafio e 1 brincadeira livre ----------
   function missao(d = dados()) {
     const p = perfil(), fx = p.faixa;
@@ -765,7 +778,7 @@ const Progresso = (() => {
   const avataresExtras = () => dados().compras.avatares;
 
   return { situacao, missao: () => missao(), trilhasDa, guiado, pequeno, entrar, sair, acerto, erro, fimDeRodada, partida, concluir,
-    faixaAtual: () => (atual ? atual.faixa : null),
+    faixaAtual: () => (atual ? atual.faixa : null), niveisDesafio,
     loja, pais, botaoPais, paginaCrianca, comSenha, temSenha: () => !!lerSenha(), moedas, infoParque, totalEstrelas, enfeite, avataresExtras, fechar, aberto: () => !!camada,
     estrelasDe: (jogo, faixa) => estrelas(dados(), jogo, faixa.id), aoMudar: fn => { aoMudar = fn; } };
 })();
