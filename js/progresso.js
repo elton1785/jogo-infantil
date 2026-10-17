@@ -339,7 +339,75 @@ const Progresso = (() => {
     Motor.falar("Qual figurinha você quer?");
   }
 
-  // ---------- 👨‍👩‍👧 Área dos pais (abre segurando o botão) ----------
+  // ---------- 🔒 Senha dos pais (4 números) ----------
+  // Protege a área dos pais e o cadastro de criança nova (senão a criança cria um perfil Livre).
+  // Na 1ª vez o adulto cria a senha; "Esqueci a senha" pede uma conta de adulto para criar outra.
+  const lerSenha = () => { try { return localStorage.getItem("pais-senha"); } catch (e) { return null; } };
+  const gravarSenha = s => { try { localStorage.setItem("pais-senha", s); } catch (e) { /* ok */ } };
+  function pedirSenha(depois, { titulo = "🔒 Senha dos pais", criar = !lerSenha(), confirmar = null } = {}) {
+    const c = novaCamada("senha");
+    let digitos = "";
+    const titulo2 = criar ? (confirmar ? "Digite a senha de novo" : "Crie uma senha de 4 números") : "Digite a senha dos pais";
+    c.append(el("div", "album-titulo-pagina", titulo), el("p", "prog-dica", titulo2));
+    if (criar && !confirmar) c.appendChild(el("p", "prog-senha-obs", "Ela protege a área dos pais e o cadastro de crianças. Não conte para as crianças! 😉"));
+    const bolinhas = el("div", "prog-senha-bolinhas");
+    const pintar = () => { bolinhas.innerHTML = [0, 1, 2, 3].map(i => `<i class="${i < digitos.length ? "on" : ""}"></i>`).join(""); };
+    pintar();
+    const tecl = el("div", "prog-senha-teclado");
+    const pronto = () => {
+      if (criar && !confirmar) { pedirSenha(depois, { titulo, criar: true, confirmar: digitos }); return; }
+      if (criar) {
+        if (digitos !== confirmar) { Motor.animar(bolinhas, "balanca"); Motor.falar("As senhas não são iguais. Vamos de novo."); setTimeout(() => pedirSenha(depois, { titulo, criar: true }), 900); return; }
+        gravarSenha(digitos); Motor.tim(); depois(); return;
+      }
+      if (digitos === lerSenha()) { depois(); return; }
+      Motor.animar(bolinhas, "balanca"); Motor.ploc();
+      digitos = ""; setTimeout(pintar, 300);
+    };
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, "⌫", 0, "✖️"].forEach(n => {
+      const b = el("button", "prog-senha-tecla" + (typeof n === "string" ? " funcao" : ""), String(n));
+      b.addEventListener("click", () => {
+        if (n === "✖️") { fechar(); return; }
+        if (n === "⌫") digitos = digitos.slice(0, -1);
+        else if (digitos.length < 4) digitos += n;
+        pintar();
+        if (digitos.length === 4) setTimeout(pronto, 150);
+      });
+      tecl.appendChild(b);
+    });
+    c.append(bolinhas, tecl);
+    if (!criar) {
+      const esqueci = el("button", "chip", "Esqueci a senha");
+      esqueci.addEventListener("click", () => contaDeAdulto(() => pedirSenha(depois, { titulo, criar: true })));
+      c.appendChild(esqueci);
+    }
+  }
+  // Conta difícil para criança (2 algarismos × 2 algarismos), para trocar a senha esquecida
+  function contaDeAdulto(depois) {
+    const a = 12 + Math.floor(Math.random() * 18), b = 13 + Math.floor(Math.random() * 16);
+    const c = novaCamada("senha");
+    c.append(el("div", "album-titulo-pagina", "🧮 Só para adultos"), el("p", "prog-dica", `Quanto é ${a} × ${b}?`));
+    let valor = "";
+    const visor = el("div", "prog-senha-visor", "?");
+    const tecl = el("div", "prog-senha-teclado");
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, "⌫", 0, "✅"].forEach(n => {
+      const bt = el("button", "prog-senha-tecla" + (typeof n === "string" ? " funcao" : ""), String(n));
+      bt.addEventListener("click", () => {
+        if (n === "✅") {
+          if (+valor === a * b) { depois(); return; }
+          Motor.animar(visor, "balanca"); valor = ""; visor.textContent = "?"; return;
+        }
+        valor = n === "⌫" ? valor.slice(0, -1) : (valor + n).slice(0, 4);
+        visor.textContent = valor || "?";
+      });
+      tecl.appendChild(bt);
+    });
+    c.append(visor, tecl);
+  }
+  // Para o álbum: cadastrar criança nova só com a senha (se ainda não há senha, cria na hora)
+  const comSenha = depois => pedirSenha(depois);
+
+  // ---------- 👨‍👩‍👧 Área dos pais (abre segurando o botão + senha) ----------
   function pais(abrirId) {
     const c = novaCamada("pais");
     c.append(el("div", "album-titulo-pagina", "👨‍👩‍👧 Área dos pais"));
@@ -352,10 +420,13 @@ const Progresso = (() => {
     if (!lista.length) {
       c.appendChild(el("p", "prog-dica", "Ainda não há crianças cadastradas. Crie um perfil para usar o modo Guiado."));
       const novo = el("button", "chip jogar", "➕ Cadastrar criança");
-      novo.addEventListener("click", () => { fechar(); setTimeout(() => Album.criarPerfil(), 50); });
+      novo.addEventListener("click", () => { fechar(); setTimeout(() => Album.criarPerfil({ semSenha: true }), 50); });
       c.appendChild(novo);
     }
     lista.forEach(p => c.appendChild(cartaoPais(p, p.id === abrirId)));
+    const trocar = el("button", "chip", "🔑 Trocar a senha");
+    trocar.addEventListener("click", () => pedirSenha(() => pais(), { criar: true }));
+    c.appendChild(trocar);
   }
   function cartaoPais(p, aberto) {
     const d = dados(p.id);
@@ -423,7 +494,7 @@ const Progresso = (() => {
     b.innerHTML = `<span class="anel"></span><span>👨‍👩‍👧 Área dos pais</span><small>segure para abrir</small>`;
     let t = null;
     const soltar = () => { clearTimeout(t); t = null; b.classList.remove("segurando"); };
-    b.addEventListener("pointerdown", () => { b.classList.add("segurando"); t = setTimeout(() => { soltar(); pais(); }, 2000); });
+    b.addEventListener("pointerdown", () => { b.classList.add("segurando"); t = setTimeout(() => { soltar(); pedirSenha(() => pais()); }, 2000); });
     ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, soltar));
     b.addEventListener("click", () => { if (!camada) Motor.falar("Peça para um adulto segurar este botão."); });
     b.addEventListener("contextmenu", e => e.preventDefault());
@@ -502,6 +573,6 @@ const Progresso = (() => {
   const avataresExtras = () => dados().compras.avatares;
 
   return { situacao, missao: () => missao(), trilhasDa, guiado, pequeno, entrar, sair, acerto, fimDeRodada, partida, concluir,
-    loja, pais, botaoPais, paginaCrianca, moedas, infoParque, totalEstrelas, enfeite, avataresExtras, fechar, aberto: () => !!camada,
+    loja, pais, botaoPais, paginaCrianca, comSenha, temSenha: () => !!lerSenha(), moedas, infoParque, totalEstrelas, enfeite, avataresExtras, fechar, aberto: () => !!camada,
     estrelasDe: (jogo, faixa) => estrelas(dados(), jogo, faixa.id), aoMudar: fn => { aoMudar = fn; } };
 })();

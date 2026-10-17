@@ -225,8 +225,17 @@ const Album = (() => {
     c.append(t, lista);
     Motor.falar("Quem está jogando?");
   }
-  function criarPerfil({ inicio } = {}) {
+  // Criança nova: só com a senha dos pais, depois que já existe alguma criança cadastrada
+  // (a primeira pode ser criada direto, para começar a usar o app)
+  function criarPerfil({ inicio, semSenha } = {}) {
     if (inicio != null) paraInicio = inicio;
+    if (!semSenha && perfis().length && typeof Progresso !== "undefined") {
+      const voltar = paraInicio;
+      const senha = () => Progresso.comSenha(() => { Progresso.fechar(); setTimeout(() => criarPerfil({ inicio: voltar, semSenha: true }), 50); });
+      if (camada) { camada.remove(); camada = null; }
+      if (history.state && history.state.tela === "album") { window.addEventListener("popstate", senha, { once: true }); history.back(); } else senha();
+      return;
+    }
     const c = novaCamada("perfis");
     let nome = "", avatar = AVATARES[0], cor = CORES[0], faixa = null;
     const t = Object.assign(document.createElement("div"), { className: "album-titulo-pagina", textContent: "✨ Nova criança" });
