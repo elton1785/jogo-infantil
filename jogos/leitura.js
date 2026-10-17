@@ -7,9 +7,11 @@
   const ORDEM = ["B", "P", "M", "L", "T", "D", "F", "V", "N", "R", "S", "C", "G", "J"];
 
   // ---------- Juntar Letras: arrastar a consoante até cada vogal ----------
-  function juntarLetras(area) {
+  // Uma rodada = algumas consoantes (fases); "Jogar de novo" continua da consoante seguinte
+  function juntarLetras(area, inicio = 0) {
     const s = Motor.sessaoAtual();
-    let indice = 0;
+    let indice = inicio, pulou = false;
+    const fase = Motor.fases(area, () => juntarLetras(area, indice));
 
     function rodada() {
       area.innerHTML = "";
@@ -47,7 +49,7 @@
           Motor.comemorar(linha);
           Motor.tim();
           Motor.falar(`${VOGAIS.map(([, f]) => c.toLowerCase() + f).join(", ")}! ${Motor.elogio()}`)
-            .then(() => { indice++; Motor.depois(rodada, 800); });
+            .then(() => { indice++; if (!fase(!pulou)) Motor.depois(rodada, 800); pulou = false; });
         });
         return true;
       }
@@ -59,7 +61,8 @@
       consoante.addEventListener("click", () => Motor.falar(NOME_LETRA[c]));
 
       area.append(consoante, linha);
-      area.appendChild(Motor.botaoCanto("proximo", "➡️", "Outra letra", () => { indice++; rodada(); }));
+      area.appendChild(Motor.botaoCanto("proximo", "➡️", "Outra letra", () => { indice++; pulou = true; rodada(); }));
+      fase.mostrar();
       Motor.falar(`Esta é a letra ${NOME_LETRA[c]}. Arraste o ${NOME_LETRA[c]} até cada vogal para formar sílabas!`);
     }
     rodada();
@@ -86,6 +89,7 @@
   function lerJuntinho(area, modo) {
     const s = Motor.sessaoAtual();
     let ultimo = null;
+    const fase = Motor.fases(area, () => lerJuntinho(area, modo));
 
     function rodada() {
       area.innerHTML = "";
@@ -136,10 +140,11 @@
         await Motor.falar(modo === "frases" ? item.texto : item.palavra);
         if (s !== Motor.sessaoAtual()) return;
         await Motor.falar(Motor.elogio());
-        Motor.depois(rodada, 900);
+        if (!fase()) Motor.depois(rodada, 900);
       });
 
       area.append(figura, linha, juntar);
+      fase.mostrar();
       Motor.falar(modo === "frases"
         ? "Toque em cada palavra para ler. Depois leia a frase inteira!"
         : "Toque em cada sílaba para ler. Depois junte tudo!");

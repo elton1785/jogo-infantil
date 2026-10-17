@@ -678,16 +678,18 @@ const Motor = (() => {
   }
 
   // Tela de fim de rodada com troféu e botão para jogar de novo.
-  function telaFim(area, acertos, total, jogarDeNovo) {
+  // `opcoes`: { texto, fala, botao } para trocar o "Acertou X de Y de primeira" (ex.: pintura)
+  function telaFim(area, acertos, total, jogarDeNovo, opcoes = {}) {
     area.innerHTML = "";
     const caixa = document.createElement("div");
     caixa.className = "fim";
     // As estrelas (1 a 3) aparecem no quadro de recompensa (js/progresso.js), logo abaixo
     caixa.innerHTML = `<div class="trofeu">🏆</div><div class="resumo"></div>`;
-    caixa.querySelector(".resumo").textContent = `Acertou ${acertos} de ${total} de primeira!`;
+    caixa.querySelector(".resumo").textContent = opcoes.texto || `Acertou ${acertos} de ${total} de primeira!`;
     const denovo = document.createElement("button");
     denovo.className = "modo";
-    denovo.innerHTML = `<span class="icone">🔁</span><span class="rotulo">Jogar de novo</span>`;
+    denovo.innerHTML = `<span class="icone">🔁</span><span class="rotulo"></span>`;
+    denovo.querySelector(".rotulo").textContent = opcoes.botao || "Jogar de novo";
     denovo.addEventListener("click", () => { area.innerHTML = ""; jogarDeNovo(); });
     caixa.appendChild(denovo);
     area.appendChild(caixa);
@@ -695,7 +697,7 @@ const Motor = (() => {
     if (typeof Album !== "undefined") Album.ponto();
     if (typeof Progresso !== "undefined") Progresso.fimDeRodada(acertos, total, caixa); // quadro de recompensa
     tim();
-    falar(`Parabéns! Você acertou ${acertos} de ${total} de primeira!`);
+    falar(opcoes.fala || `Parabéns! Você acertou ${acertos} de ${total} de primeira!`);
   }
 
   // Quantas fases tem uma rodada quando o jogo não diz: todo jogo de perguntas tem começo, meio e fim
@@ -714,6 +716,7 @@ const Motor = (() => {
         Array.from({ length: rodada }, (_, i) => `<i class="${i < feitas ? "feita" : i === feitas ? "atual" : ""}"></i>`).join("")}</span>`;
     };
     if (rodada) { area.appendChild(placar); atualizar(0); }
+    atualizar.el = placar;
     return atualizar;
   }
   // Para jogos com repetição própria (contar, esconde-esconde): fases com placar e troféu no fim.
@@ -721,13 +724,16 @@ const Motor = (() => {
   function fases(area, jogarDeNovo, total = rodadaPadrao()) {
     let feitas = 0, certas = 0;
     const atualizar = criarPlacar(area, total);
-    return dePrimeira => {
+    const fase = dePrimeira => {
       feitas++; if (dePrimeira !== false) certas++;
       atualizar(feitas);
       if (feitas < total) return false;
       depois(() => telaFim(area, certas, total, jogarDeNovo), 300);
       return true;
     };
+    // Jogo que limpa a área a cada fase: chama fase.mostrar() depois de redesenhar
+    fase.mostrar = () => { if (!area.contains(atualizar.el)) area.appendChild(atualizar.el); };
+    return fase;
   }
 
   // Quiz genérico. `gerar()` devolve uma pergunta nova:

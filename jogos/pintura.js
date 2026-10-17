@@ -240,22 +240,47 @@
     try { return localStorage.getItem("nome-crianca") || ""; } catch (e) { return ""; }
   }
 
-  function pintarSimbolos(area, simbolos, titulo) {
+  // Pinta os símbolos um a um, do primeiro ao último, com a trilha no topo (✅ pintada, ➖ pulada,
+  // a atual em destaque). No fim: troféu e recompensa. `fim`: { texto, fala, botao, jogarDeNovo }.
+  function pintarSimbolos(area, simbolos, titulo, fim = {}) {
     const s = Motor.sessaoAtual();
     let i = 0, cor = CORES[4];
+    const estado = simbolos.map(() => ""); // "feita" | "pulada"
+    const trilha = document.createElement("div");
+    trilha.className = "trilha-simbolos";
+    area.appendChild(trilha);
     const quadro = document.createElement("div");
     quadro.className = "quadro quadro-letra";
     area.appendChild(quadro);
     area.appendChild(paleta(c => { cor = c; }, CORES.slice(0, 8), [
-      { icone: "➡️", rotulo: "Próxima", aoClicar: () => { i++; desenhar(); } },
+      { icone: "➡️", rotulo: "Próxima", aoClicar: () => { if (concluido) return; estado[i] = "pulada"; avancar(); } },
     ]));
+    const tipo = /\d/.test(simbolos[0]) ? "Número" : "Letra";
+    function pintarTrilha() {
+      trilha.innerHTML = `<div class="trilha-txt">${tipo} <b>${Math.min(i + 1, simbolos.length)}</b> de ${simbolos.length}</div><div class="trilha-letras">${
+        simbolos.map((ch, k) => `<span class="${estado[k] || (k === i ? "atual" : "")}">${ch}</span>`).join("")}</div>`;
+    }
+    function avancar() {
+      i++;
+      if (i < simbolos.length) { desenhar(); return; }
+      pintarTrilha();
+      if (fim.aoTerminar) fim.aoTerminar();
+      const feitas = estado.filter(e => e === "feita").length;
+      const nome = titulo ? `o nome ${titulo}` : fim.oQue || (tipo === "Número" ? "os números" : "as letras");
+      Motor.depois(() => Motor.telaFim(area, feitas, simbolos.length, fim.jogarDeNovo || (() => pintarSimbolos(area, simbolos, titulo, fim)), {
+        texto: `Você pintou ${nome}! ${feitas < simbolos.length ? `(${feitas} de ${simbolos.length})` : "🎨"}`,
+        fala: `Parabéns! Você pintou ${nome}!`,
+        botao: fim.botao,
+      }), 500);
+    }
 
     let tela = null, pontos = [], concluido = false;
 
     function desenhar() {
       quadro.innerHTML = "";
       concluido = false;
-      const ch = simbolos[i % simbolos.length];
+      pintarTrilha();
+      const ch = simbolos[i];
       const guia = criarCanvas(quadro);
       tela = criarCanvas(quadro);
       tela.c.classList.add("tinta");
@@ -291,14 +316,14 @@
       const pintados = pontos.filter(([x, y]) => dados[(y * tela.c.width + x) * 4 + 3] > 0).length;
       if (pintados / pontos.length < 0.8) return;
       concluido = true;
-      const ch = simbolos[i % simbolos.length];
+      const ch = simbolos[i];
+      estado[i] = "feita";
+      pintarTrilha();
       Motor.comemorar(quadro);
       Motor.tim();
       Motor.falar(`${Motor.maiuscula(falaDe(ch))}! ${Motor.elogio()}`).then(() => {
         if (s !== Motor.sessaoAtual()) return;
-        i++;
-        if (titulo && i % simbolos.length === 0) Motor.falar(`Você pintou o nome ${titulo}!`).then(() => Motor.depois(desenhar, 600));
-        else Motor.depois(desenhar, 600);
+        Motor.depois(avancar, 400);
       });
     }
 
@@ -324,6 +349,22 @@
     input.focus();
   }
 
+  // Alfabeto em 4 partes (A–F, G–L, M–R, S–Z); cada parte termina com troféu e a seguinte começa
+  // de onde parou (guardado no aparelho)
+  const PARTES_ALFABETO = ["ABCDEF", "GHIJKL", "MNOPQR", "STUVWXYZ"];
+  function pintarAlfabeto(area) {
+    let p = 0;
+    try { p = (parseInt(localStorage.getItem("pintar-alfabeto"), 10) || 0) % PARTES_ALFABETO.length; } catch (e) { /* ok */ }
+    const letras = PARTES_ALFABETO[p].split("");
+    const seguinte = (p + 1) % PARTES_ALFABETO.length;
+    pintarSimbolos(area, letras, null, {
+      oQue: `as letras de ${letras[0]} a ${letras[letras.length - 1]}`,
+      botao: seguinte ? `Próximas letras (${PARTES_ALFABETO[seguinte][0]} a ${PARTES_ALFABETO[seguinte].slice(-1)})` : "Começar do A de novo",
+      aoTerminar: () => { try { localStorage.setItem("pintar-alfabeto", String(seguinte)); } catch (e) { /* ok */ } },
+      jogarDeNovo: () => pintarAlfabeto(area),
+    });
+  }
+
   const VOGAIS = ["A", "E", "I", "O", "U"];
   const ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const NUMEROS = "0123456789".split("");
@@ -343,7 +384,7 @@
     iniciar(area, faixa) {
       const modos = [
         { icone: "🅰️", rotulo: "Vogais",   iniciar: () => pintarSimbolos(area, VOGAIS) },
-        { icone: "🔤", rotulo: "Alfabeto", iniciar: () => pintarSimbolos(area, ALFABETO) },
+        { icone: "🔤", rotulo: "Alfabeto", iniciar: () => pintarAlfabeto(area) },
         { icone: "🔢", rotulo: "Números",  iniciar: () => pintarSimbolos(area, NUMEROS) },
         { icone: "😊", rotulo: "Meu nome", iniciar: () => meuNome(area) },
       ];
