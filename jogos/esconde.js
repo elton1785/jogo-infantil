@@ -11,9 +11,11 @@
       const palco = document.createElement("div");
       palco.className = "palco";
       area.appendChild(palco);
-      let ultimo = null;
+      let ultimo = null, errou = false;
+      const fase = Motor.fases(area, () => this.iniciar(area, faixa));
 
       async function rodada() {
+        errou = false;
         const bicho = Motor.sortear(FIGURAS.slice(0, 10).filter(f => f !== ultimo));
         ultimo = bicho;
         palco.innerHTML = "";
@@ -38,6 +40,7 @@
             if (achou || c.disabled) return;
             if (i !== esconderijo) {
               Motor.animar(c, "balanca");
+              errou = true;
               c.textContent = "💨";
               c.disabled = true;
               Motor.falar("Aqui não!");
@@ -50,7 +53,7 @@
             Motor.comemorar(c);
             Motor.tim();
             await Motor.falar(`Achou! ${Motor.maiuscula(bicho.artigo)} ${bicho.nome}!`);
-            Motor.depois(rodada, 900);
+            if (!fase(!errou)) Motor.depois(rodada, 900);
           });
           grade.appendChild(c);
         }

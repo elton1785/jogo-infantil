@@ -71,7 +71,7 @@
 .atalho-album .rotulo { font-size: 20px; font-weight: 700; }
 .atalho-album .desc { font-size: 14px; color: #5f6b72; }
 .atalho-album .selo-pacote { position: absolute; top: -8px; right: -6px; background: #ff006e; color: #fff; font-weight: 700; border-radius: 999px; padding: 4px 10px; box-shadow: 0 3px 0 rgba(0,0,0,.2); animation: pula 1.6s ease infinite; }
-.album-aviso { position: fixed; z-index: 30; left: 50%; top: 12px; transform: translate(-50%, -140%); background: #fff; color: #6b2c91; font-weight: 700; border-radius: 999px; padding: 10px 18px; box-shadow: 0 6px 18px rgba(0,0,0,.25); transition: transform .4s; max-width: calc(100% - 200px); text-align: center; pointer-events: none; }
+.album-aviso { position: fixed; z-index: 30; left: 50%; top: 12px; transform: translate(-50%, -140%); background: #fff; color: #6b2c91; font-weight: 700; font-size: clamp(18px, 2.4vw, 24px); border-radius: 999px; padding: 12px 24px; border: 3px solid #ffd166; box-shadow: 0 6px 18px rgba(0,0,0,.25); transition: transform .4s; max-width: calc(100% - 200px); text-align: center; pointer-events: none; }
 .album-aviso.visivel { transform: translate(-50%, 0); }
 @media (max-width: 480px) { .album-aviso { max-width: calc(100% - 24px); top: 92px; } }
 @media (max-width: 640px) { .album-conteudo { padding-top: 96px; } .album-topo { padding-right: 0; } }

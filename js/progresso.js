@@ -216,22 +216,17 @@ const Progresso = (() => {
     if (r.cumpriu) falas.push("Você cumpriu a missão do dia!" + (r.parque ? " O Parque de diversões abriu!" : ""));
     else if (r.missao) { const f = r.missao.total - r.missao.feitos; falas.push(`Falta${f > 1 ? "m" : ""} ${f} na missão do dia.`); }
     if (r.abriu.length) falas.push(`Abriu ${r.abriu[0].nome}!`);
-    if (r.tipo === "livre") {
-      // Brincadeira livre: só um aviso discreto (não precisa de quadro)
-      avisar(`⭐ Que legal!${r.missao ? `  🎯 Missão: ${r.missao.feitos} de ${r.missao.total}` : ""}${r.cumpriu ? "  🎉 Missão cumprida!" : ""}`, { grande: r.cumpriu, fala: r.cumpriu || r.missao ? falas.slice(1).join(" ") || null : null });
-      return;
-    }
     if (caixa) {
       const antesDe = caixa.querySelector(".modo");
       caixa.insertBefore(box, antesDe);
-      Motor.depois(() => Motor.falar(falas.join(" "), { naFila: true }), 400);
+      Motor.depois(() => Motor.falar(falas.join(" "), { importante: true }), 400);
     } else {
       document.body.appendChild(box);
       requestAnimationFrame(() => box.classList.add("visivel"));
       const tirar = () => { box.classList.remove("visivel"); setTimeout(() => box.remove(), 400); };
       box.addEventListener("click", tirar);
-      setTimeout(tirar, 6000);
-      Motor.falar(falas.join(" "), { naFila: true });
+      setTimeout(tirar, 7000);
+      Motor.falar(falas.join(" "), { importante: true }); // a próxima pergunta espera esta fala
     }
     if (r.moedas) moedasVoando(box, r.moedas);
   }
@@ -309,11 +304,11 @@ const Progresso = (() => {
     if (!atual) return;
     const r = total ? acertos / total : 1;
     if (r < 0.5) {
-      if (tipoDe(atual.jogo) === "licao") {
+      if (tipoDe(atual.jogo) !== "parque") {
         const q = el("div", "recompensa quase");
         q.append(el("div", "rec-titulo", "💪 Quase!"), el("div", "rec-obs", `Para ganhar estrela, acerte de primeira pelo menos ${Math.ceil(total / 2)} de ${total}. Tente de novo, com calma!`));
         if (caixa) caixa.insertBefore(q, caixa.querySelector(".modo"));
-        Motor.depois(() => Motor.falar("Quase! Tente de novo, com calma, para ganhar estrela!", { naFila: true }), 400);
+        Motor.depois(() => Motor.falar("Quase! Tente de novo, com calma, para ganhar estrela!", { importante: true }), 400);
       }
       return;
     }
@@ -484,6 +479,21 @@ const Progresso = (() => {
     try { if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) await navigator.storage.persist(); } catch (e) { /* ok */ }
   }
   protegerArmazenamento();
+  // 🔊 Volume do app (o do aparelho, só nos botões do próprio aparelho)
+  function blocoVolume() {
+    const box = el("section", "prog-copia");
+    box.appendChild(el("b", null, "🔊 Volume do app"));
+    box.appendChild(el("p", null, "Ajusta a voz e os sons do app. O volume do aparelho o navegador não deixa mudar: ele continua nos botões do celular, tablet ou TV (o app nunca fica mais alto que o aparelho)."));
+    const v = Motor.volume();
+    const ch = el("div", "chips");
+    [[0.35, "🔈 Baixo"], [0.65, "🔉 Médio"], [1, "🔊 Alto"]].forEach(([nv, t]) => {
+      const b = el("button", "chip" + (Math.abs(v - nv) < 0.01 ? " ativo" : ""), t);
+      b.addEventListener("click", () => { Motor.definirVolume(nv); Motor.tim(); Motor.falar("Assim está bom?"); pais(); });
+      ch.appendChild(b);
+    });
+    box.appendChild(ch);
+    return box;
+  }
   function blocoCopia() {
     const box = el("section", "prog-copia");
     box.appendChild(el("b", null, "💾 Cópia de segurança"));
@@ -604,6 +614,7 @@ const Progresso = (() => {
       c.appendChild(novo);
     }
     lista.forEach(p => c.appendChild(cartaoPais(p, p.id === abrirId)));
+    c.appendChild(blocoVolume());
     c.appendChild(blocoCopia());
     const trocar = el("button", "chip", "🔑 Trocar a senha");
     trocar.addEventListener("click", () => pedirSenha(() => pais(), { criar: true, adulto: true }));
@@ -754,6 +765,7 @@ const Progresso = (() => {
   const avataresExtras = () => dados().compras.avatares;
 
   return { situacao, missao: () => missao(), trilhasDa, guiado, pequeno, entrar, sair, acerto, erro, fimDeRodada, partida, concluir,
+    faixaAtual: () => (atual ? atual.faixa : null),
     loja, pais, botaoPais, paginaCrianca, comSenha, temSenha: () => !!lerSenha(), moedas, infoParque, totalEstrelas, enfeite, avataresExtras, fechar, aberto: () => !!camada,
     estrelasDe: (jogo, faixa) => estrelas(dados(), jogo, faixa.id), aoMudar: fn => { aoMudar = fn; } };
 })();

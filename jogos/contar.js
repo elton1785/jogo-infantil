@@ -11,6 +11,7 @@
     caixa.className = "contagem";
     area.appendChild(caixa);
     let ultimo = null;
+    const fase = Motor.fases(area, () => tocarEContar(area, max));
 
     function nova() {
       const f = Motor.sortear(FIGURAS.filter(x => x !== ultimo));
@@ -32,7 +33,7 @@
           Motor.comemorar(caixa);
           Motor.tim();
           await Motor.falar(`${Motor.maiuscula(numero(n, fem(f)))}! São ${quantidade(n, f)}!`);
-          if (s === Motor.sessaoAtual()) Motor.depois(nova, 700);
+          if (s === Motor.sessaoAtual() && !fase()) Motor.depois(nova, 700);
         });
         caixa.appendChild(b);
       }

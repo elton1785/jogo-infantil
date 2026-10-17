@@ -70,6 +70,13 @@ button { font-family: inherit; color: inherit; }
 .enunciado .lacunas { display: flex; gap: 10px; }
 .enunciado .lacuna { min-width: 1.8em; padding: 0 8px; border-bottom: 6px solid var(--destaque); text-align: center; color: var(--destaque); }
 .placar { position: fixed; top: 22px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,.85); border-radius: 20px; padding: 6px 18px; font-size: 26px; font-weight: bold; }
+/* Fases: "Fase 3 de 6" e bolinhas (js/motor.js criarPlacar) */
+.placar.fases { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 20px 8px; background: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.12); z-index: 3; color: #34495e; font-size: clamp(18px, 2.6vw, 24px); white-space: nowrap; }
+.placar.fases b { color: #e85d04; font-size: 1.25em; }
+.fase-pontos { display: flex; gap: 6px; }
+.fase-pontos i { width: 14px; height: 14px; border-radius: 50%; background: #dfe3e8; }
+.fase-pontos i.feita { background: #2a9d55; }
+.fase-pontos i.atual { background: #ffd166; box-shadow: 0 0 0 3px rgba(232,93,4,.35); }
 .fim { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
 .fim .trofeu { font-size: 120px; line-height: 1; animation: pula 1s ease infinite; }
 .fim .estrelas { font-size: 44px; }

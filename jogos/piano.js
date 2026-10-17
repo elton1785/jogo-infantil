@@ -47,6 +47,7 @@
       const molhado = ctx.createGain(); molhado.gain.value = 0.22;
       mestre.connect(atraso); atraso.connect(filtro); filtro.connect(volta); volta.connect(atraso); filtro.connect(molhado); molhado.connect(comp);
     }
+    mestre.gain.value = 0.7 * Motor.volume(); // volume do app (área dos pais)
     if (ctx.state === "suspended") ctx.resume();
     return ctx;
   }

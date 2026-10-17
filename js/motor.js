@@ -30,6 +30,7 @@ const Motor = (() => {
 
   function novaSessao() {
     sessao++;
+    protegida = null;
     if ("speechSynthesis" in window) speechSynthesis.cancel();
     if (audioAtual) audioAtual.pause();
     return sessao;
@@ -41,6 +42,17 @@ const Motor = (() => {
   function depois(fn, ms) {
     const s = sessao;
     setTimeout(() => { if (s === sessao) fn(); }, ms);
+  }
+
+  // Volume do app (voz e efeitos), de 0 a 1, escolhido na área dos pais. O volume do aparelho o
+  // navegador não deixa mudar: este é um ajuste dentro dele.
+  let volume = 1;
+  try { const v = parseFloat(localStorage.getItem("volume")); if (v > 0 && v <= 1) volume = v; } catch (e) { /* ok */ }
+  let mestre = null; // ganho geral dos efeitos (Web Audio)
+  function definirVolume(v) {
+    volume = Math.max(0.05, Math.min(1, v));
+    try { localStorage.setItem("volume", String(volume)); } catch (e) { /* ok */ }
+    if (mestre) mestre.gain.value = volume;
   }
 
   // Som ligado/desligado (voz e efeitos), guardado no aparelho
@@ -65,9 +77,17 @@ const Motor = (() => {
 
   // Fala o texto. `naFila: true` espera a fala anterior terminar em vez de cortá-la
   // (ex.: o computador anunciando pontos e logo em seguida "sua vez").
-  let ultimaFala = Promise.resolve();
-  function falar(texto, { naFila = false } = {}) {
-    if (naFila) {
+  // `importante: true`: ninguém corta esta fala (as falas seguintes esperam). Usada na recompensa,
+  // para a próxima pergunta não engolir o "você ganhou 3 estrelas".
+  let ultimaFala = Promise.resolve(), protegida = null;
+  function falar(texto, { naFila = false, importante = false } = {}) {
+    if (importante) {
+      const p = falar(texto, { naFila: true });
+      protegida = p;
+      p.then(() => { if (protegida === p) protegida = null; });
+      return p;
+    }
+    if (naFila || protegida) {
       const s = sessao;
       ultimaFala = ultimaFala.then(() => (s === sessao ? falarAgora(texto) : null));
       return ultimaFala;
@@ -84,6 +104,7 @@ const Motor = (() => {
       f.lang = "pt-BR";
       if (vozPt) f.voice = vozPt;
       f.rate = 0.9;
+      f.volume = volume;
       f.pitch = 1.2;
       // Alguns aparelhos não disparam onend; o limite de tempo evita travar o jogo.
       const limite = setTimeout(resolve, 1500 + texto.length * 110);
@@ -113,6 +134,11 @@ const Motor = (() => {
       const C = window.AudioContext || window.webkitAudioContext;
       if (!C) return null;
       ctx = new C();
+      // Todos os efeitos passam por um volume geral: quem liga em ctx.destination liga nele
+      mestre = ctx.createGain();
+      mestre.gain.value = volume;
+      mestre.connect(ctx.destination);
+      try { Object.defineProperty(ctx, "destination", { value: mestre }); } catch (e) { /* ok */ }
     }
     if (ctx.state === "suspended") ctx.resume();
     return ctx;
@@ -672,12 +698,36 @@ const Motor = (() => {
     falar(`Parabéns! Você acertou ${acertos} de ${total} de primeira!`);
   }
 
+  // Quantas fases tem uma rodada quando o jogo não diz: todo jogo de perguntas tem começo, meio e fim
+  // (a criança vê "Fase 3 de 6" e sabe quando acaba). Pela idade do jogo aberto.
+  function rodadaPadrao() {
+    const f = typeof Progresso !== "undefined" && Progresso.faixaAtual();
+    const id = f && f.id;
+    return ["1-2", "2-3"].includes(id) ? 5 : ["3-4", "4-5"].includes(id) ? 6 : 8;
+  }
+  // Placar de fases: "Fase 3 de 6" e as bolinhas das fases feitas
   function criarPlacar(area, rodada) {
     const placar = document.createElement("div");
-    placar.className = "placar";
-    const atualizar = feitas => { placar.textContent = `⭐ ${feitas} / ${rodada}`; };
+    placar.className = "placar fases";
+    const atualizar = feitas => {
+      placar.innerHTML = `<span class="fase-txt">Fase <b>${Math.min(feitas + 1, rodada)}</b> de ${rodada}</span><span class="fase-pontos">${
+        Array.from({ length: rodada }, (_, i) => `<i class="${i < feitas ? "feita" : i === feitas ? "atual" : ""}"></i>`).join("")}</span>`;
+    };
     if (rodada) { area.appendChild(placar); atualizar(0); }
     return atualizar;
+  }
+  // Para jogos com repetição própria (contar, esconde-esconde): fases com placar e troféu no fim.
+  // `fase(dePrimeira)` ao terminar cada fase; devolve true quando a rodada acabou (o troféu já abriu).
+  function fases(area, jogarDeNovo, total = rodadaPadrao()) {
+    let feitas = 0, certas = 0;
+    const atualizar = criarPlacar(area, total);
+    return dePrimeira => {
+      feitas++; if (dePrimeira !== false) certas++;
+      atualizar(feitas);
+      if (feitas < total) return false;
+      depois(() => telaFim(area, certas, total, jogarDeNovo), 300);
+      return true;
+    };
   }
 
   // Quiz genérico. `gerar()` devolve uma pergunta nova:
@@ -687,7 +737,8 @@ const Motor = (() => {
   // Errar não tem castigo: o cartão balança e a pergunta se repete.
   // `rodada`: nº de perguntas até o troféu (crianças maiores); sem ela, o jogo não acaba.
   function modoQuiz(cfg) {
-    const { area, gerar, desenhar, aoAcertar, rodada, classeEnunciado = "" } = cfg;
+    const { area, gerar, desenhar, aoAcertar, classeEnunciado = "" } = cfg;
+    const rodada = cfg.rodada || rodadaPadrao();
     const s = sessao;
     const enunciado = document.createElement("div");
     enunciado.className = `enunciado ${classeEnunciado}`;
@@ -770,7 +821,8 @@ const Motor = (() => {
   // gerar() → { pecas: ["LU","A"], extras: ["BA"], palavra: "lua", anuncio: "texto falado",
   //             mostrar?: el => {...}, falarPeca?: peca => "texto" }
   function modoMontar(cfg) {
-    const { area, gerar, rodada } = cfg;
+    const { area, gerar } = cfg;
+    const rodada = cfg.rodada || rodadaPadrao();
     const s = sessao;
     const enunciado = document.createElement("div");
     enunciado.className = "enunciado";
@@ -854,7 +906,8 @@ const Motor = (() => {
   // gerar() → { alvos: [{ id, nome, desenhar(el) }], pecas: [{ alvo: id, nome, desenhar(el) }],
   //             anuncio, aoAcertar?(peca, alvo) → texto, aoErrar?(peca, alvo) → texto }
   function modoArrastar(cfg) {
-    const { area, gerar, rodada } = cfg;
+    const { area, gerar } = cfg;
+    const rodada = cfg.rodada || rodadaPadrao();
     const s = sessao;
     const zonaAlvos = document.createElement("div");
     zonaAlvos.className = "zona-alvos";
@@ -972,7 +1025,7 @@ const Motor = (() => {
   }
 
   return {
-    novaSessao, sessaoAtual, depois, falar, teclado, separarEmoji, tocarSom, somLigado, audio, alternarSom, botaoSom, ajustarTextos, nota, ruido, ploc, tim,
+    novaSessao, sessaoAtual, depois, falar, fases, rodadaPadrao, definirVolume, volume: () => volume, teclado, separarEmoji, tocarSom, somLigado, audio, alternarSom, botaoSom, ajustarTextos, nota, ruido, ploc, tim,
     embaralhar, sortear, aleatorio, maiuscula, elogio, ehPequeno, opcoesNumericas,
     animar, comemorar, criarCartao, desenharTexto, botaoCanto, telaFim, arrastavel, comEmoji, comTexto,
     telaOpcoes, escolherModo, modoExplorar, modoQuiz, modoCade, modoMontar, modoArrastar, vocabulario,
