@@ -29,6 +29,7 @@ const App = (() => {
   let telaAtual = "idades";
   let faixaAtual = null;
   let noFavoritos = false; // o menu aberto é o de favoritos (para o "voltar" do jogo)
+  let doInicio = false; // o jogo foi aberto pela tela de início (missão, continuar): o "voltar" volta para ela
   // "Livre": todos os jogos, sem escolher idade. Cada jogo abre na idade mais alta dele
   // (a versão mais completa); o "voltar" do jogo volta para o menu Livre.
   const LIVRE = { id: "livre", nome: "Livre", icone: "🌟" };
@@ -178,6 +179,12 @@ const App = (() => {
     return true;
   }
 
+  // Jogo aberto direto da tela de início (missão do dia, continuar): o "voltar" volta para o início
+  function abrirDoInicio(jogo, faixa) {
+    faixaAtual = faixa; noFavoritos = false; noLivre = false; doInicio = true;
+    abrirJogo(jogo);
+  }
+
   // ---------- Favoritos: lista de "idDoJogo|idDaFaixa" ----------
   function favoritos() {
     try { return JSON.parse(localStorage.getItem("favoritos")) || []; } catch (e) { return []; }
@@ -241,7 +248,7 @@ const App = (() => {
     const [uid, ufx] = (lembrado("ultimo") || "").split("|");
     const ultJogo = JOGOS.find(j => j.id === uid), ultFaixa = FAIXAS.find(f => f.id === ufx);
     if (ultJogo && ultFaixa) {
-      const c = cartaoJogo(ultJogo, () => { telaCheia(); tentarAbrir(ultJogo, ultFaixa, c, () => { faixaAtual = ultFaixa; noFavoritos = false; abrirMenu(ultFaixa); abrirJogo(ultJogo); }); }, `▶️ Continuar · ${ultFaixa.nome}`);
+      const c = cartaoJogo(ultJogo, () => { telaCheia(); tentarAbrir(ultJogo, ultFaixa, c, () => abrirDoInicio(ultJogo, ultFaixa)); }, `▶️ Continuar · ${ultFaixa.nome}`);
       c.classList.add("continuar");
       atalhos.appendChild(c);
     }
@@ -298,7 +305,7 @@ const App = (() => {
       const jogo = JOGOS.find(j => j.id === id);
       if (!jogo) return;
       const tp = TIPOS_ATIVIDADE[tipoDe(jogo)];
-      const c = cartaoJogo(jogo, () => { telaCheia(); tentarAbrir(jogo, faixa, c, () => { abrirMenu(faixa); faixaAtual = faixa; abrirJogo(jogo); }); }, `${tp.icone} ${tp.nome}`);
+      const c = cartaoJogo(jogo, () => { telaCheia(); tentarAbrir(jogo, faixa, c, () => abrirDoInicio(jogo, faixa)); }, `${tp.icone} ${tp.nome}`);
       decorar(c, jogo, faixa);
       if (m.feitos.includes(id)) { c.classList.add("feito"); c.appendChild(novo("span", "feito-marca", "✅")); }
       grade.appendChild(c);
@@ -367,6 +374,7 @@ const App = (() => {
     Motor.novaSessao();
     faixaAtual = faixa;
     noFavoritos = false;
+    doInicio = false;
     noLivre = faixa === LIVRE;
     lembrar("faixa", faixa.id);
     guardarOnde({ t: "menu", f: faixa.id });
@@ -400,6 +408,7 @@ const App = (() => {
     if (telaAtual === "idades") history.pushState({ tela: "menu" }, "");
     Motor.novaSessao();
     noFavoritos = true;
+    doInicio = false;
     noLivre = false;
     lembrar("faixa", "favoritos");
     guardarOnde({ t: "menu", f: "favoritos" });
@@ -431,7 +440,7 @@ const App = (() => {
   function abrirJogo(jogo) {
     jogoAtual = jogo;
     if (faixaAtual) lembrar("ultimo", `${jogo.id}|${faixaAtual.id}`);
-    if (faixaAtual) guardarOnde({ t: "jogo", f: noFavoritos ? "favoritos" : noLivre ? "livre" : faixaAtual.id, j: jogo.id, fx: faixaAtual.id });
+    if (faixaAtual) guardarOnde({ t: "jogo", f: doInicio ? "inicio" : noFavoritos ? "favoritos" : noLivre ? "livre" : faixaAtual.id, j: jogo.id, fx: faixaAtual.id });
     history.pushState({ tela: "jogo" }, "");
     Motor.novaSessao();
     [...areaJogo.childNodes].forEach(n => ignorar.add(n)); // telas do jogo anterior não entram no caminho
@@ -510,7 +519,7 @@ const App = (() => {
   }
 
   function voltar() {
-    if (telaAtual === "jogo") noFavoritos ? abrirFavoritos() : abrirMenu(noLivre ? LIVRE : faixaAtual);
+    if (telaAtual === "jogo") doInicio ? abrirIdades() : noFavoritos ? abrirFavoritos() : abrirMenu(noLivre ? LIVRE : faixaAtual);
     else abrirIdades();
   }
 
@@ -546,7 +555,8 @@ const App = (() => {
   if (onde) {
     if (onde.t !== "idades") abrirMenuDe(onde.f);
     const j = onde.t === "jogo" && JOGOS.find(x => x.id === onde.j), fx = FAIXAS.find(x => x.id === onde.fx);
-    if (j && fx && telaAtual === "menu" && Progresso.situacao(j, fx).aberto) { faixaAtual = fx; abrirJogo(j); }
+    if (j && fx && onde.f === "inicio" && Progresso.situacao(j, fx).aberto) abrirDoInicio(j, fx);
+    else if (j && fx && telaAtual === "menu" && Progresso.situacao(j, fx).aberto) { faixaAtual = fx; abrirJogo(j); }
   } else if (!Progresso.guiado()) abrirMenuDe(lembrado("faixa")); // no Guiado, abre no início (missão do dia)
 })();
 
