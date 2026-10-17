@@ -339,6 +339,88 @@ const Progresso = (() => {
     Motor.falar("Qual figurinha você quer?");
   }
 
+  // ---------- 💾 Cópia de segurança (tudo fica só no aparelho: nada vai para servidor) ----------
+  // O arquivo tem todos os dados do app neste navegador (perfis, progresso, álbum, senha...).
+  // Os pais guardam onde quiserem; "Restaurar" troca os dados deste aparelho pelos do arquivo.
+  const MARCA_COPIA = "brincar-e-aprender";
+  function juntarDados() {
+    const dados = {};
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k !== "backup-ultimo") dados[k] = localStorage.getItem(k); }
+    return { app: MARCA_COPIA, formato: 1, data: new Date().toISOString(), dados };
+  }
+  async function salvarCopia() {
+    const nome = `brincar-e-aprender-copia-${hoje()}.json`;
+    const arquivo = new File([JSON.stringify(juntarDados())], nome, { type: "application/json" });
+    try { localStorage.setItem("backup-ultimo", hoje()); } catch (e) { /* ok */ }
+    // Celular: abre o "Compartilhar" (WhatsApp, Drive, e-mail...); senão, baixa o arquivo
+    if (matchMedia("(pointer: coarse)").matches && navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+      try { await navigator.share({ files: [arquivo], title: "Cópia do Brincar e Aprender" }); return "ok"; } catch (e) { if (e.name === "AbortError") return "cancelou"; }
+    }
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(arquivo), download: nome });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    return "ok";
+  }
+  function restaurarCopia(aoTerminar) {
+    const inp = Object.assign(document.createElement("input"), { type: "file", accept: ".json,application/json" });
+    inp.addEventListener("change", () => {
+      const f = inp.files && inp.files[0];
+      if (!f) return;
+      const leitor = new FileReader();
+      leitor.onload = () => {
+        let copia = null;
+        try { copia = JSON.parse(leitor.result); } catch (e) { /* inválido */ }
+        if (!copia || copia.app !== MARCA_COPIA || !copia.dados || typeof copia.dados !== "object") { aoTerminar("invalido"); return; }
+        aoTerminar("confirmar", copia, () => {
+          try {
+            localStorage.clear();
+            Object.entries(copia.dados).forEach(([k, v]) => { if (typeof v === "string") localStorage.setItem(k, v); });
+            localStorage.setItem("backup-ultimo", (copia.data || "").slice(0, 10));
+          } catch (e) { aoTerminar("erro"); return; }
+          try { sessionStorage.clear(); } catch (e) { /* ok */ }
+          location.reload();
+        });
+      };
+      leitor.readAsText(f);
+    });
+    inp.click();
+  }
+  // Pede ao navegador para não apagar os dados sozinho (falta de espaço, site sem uso)
+  async function protegerArmazenamento() {
+    try { if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) await navigator.storage.persist(); } catch (e) { /* ok */ }
+  }
+  protegerArmazenamento();
+  function blocoCopia() {
+    const box = el("section", "prog-copia");
+    box.appendChild(el("b", null, "💾 Cópia de segurança"));
+    const info = el("p", null, "Tudo do app (crianças, progresso, figurinhas, senha) fica guardado só neste aparelho, neste navegador. Nada vai para a internet. Salve uma cópia de vez em quando: se o navegador for limpo ou o aparelho trocar, é só restaurar.");
+    const ultimo = (() => { try { return localStorage.getItem("backup-ultimo"); } catch (e) { return null; } })();
+    const quando = el("p", "prog-copia-quando", ultimo ? `Última cópia: ${ultimo.split("-").reverse().join("/")}` : "Ainda não foi salva nenhuma cópia.");
+    const protegido = el("p", "prog-copia-quando", "");
+    if (navigator.storage && navigator.storage.persisted) navigator.storage.persisted().then(ok => {
+      protegido.textContent = ok ? "🛡️ O navegador está protegendo os dados deste app." : "⚠️ O navegador ainda pode limpar os dados se faltar espaço. No celular, instalar o app na tela de início ajuda.";
+    }).catch(() => {});
+    const acoes = el("div", "chips");
+    const salvar = el("button", "chip", "💾 Salvar cópia");
+    salvar.addEventListener("click", async () => { const r = await salvarCopia(); if (r === "ok") { Motor.tim(); pais(); } });
+    const restaurar = el("button", "chip", "📂 Restaurar cópia");
+    const aviso = el("p", "prog-copia-aviso", "");
+    restaurar.addEventListener("click", () => restaurarCopia((estado, copia, aplicar) => {
+      if (estado === "invalido") { aviso.textContent = "❌ Este arquivo não é uma cópia do Brincar e Aprender."; return; }
+      if (estado === "erro") { aviso.textContent = "❌ Não deu para restaurar (sem espaço no aparelho?)."; return; }
+      let nomes = [];
+      try { nomes = JSON.parse(copia.dados.perfis || "[]").map(p => p.nome); } catch (e) { /* ok */ }
+      aviso.innerHTML = "";
+      aviso.append(el("span", null, `Cópia de ${(copia.data || "").slice(0, 10).split("-").reverse().join("/")}${nomes.length ? " com " + nomes.join(", ") : ""}. Os dados de agora deste aparelho serão trocados por ela. `));
+      const ok = el("button", "chip perigo confirmar", "✅ Restaurar agora");
+      ok.addEventListener("click", aplicar);
+      aviso.appendChild(ok);
+    }));
+    acoes.append(salvar, restaurar);
+    box.append(info, quando, protegido, acoes, aviso);
+    return box;
+  }
+
   // ---------- 🔒 Senha dos pais (4 números) ----------
   // Protege a área dos pais e o cadastro de criança nova (senão a criança cria um perfil Livre).
   // Na 1ª vez o adulto cria a senha; "Esqueci a senha" pede uma conta de adulto para criar outra.
@@ -424,6 +506,7 @@ const Progresso = (() => {
       c.appendChild(novo);
     }
     lista.forEach(p => c.appendChild(cartaoPais(p, p.id === abrirId)));
+    c.appendChild(blocoCopia());
     const trocar = el("button", "chip", "🔑 Trocar a senha");
     trocar.addEventListener("click", () => pedirSenha(() => pais(), { criar: true }));
     c.appendChild(trocar);
