@@ -110,8 +110,15 @@ button { font-family: inherit; color: inherit; }
 .canto.voltar:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
 .tela-cheia { top: 12px; right: 12px; display: flex; align-items: center; justify-content: center; padding: 0; width: 60px; height: 60px; }
 .tela-cheia[hidden] { display: none; }
-#jogo.ativa ~ .tela-cheia { top: calc(78px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); right: auto; width: 52px; height: 52px; z-index: 26; }
-#jogo.ativa:has(.carros-tela) ~ .tela-cheia { top: calc(68px + env(safe-area-inset-top, 0px)); left: calc(8px + env(safe-area-inset-left, 0px)); }
+.tela-cheia.no-jogo { top: calc(170px + env(safe-area-inset-top, 0px)); left: calc(16px + env(safe-area-inset-left, 0px)); right: auto; width: 64px; height: 64px; }
+/* 🏠 embaixo da seta de voltar (só nas telas de escolha do jogo) */
+.canto.inicio { top: calc(96px + env(safe-area-inset-top, 0px)); left: calc(16px + env(safe-area-inset-left, 0px)); width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; padding: 0; background: #2f80ed; border: 4px solid #fff; box-shadow: 0 4px 0 rgba(0,0,0,.25), 0 0 0 2px rgba(0,0,0,.08); z-index: 25; }
+.canto.inicio[hidden] { display: none; }
+.canto.inicio svg { width: 60%; height: 60%; }
+.canto.inicio:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+#aviso-tela-cheia { position: fixed; z-index: 40; top: 10px; left: 50%; transform: translateX(-50%); border: 3px solid #fff; border-radius: 999px; background: #1d6fb8; color: #fff; font: inherit; font-weight: bold; font-size: 20px; padding: 10px 22px; box-shadow: 0 5px 0 rgba(0,0,0,.25); cursor: pointer; animation: avisoDesce .3s ease-out; }
+#aviso-tela-cheia[hidden] { display: none; }
+@keyframes avisoDesce { from { transform: translate(-50%, -40px); opacity: 0; } }
 .tela-cheia svg { width: 62%; height: 62%; }
 .tela-cheia .fechar, .tela-cheia.ligada .abrir { display: none; }
 .tela-cheia.ligada .fechar { display: inline; }

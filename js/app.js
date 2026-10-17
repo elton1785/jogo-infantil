@@ -42,6 +42,10 @@ const App = (() => {
   function lembrado(chave) {
     try { return localStorage.getItem(chave); } catch (e) { return null; }
   }
+  // A tela aberta nesta aba (início, menu ou jogo): recarregar a página (F5) volta para ela
+  function guardarOnde(onde) {
+    try { sessionStorage.setItem("onde", JSON.stringify(onde)); } catch (e) {}
+  }
 
   // Tela cheia: entra no primeiro toque, clique ou tecla depois de abrir o app (o navegador só deixa
   // entrar depois de um gesto). Quem sai (Esc ou botão) fica sem tela cheia até ligar de novo no botão
@@ -54,11 +58,20 @@ const App = (() => {
     if (!podeTelaCheia || document.fullscreenElement || !(forcar || querTelaCheia)) return;
     el.requestFullscreen().catch(() => {});
   }
-  // O botão fica no canto nas telas de início e menus; dentro do jogo só aparece fora da tela cheia
-  // (embaixo da seta de voltar), para dar para voltar à tela cheia depois de apertar Esc
+  // Botões de canto: ⛶ fica no canto de cima, à direita, no início e nos menus. Dentro do jogo, só
+  // nas telas de escolha (embaixo do 🏠, onde o canto está livre) e fora da tela cheia; durante a
+  // partida, sair da tela cheia mostra por alguns segundos o aviso "Voltar para a tela cheia".
+  const btnInicio = document.getElementById("btn-inicio");
+  const avisoTelaCheia = document.getElementById("aviso-tela-cheia");
+  let noInicioDoJogo = false; // o jogo está numa tela de escolha (modos, opções)
   function mostrarBotaoTelaCheia() {
-    btnTelaCheia.hidden = !podeTelaCheia || (telaAtual === "jogo" && !!document.fullscreenElement);
+    const noJogo = telaAtual === "jogo";
+    btnTelaCheia.hidden = !podeTelaCheia || (noJogo && (!noInicioDoJogo || !!document.fullscreenElement));
+    btnTelaCheia.classList.toggle("no-jogo", noJogo);
+    btnInicio.hidden = !(noJogo && noInicioDoJogo);
   }
+  let tempoAviso = null;
+  avisoTelaCheia.addEventListener("click", () => { avisoTelaCheia.hidden = true; querTelaCheia = true; telaCheia(true); });
   if (podeTelaCheia) {
     const primeiroGesto = e => {
       if (e.key === "Escape") return;
@@ -76,12 +89,16 @@ const App = (() => {
       btnTelaCheia.classList.toggle("ligada", ligada);
       btnTelaCheia.setAttribute("aria-label", ligada ? "Sair da tela cheia" : "Tela cheia");
       if (!ligada) querTelaCheia = false; // saiu (Esc, botão ou gesto do celular)
+      clearTimeout(tempoAviso);
+      avisoTelaCheia.hidden = ligada || telaAtual !== "jogo" || noInicioDoJogo;
+      if (!avisoTelaCheia.hidden) tempoAviso = setTimeout(() => { avisoTelaCheia.hidden = true; }, 5000);
       mostrarBotaoTelaCheia();
     });
   }
 
   function mostrar(id) {
     telaAtual = id;
+    if (id !== "jogo") noInicioDoJogo = false;
     telas.forEach(t => t.classList.toggle("ativa", t.id === id));
     btnVoltar.style.display = id === "idades" ? "none" : "flex";
     mostrarBotaoTelaCheia();
@@ -158,6 +175,7 @@ const App = (() => {
   // Tela de início: selos do app, atalhos (continuar o último jogo, favoritos) e as idades
   function abrirIdades() {
     Motor.novaSessao();
+    guardarOnde({ t: "idades" });
     selos.innerHTML = "";
     [["🎮", `${JOGOS.length} jogos`], ["🔊", "Com voz"], ["📴", "Sem internet"], ["🚫", "Sem anúncios"], ["🕹️", "Controle na TV"]].forEach(([i, t]) => {
       const el = document.createElement("span");
@@ -228,6 +246,7 @@ const App = (() => {
     noFavoritos = false;
     noLivre = faixa === LIVRE;
     lembrar("faixa", faixa.id);
+    guardarOnde({ t: "menu", f: faixa.id });
     tituloMenu.textContent = `${faixa.icone} ${faixa === LIVRE ? "Livre: todos os jogos" : faixa.nome}`;
     const jogos = jogosDa(faixa);
     subMenu.textContent = jogos.length ? `${jogos.length} jogos · ${(IDADES[faixa.id] || {}).texto || ""}` : "";
@@ -252,6 +271,7 @@ const App = (() => {
     noFavoritos = true;
     noLivre = false;
     lembrar("faixa", "favoritos");
+    guardarOnde({ t: "menu", f: "favoritos" });
     tituloMenu.textContent = "⭐ Favoritos";
     subMenu.textContent = "Os jogos que você guardou";
     document.getElementById("menu").style.setProperty("--cor-idade", "#f4a300");
@@ -280,6 +300,7 @@ const App = (() => {
   function abrirJogo(jogo) {
     jogoAtual = jogo;
     if (faixaAtual) lembrar("ultimo", `${jogo.id}|${faixaAtual.id}`);
+    if (faixaAtual) guardarOnde({ t: "jogo", f: noFavoritos ? "favoritos" : noLivre ? "livre" : faixaAtual.id, j: jogo.id, fx: faixaAtual.id });
     history.pushState({ tela: "jogo" }, "");
     Motor.novaSessao();
     [...areaJogo.childNodes].forEach(n => ignorar.add(n)); // telas do jogo anterior não entram no caminho
@@ -304,6 +325,8 @@ const App = (() => {
       const inicial = telaAtual === "jogo" && !!areaJogo.querySelector(":scope > .modos, :scope > .opcoes-jogo, :scope > .plat-menu");
       btnAjuda.hidden = !passos || telaAtual !== "jogo" || !(jogo.ajudaSempre || inicial);
       mostrarCabecalho(jogo, inicial);
+      noInicioDoJogo = inicial;
+      mostrarBotaoTelaCheia();
     };
     observador = new MutationObserver(conferir);
     observador.observe(areaJogo, { childList: true });
@@ -365,6 +388,8 @@ const App = (() => {
     if (telaAtual === "jogo" && voltarNoJogo()) { history.pushState({ tela: "jogo" }, ""); return; }
     if (telaAtual !== "idades") voltar();
   });
+  // 🏠 Início: sai do jogo direto para a tela inicial
+  btnInicio.addEventListener("click", () => { Ajuda.fechar(); abrirIdades(); });
   btnVoltar.addEventListener("click", () => {
     if (telaAtual === "jogo" && voltarNoJogo()) return;
     if (history.state && history.state.tela) history.back(); // o popstate acima faz a navegação
@@ -374,11 +399,22 @@ const App = (() => {
   // O cartão do álbum mostra os pacotinhos novos: redesenha o início quando o álbum muda
   Album.aoMudar(() => { if (telaAtual === "idades") abrirIdades(); });
 
+  // Abertura: recarregou a página (F5)? Volta para a mesma tela (e o mesmo jogo). Abriu o app de
+  // novo? Vai para o último menu de idade usado.
+  const abrirMenuDe = id => {
+    const f = FAIXAS.find(x => x.id === id);
+    if (id === "favoritos") abrirFavoritos();
+    else if (id === "livre") abrirMenu(LIVRE);
+    else if (f) abrirMenu(f);
+  };
+  let onde = null;
+  try { onde = JSON.parse(sessionStorage.getItem("onde")); } catch (e) {}
   abrirIdades();
-  const ultima = FAIXAS.find(f => f.id === lembrado("faixa"));
-  if (lembrado("faixa") === "favoritos") abrirFavoritos();
-  else if (lembrado("faixa") === "livre") abrirMenu(LIVRE);
-  else if (ultima) abrirMenu(ultima);
+  if (onde) {
+    if (onde.t !== "idades") abrirMenuDe(onde.f);
+    const j = onde.t === "jogo" && JOGOS.find(x => x.id === onde.j), fx = FAIXAS.find(x => x.id === onde.fx);
+    if (j && fx && telaAtual === "menu") { faixaAtual = fx; abrirJogo(j); }
+  } else abrirMenuDe(lembrado("faixa"));
 })();
 
 // Puxar a tela para baixo (no início e nos menus): procura versão nova e já instala.

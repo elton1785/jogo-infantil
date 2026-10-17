@@ -59,6 +59,10 @@
 
 <!-- Voltar uma tela (o "voltar" do celular faz o mesmo) -->
 <button class="canto voltar" id="btn-voltar" aria-label="Voltar" style="display:none"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M27 10 13 24l14 14" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 24h20" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg></button>
+<!-- Início: nas telas de escolha do jogo, volta direto para a tela inicial -->
+<button class="canto inicio" id="btn-inicio" aria-label="Voltar para o início" hidden><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 24 24 10l16 14" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 22v16h7v-9h6v9h7V22" fill="#fff"/></svg></button>
+<!-- Saiu da tela cheia no meio da partida: aviso por alguns segundos para voltar -->
+<button id="aviso-tela-cheia" hidden>⛶ Voltar para a tela cheia</button>
 <!-- Tela cheia: liga e desliga (Esc também sai); fica só no início e nos menus -->
 <button class="canto tela-cheia" id="btn-tela-cheia" aria-label="Tela cheia" hidden><svg viewBox="0 0 48 48" aria-hidden="true"><path class="abrir" d="M8 18V8h10M30 8h10v10M40 30v10H30M18 40H8V30" fill="none" stroke="#2b5d8a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path class="fechar" d="M18 8v10H8M40 18H30V8M30 40V30h10M8 30h10v10" fill="none" stroke="#2b5d8a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 <!-- Como jogar (só nos jogos que têm explicação, na tela inicial do jogo) -->
