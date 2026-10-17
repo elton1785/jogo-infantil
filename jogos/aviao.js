@@ -13,6 +13,48 @@
     salvador: { nome: "Salvador", lon: -38.5, lat: -12.97 }, recife: { nome: "Recife", lon: -34.9, lat: -8.05 }, fortaleza: { nome: "Fortaleza", lon: -38.54, lat: -3.72 },
     portoalegre: { nome: "Porto Alegre", lon: -51.2, lat: -30.03 }, floripa: { nome: "Florianópolis", lon: -48.55, lat: -27.6 },
   };
+  // Temperatura típica de cada cidade (para o aviso do comandante no pouso)
+  const TEMPERATURA = { manaus: 32, belem: 31, boavista: 33, brasilia: 26, rio: 29, saopaulo: 24, salvador: 29, recife: 29, fortaleza: 30, portoalegre: 22, floripa: 23 };
+  const PAISAGEM_FALADA = { floresta: "a floresta amazônica, verdinha", rio: "um rio enorme", cerrado: "o cerrado", serra: "as serras e montanhas", mar: "o mar", praia: "as praias", cidade: "a cidade" };
+
+  // ---------- Som de bordo ----------
+  // Turbinas: ronco grave (ruído filtrado) e o assobio agudo; sobem com a potência
+  function turbina() {
+    const a = Motor.audio();
+    if (!a) return { atualizar() {}, parar() {} };
+    const buf = a.createBuffer(1, a.sampleRate * 2, a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const ruido = a.createBufferSource(); ruido.buffer = buf; ruido.loop = true;
+    const filtro = a.createBiquadFilter(); filtro.type = "lowpass"; filtro.frequency.value = 300;
+    const gRuido = a.createGain(); gRuido.gain.value = 0;
+    ruido.connect(filtro).connect(gRuido).connect(a.destination);
+    const assobio = a.createOscillator(); assobio.type = "sine"; assobio.frequency.value = 1500;
+    const gAssobio = a.createGain(); gAssobio.gain.value = 0;
+    assobio.connect(gAssobio).connect(a.destination);
+    const grave = a.createOscillator(); grave.type = "triangle"; grave.frequency.value = 50;
+    const gGrave = a.createGain(); gGrave.gain.value = 0;
+    grave.connect(gGrave).connect(a.destination);
+    ruido.start(); assobio.start(); grave.start();
+    let parado = false;
+    return {
+      // potência 0..1 (null = silêncio: pausa, som desligado)
+      atualizar(pot) {
+        if (parado) return;
+        const t = a.currentTime, on = pot != null && Motor.somLigado(), q = on ? pot : 0;
+        filtro.frequency.setTargetAtTime(250 + q * 900, t, 0.3);
+        gRuido.gain.setTargetAtTime(on ? 0.025 + q * 0.11 : 0, t, 0.25);
+        assobio.frequency.setTargetAtTime(1300 + q * 1900, t, 0.4);
+        gAssobio.gain.setTargetAtTime(on ? 0.004 + q * 0.012 : 0, t, 0.3);
+        gGrave.gain.setTargetAtTime(on ? 0.02 + q * 0.05 : 0, t, 0.3);
+      },
+      parar() { if (parado) return; parado = true; try { ruido.stop(); assobio.stop(); grave.stop(); } catch (e) { /* ok */ } },
+    };
+  }
+  // "Plim-plom" do aviso de bordo, antes da voz do comandante ou da tripulação
+  function plimPlom() {
+    Motor.nota(988, { dur: 0.9, tipo: "sine", vol: 0.12 });
+    Motor.nota(784, { dur: 1.1, tipo: "sine", vol: 0.12, inicio: 0.42 });
+  }
   // Rotas: paisagem em trechos (fração do caminho) e a curiosidade de quem chega
   const ROTAS = {
     "manaus-belem": { de: "manaus", para: "belem", km: 1300, paisagem: [["cidade", 0.06], ["floresta", 0.4], ["rio", 0.45], ["floresta", 0.92], ["cidade", 1]],
@@ -121,7 +163,12 @@
   function voo(area, op, fid) {
     const rota = ROTAS[op.rota] || ROTAS["manaus-belem"], auto = op.pouso === "auto", cor = (CORES[op.cor] || CORES.azul)[0];
     const pequeno = fid === "5-6";
-    let pausado = false;
+    let pausado = false, cintos = true, avisouMetade = false, avisouTurbulencia = false, ultimaTurbulencia = 0;
+    // Aviso de bordo: plim-plom e a voz (as instruções do jogo esperam o aviso terminar)
+    function aviso(texto) {
+      plimPlom();
+      Motor.depois(() => Motor.falar(texto, { importante: true }), 1300);
+    }
     const P = Palco.criar(area, { classe: "aviao-tela", aoPausar: () => { pausado = !pausado; P.pausa.textContent = pausado ? "▶️" : "⏸️"; } });
     const ctx = P.ctx;
     const COMP = pequeno ? 16000 : 21000;   // comprimento do voo (unidades do mundo)
@@ -193,12 +240,15 @@
       if (fase === "pista") {
         if (acelera || (auto && tempoFase > 2.5)) av.vel = Math.min(VEL, av.vel + 95 * dt);
         else av.vel = Math.max(0, av.vel - 40 * dt);
-        if (av.vel > VEL * 0.72 && (entY > 0.3 || (auto && av.vel > VEL * 0.85))) { fase = "subindo"; tempoFase = 0; bAcel.hidden = true; Motor.falar("Decolamos! Vamos voar!"); }
+        if (av.vel > VEL * 0.72 && (entY > 0.3 || (auto && av.vel > VEL * 0.85))) { fase = "subindo"; tempoFase = 0; bAcel.hidden = true; Motor.falar("Decolamos! Vamos voar!", { naFila: true }); }
         else if (av.vel > VEL * 0.72 && !msg) dizer("Agora puxe para cima! ⬆️");
       } else if (fase === "subindo") {
         av.vel = Math.min(VEL, av.vel + 40 * dt);
         av.h += (90 + 60 * Math.max(0, entY)) * dt;
-        if (av.h > 160) { fase = "cruzeiro"; tempoFase = 0; Motor.falar(`Estamos voando para ${CIDADES[rota.para].nome}! Passe nas argolas douradas.`); }
+        if (av.h > 160) {
+          fase = "cruzeiro"; tempoFase = 0; cintos = false;
+          aviso(`Aqui fala o comandante. Estamos voando para ${CIDADES[rota.para].nome}, a dez mil metros de altitude, a oitocentos e cinquenta quilômetros por hora. O aviso de cintos foi desligado. Passe nas argolas douradas!`);
+        }
       } else if (fase === "cruzeiro" || fase === "aproximacao") {
         av.vel += (VEL - av.vel) * dt;
         av.incl += (entX * 0.55 - av.incl) * Math.min(1, dt * 3);
@@ -209,7 +259,16 @@
         else av.vh += (entY * 130 - av.vh) * Math.min(1, dt * 3);
         if (alvoH !== null && Math.abs(entX) < 0.1) av.incl += (-av.x * 0.002 - av.incl) * Math.min(1, dt * 2); // automático alinha com a pista
         av.h = Math.max(fase === "aproximacao" ? 0 : 60, Math.min(520, av.h + av.vh * dt));
-        if (fase === "cruzeiro" && !arremetendo && av.z > COMP - 2600) { fase = "aproximacao"; zPista = av.z + 2600; tempoFase = 0; dizer(auto ? "Chegando! O piloto automático ajuda no pouso. Alinhe com a pista!" : "Chegando! Alinhe com a pista e desça devagar!"); }
+        // metade da viagem: o comandante conta quanto falta e o que dá para ver lá embaixo
+        if (fase === "cruzeiro" && !avisouMetade && av.z > COMP * 0.5) {
+          avisouMetade = true;
+          aviso(`Informação do comandante: já fizemos metade da viagem. Faltam ${Math.round(rota.km / 2)} quilômetros para ${CIDADES[rota.para].nome}. Olhem pela janela: lá embaixo dá para ver ${PAISAGEM_FALADA[paisagemEm(av.z)] || "a paisagem"}!`);
+        }
+        if (fase === "cruzeiro" && !arremetendo && av.z > COMP - 2600) {
+          fase = "aproximacao"; zPista = av.z + 2600; tempoFase = 0; cintos = true;
+          aviso(`Tripulação, preparar para o pouso. Senhoras e senhores, iniciamos a descida para ${CIDADES[rota.para].nome}. Apertem os cintos!`);
+          msg = { txt: auto ? "Alinhe com a pista! 🛬" : "Alinhe e desça devagar! 🛬", t: 5 };
+        }
         if (fase === "aproximacao") verificarPouso();
       } else if (fase === "pousado") {
         av.vel = Math.max(0, av.vel - 120 * dt); av.incl *= 0.9; av.x *= 0.98;
@@ -222,7 +281,11 @@
         const dx = o.x - av.x, dh = o.h - av.h;
         if (o.tipo === "argola" && Math.hypot(dx, dh) < 60) { estrelas++; Motor.nota(1320, { dur: 0.15, tipo: "triangle", vol: 0.12 }); Motor.nota(1760, { dur: 0.2, tipo: "triangle", vol: 0.1, inicio: 0.08 }); o.pegou = 1; }
         else if (o.tipo === "nuvem" && Math.hypot(dx, dh) < 120 * o.s) branco = 0.7;
-        else if (o.tipo === "tempestade" && Math.hypot(dx, dh) < 140 * o.s) { sacode = 1.6; flash = 0.3; conforto = Math.max(0, conforto - 1); Motor.ruido({ dur: 0.9, vol: 0.3, freq: 120 }); dizer("Turbulência! Desvie das nuvens escuras!"); }
+        else if (o.tipo === "tempestade" && Math.hypot(dx, dh) < 140 * o.s) { sacode = 1.6; flash = 0.3; conforto = Math.max(0, conforto - 1); Motor.ruido({ dur: 0.9, vol: 0.3, freq: 120 }); cintos = true; setTimeout(() => { if (fase === "cruzeiro") cintos = false; }, 6000);
+          // a voz avisa no máximo a cada 8 s (a nuvem é atravessada por vários quadros seguidos)
+          const agora = performance.now();
+          if (!avisouTurbulencia) { avisouTurbulencia = true; ultimaTurbulencia = agora; aviso("Atenção, passageiros: estamos passando por uma área de turbulência. Mantenham os cintos afivelados!"); msg = { txt: "Turbulência! Desvie das nuvens escuras!", t: 3 }; }
+          else if (agora - ultimaTurbulencia > 8000) { ultimaTurbulencia = agora; dizer("Turbulência! Desvie das nuvens escuras!"); } }
         else if (o.tipo === "passaros" && Math.hypot(dx, dh) < 70) { sacode = 0.8; conforto = Math.max(0, conforto - 1); dizer("Cuidado com os pássaros!"); }
       });
       objetos.forEach(o => { if (o.tipo === "passaros") o.x += o.vx * dt; });
@@ -251,7 +314,8 @@
       Motor.tim();
       Palco.confete(confete, P.W / 2, P.H * 0.35, ["#ffd43b", "#69db7c", "#4dabf7", "#ff8787", "#fff"], 80);
       Motor.comemorar(P.canvas);
-      Motor.falar(`Pousamos em ${CIDADES[rota.para].nome}! ${rota.chegada}`);
+      cintos = false;
+      aviso(`Senhoras e senhores, bem-vindos a ${CIDADES[rota.para].nome}! A temperatura local é de ${TEMPERATURA[rota.para] || 28} graus. ${rota.chegada}`);
       setTimeout(() => {
         if (!P.vivo()) return;
         const det = document.createElement("div");
@@ -413,6 +477,13 @@
       Palco.texto(ctx, `⛰️ ${(Math.round(av.h * 21 / 10) * 10).toLocaleString("pt-BR")} m`, ix + 10 * s, iy + 20 * s, 16 * s, "#fff", { alinhar: "left" });
       Palco.texto(ctx, `💨 ${Math.round(kmh)} km/h`, ix + 10 * s, iy + 46 * s, 16 * s, "#fff", { alinhar: "left" });
       Palco.texto(ctx, `⭐ ${estrelas}`, W / 2, by + 50 * s + 22 * s, 24 * s, "#ffd43b");
+      // aviso luminoso de cintos (decolagem, turbulência e pouso)
+      if (cintos && fase !== "pousado") {
+        // logo abaixo da barra da rota, à esquerda (longe da barra de força e da mensagem do meio)
+        const cw = 176 * s, cx = bx, cy = by + 54 * s;
+        Palco.caixa(ctx, cx, cy, cw, 22 * s, 11 * s, "rgba(255,170,0,.92)");
+        Palco.texto(ctx, "💺 APERTEM OS CINTOS", cx + cw / 2, cy + 11 * s, 12 * s, "#3d2600", { contorno: null });
+      }
       Palco.texto(ctx, `${Math.round(rota.km * (1 - prog))} km`, bx + bw - 14, by + 16 * s, 13 * s, "#fff", { alinhar: "right" });
       // mapa
       if (W > 380) {
@@ -439,10 +510,16 @@
     // Gancho para os testes automáticos (só existe se a página de teste pedir)
     if (window.AVIAO_TESTE) window.AVIAO_TESTE = { pular: z => { av.z = z; }, estado: () => ({ fase, z: Math.round(av.z), h: Math.round(av.h), x: Math.round(av.x), estrelas }) };
     P.aoMedir = posicionar;
+    // Turbinas: potência pela fase (acelerando na pista, força máxima subindo, cruzeiro, descida)
+    const motor = turbina();
+    const vigia = setInterval(() => { if (!P.vivo()) { motor.parar(); clearInterval(vigia); } }, 500);
     P.rodar(dt => {
       if (!pausado) atualizar(dt);
+      const pot = fase === "pista" ? Math.min(1, 0.15 + av.vel / VEL * 0.85) : fase === "subindo" ? 1 : fase === "cruzeiro" ? 0.6 : fase === "aproximacao" ? 0.4 : Math.max(0, 0.3 - tempoFase * 0.08); // pousado: vai desligando
+      motor.atualizar(pausado || fase === "fim" ? null : pot);
       desenhar(dt);
     });
-    Motor.falar(`${rota.partida} Segure acelerar para decolar!`);
+    aviso(`Senhoras e senhores, bem-vindos a bordo! Este voo vai de ${CIDADES[rota.de].nome} para ${CIDADES[rota.para].nome}: são ${rota.km} quilômetros. ${rota.partida} Apertem os cintos e boa viagem!`);
+
   }
 })();
