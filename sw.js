@@ -3,7 +3,7 @@
 // Versão nova (CACHE trocado): fica esperando até a pessoa tocar em "Atualizar" no app,
 // que manda a mensagem "atualizar" — aí ela assume e o app recarrega.
 // A cada publicação, aumente VERSAO (é o número que aparece no menu do app).
-const VERSAO = 46;
+const VERSAO = 47;
 const CACHE = `brincar-v${VERSAO}`;
 const ARQUIVOS = [
   "./",
@@ -48,6 +48,7 @@ const ARQUIVOS = [
   "jogos/letras.js",
   "jogos/lig4.js",
   "jogos/memoria.js",
+  "jogos/mercado.js",
   "jogos/minado.js",
   "jogos/mundo-texturas.js",
   "jogos/mundo.js",

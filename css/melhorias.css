@@ -68,3 +68,22 @@
   .palco-topo .chip { min-width: 58px; min-height: 58px; font-size: 26px; }
   .palco-botao { min-width: 92px; min-height: 92px; font-size: 36px; }
 }
+/* Supermercado: pagamento, troco e cupom */
+.mercado-pagar { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); width: min(96%, 760px); max-height: calc(100% - 90px); overflow-y: auto; background: rgba(255,255,255,.97); border-radius: 22px; box-shadow: 0 10px 30px rgba(0,0,0,.3); padding: 12px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mp-total { font-size: 22px; } .mp-total b { color: #c92a2a; font-size: 28px; }
+.mp-dado { font-size: 20px; transition: color .2s; } .mp-dado.ok b { color: #2b8a3e; } .mp-dado.falta { animation: balanca .4s; color: #c92a2a; }
+.mp-mao { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; min-height: 40px; }
+.mp-carteira { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.mp-carteira .nota, .mp-carteira .moeda { cursor: pointer; border-style: solid; font: inherit; font-weight: bold; }
+.mp-carteira .nota { width: min(24vw, 120px); font-size: min(4.5vw, 22px); }
+.mp-carteira .moeda { width: min(14vw, 66px); height: min(14vw, 66px); font-size: min(3.4vw, 16px); }
+.nota.pequena { width: 70px !important; height: 36px !important; font-size: 14px !important; aspect-ratio: auto; }
+.moeda.pequena { width: 38px !important; height: 38px !important; font-size: 11px !important; }
+.mp-mao button { cursor: pointer; font: inherit; font-weight: bold; }
+.mp-acoes { display: flex; gap: 10px; }
+.mp-acoes .chip.jogar { font-size: 24px; padding: 10px 30px; }
+.mercado-troco { gap: 12px; } .mp-pergunta { font-size: 26px; font-weight: bold; } .mp-opcoes { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.mp-opcoes .chip { font-size: 26px; padding: 12px 22px; } .mp-opcoes .chip.errado { opacity: .4; }
+.mercado-fim { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mf-troco { font-size: 20px; text-align: center; }
+.cupom { background: #fffef7; color: #222; font: 13px/1.35 "Courier New", monospace; padding: 10px 12px; margin: 0; border: 1px dashed #bbb; box-shadow: 0 3px 8px rgba(0,0,0,.12); max-width: 100%; overflow-x: auto; text-align: left; }
