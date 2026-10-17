@@ -469,7 +469,32 @@ const App = (() => {
     mostrar("menu");
   }
 
+  // Posição da lista de onde a criança saiu para o jogo: o "voltar" devolve a lista no mesmo lugar
+  let rolagemSalva = null;
+  const rolagemDe = tela => document.querySelector(tela === "menu" ? "#rolagem-menu" : "#idades .rolagem");
+  // Guarda onde estava o cartão do jogo tocado (e a rolagem, se não achar o cartão)
+  const cartaoDe = (tela, jogo) => [...rolagemDe(tela).querySelectorAll(".cartao-jogo")].find(c => c.getAttribute("aria-label") === jogo.nome);
+  function guardarRolagem(jogo) {
+    if (telaAtual !== "menu" && telaAtual !== "idades") return;
+    const rol = rolagemDe(telaAtual), c = cartaoDe(telaAtual, jogo);
+    rolagemSalva = { tela: telaAtual, y: rol.scrollTop, jogo, off: c ? c.getBoundingClientRect().top - rol.getBoundingClientRect().top : null };
+  }
+  function restaurarRolagem() {
+    const r = rolagemSalva;
+    rolagemSalva = null;
+    if (!r || r.tela !== telaAtual) return;
+    const el = rolagemDe(r.tela);
+    const por = () => {
+      const c = r.off != null && cartaoDe(r.tela, r.jogo);
+      if (c) el.scrollTop += c.getBoundingClientRect().top - el.getBoundingClientRect().top - r.off;
+      else el.scrollTop = r.y;
+    };
+    por(); requestAnimationFrame(por);
+    setTimeout(por, 160); // depois do destaque automático do controle da TV
+  }
+
   function abrirJogo(jogo) {
+    if (telaAtual !== "jogo") guardarRolagem(jogo);
     jogoAtual = jogo;
     if (faixaAtual) lembrar(chaveDe("ultimo"), `${jogo.id}|${faixaAtual.id}`);
     if (faixaAtual) guardarOnde({ t: "jogo", f: doInicio ? "inicio" : noFavoritos ? "favoritos" : noLivre ? "livre" : faixaAtual.id, j: jogo.id, fx: faixaAtual.id });
@@ -551,7 +576,7 @@ const App = (() => {
   }
 
   function voltar() {
-    if (telaAtual === "jogo") doInicio ? abrirIdades() : noFavoritos ? abrirFavoritos() : abrirMenu(noLivre ? LIVRE : faixaAtual);
+    if (telaAtual === "jogo") { doInicio ? abrirIdades() : noFavoritos ? abrirFavoritos() : abrirMenu(noLivre ? LIVRE : faixaAtual); restaurarRolagem(); }
     else abrirIdades();
   }
 
