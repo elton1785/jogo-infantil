@@ -213,3 +213,5 @@
 .fase-barra i { display: block; height: 100%; background: #2a9d55; border-radius: 999px; transition: width .3s; }
 /* Horas › Meu dia: "2 de 5" */
 .hr-passo { display: inline-block; font-size: .7em; background: #e85d04; color: #fff; border-radius: 999px; padding: 2px 10px; margin-right: 8px; vertical-align: middle; }
+/* Mundo de Blocos › Sobrevivência: meta de noites */
+.mundo-meta { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); background: rgba(20,20,40,.7); color: #fff; font-weight: 700; font-size: clamp(15px, 2vw, 19px); border-radius: 999px; padding: 6px 16px; pointer-events: none; }

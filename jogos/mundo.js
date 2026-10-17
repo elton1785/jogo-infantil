@@ -682,6 +682,7 @@
       if (vida <= 0) desmaiar();
     }
     function desmaiar() {
+      if (noite()) desmaiouNaNoite = true;
       const caixa = document.createElement("div");
       caixa.className = "mundo-mochila menu";
       caixa.innerHTML = `<div class="mundo-mochila-titulo">😵 Você desmaiou!</div><div class="mundo-desmaio">Não se preocupe: você volta para o começo com tudo o que tinha na mochila.</div>`;
@@ -1027,6 +1028,39 @@
     const vidaEl = Object.assign(document.createElement("div"), { className: "mundo-vida" });
     const dano = Object.assign(document.createElement("div"), { className: "mundo-dano" });
     hud.append(vidaEl, dano);
+    // Meta da Sobrevivência: passar 3 noites sem desmaiar (fica guardado no aparelho)
+    const META_NOITES = 3;
+    let noites = 0, desmaiouNaNoite = false, venceu = false;
+    try { noites = parseInt(localStorage.getItem("mundo-noites"), 10) || 0; } catch (e) { /* ok */ }
+    venceu = noites >= META_NOITES;
+    const metaEl = Object.assign(document.createElement("div"), { className: "mundo-meta" });
+    if (sobrev) hud.appendChild(metaEl);
+    const desenharMeta = () => { metaEl.textContent = venceu ? `🏆 ${noites} ${noites === 1 ? "noite" : "noites"}` : `🌙 Noites: ${noites} de ${META_NOITES}`; };
+    desenharMeta();
+    function noiteVencida() {
+      if (desmaiouNaNoite) { desmaiouNaNoite = false; Motor.falar("Amanheceu! Desta vez não valeu, você desmaiou. Tente a próxima noite!"); return; }
+      noites++;
+      try { localStorage.setItem("mundo-noites", String(noites)); } catch (e) { /* ok */ }
+      desenharMeta();
+      if (typeof Placar !== "undefined") Placar.recorde("mundo", "noites", noites);
+      if (!venceu && noites >= META_NOITES) {
+        venceu = true;
+        desenharMeta();
+        const caixa = document.createElement("div");
+        caixa.className = "mundo-mochila menu";
+        caixa.innerHTML = `<div class="mundo-mochila-titulo">🏆 Você sobreviveu ${META_NOITES} noites!</div><div class="mundo-desmaio">Você é um sobrevivente de verdade! Pode continuar explorando e construindo: as noites continuam contando.</div>`;
+        const b = Object.assign(document.createElement("button"), { className: "chip jogar", textContent: "⛏️ Continuar" });
+        b.addEventListener("click", () => caixa.remove());
+        caixa.appendChild(b);
+        caixa.addEventListener("pointerdown", e => e.stopPropagation());
+        hud.appendChild(caixa);
+        Motor.comemorar(caixa); Motor.tim();
+        Motor.falar(`Parabéns! Você sobreviveu ${META_NOITES} noites!`, { importante: true });
+        return;
+      }
+      const f = META_NOITES - noites;
+      Motor.falar(venceu ? `Amanheceu! Você já sobreviveu ${noites} noites!` : `Amanheceu! Você sobreviveu à noite! Falta${f > 1 ? "m" : ""} ${f}.`);
+    }
     function desenharVida() {
       if (!sobrev) { vidaEl.hidden = true; return; }
       vidaEl.textContent = Array.from({ length: 10 }, (_, i) => (vida >= (i + 1) * 2 ? "❤️" : vida === i * 2 + 1 ? "💔" : "🤍")).join("");
@@ -1349,7 +1383,7 @@
           const antes = noite();
           tempoDia = (tempoDia + dt / 480) % 1; // um dia inteiro em 8 minutos
           if (sobrev && noite() && !antes) { Motor.falar("Está anoitecendo! Faça uma casinha ou coloque tochas: elas iluminam e as criaturas não chegam perto."); avisar("🌙 Anoiteceu: cuidado com as criaturas!"); }
-          if (sobrev && !noite() && antes) { Motor.falar("Amanheceu! As criaturas foram embora."); avisar("☀️ Amanheceu!"); }
+          if (sobrev && !noite() && antes) { avisar("☀️ Amanheceu!"); noiteVencida(); }
         }
         // vida volta aos pouquinhos se ninguém machucar por um tempo
         if (sobrev && vida < 20 && vida > 0 && relogio - ultimoDano > 6 && Math.floor(relogio / 3) !== Math.floor((relogio - dt) / 3)) { vida++; desenharVida(); }
@@ -1366,7 +1400,7 @@
     }
     requestAnimationFrame(laco);
     Motor.falar(sobrev
-      ? "Sobrevivência! Sua mochila começa vazia: segure o dedo nos blocos para recolher. Faça tábuas e ferramentas na mochila, e prepare-se para a noite!"
+      ? `Sobrevivência! A meta é passar ${META_NOITES} noites sem desmaiar. Sua mochila começa vazia: segure o dedo nos blocos para recolher. Faça tábuas e ferramentas na mochila, e prepare-se para a noite!`
       : cfg.hd
       ? "Mundo novo! Ande com o joystick, arraste para olhar, toque para colocar um bloco e segure para quebrar."
       : "Mundo clássico! Ande com o joystick, arraste para olhar, toque para colocar um bloco e segure para quebrar.");

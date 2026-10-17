@@ -165,6 +165,8 @@
   function pescar(area, op, fid) {
     const rio = RIOS[op.rio] || RIOS.negro, facil = op.briga === "facil", desafio = op.modo === "tempo";
     const pequeno = fid === "5-6";
+    // Pescaria livre também tem meta: pescar 5 peixes (3 para 5 a 6 anos); o desafio é por tempo
+    const META = pequeno ? 3 : 5;
     let pausado = false;
     const P = Palco.criar(area, { classe: "pescaria-tela", aoPausar: () => { pausado = !pausado; P.pausa.textContent = pausado ? "▶️" : "⏸️"; } });
     const ctx = P.ctx;
@@ -293,7 +295,12 @@
       el.querySelector(".pf-info").textContent = sp.info;
       const total = Object.keys(caderno()).length;
       el.querySelector(".pf-caderno").textContent = `📖 Caderno: ${total} de ${Object.keys(PEIXES).length} peixes`;
-      const fechar = () => { el.remove(); ficha = null; if (fase === "ficha") { fase = "pronto"; botoes(); } };
+      const fechar = () => {
+        el.remove(); ficha = null;
+        if (fase === "ficha") { fase = "pronto"; botoes(); }
+        if (!desafio && pegos.length >= META && fase !== "fim") terminar();
+        else if (!desafio) { const f = META - pegos.length; Motor.falar(`Falta${f > 1 ? "m" : ""} ${f} ${f === 1 ? "peixe" : "peixes"}!`, { naFila: true }); }
+      };
       const b1 = Object.assign(document.createElement("button"), { className: "chip executar", textContent: sp.manejo ? "🌿 Devolver ao rio (manejo)" : "🐟 Soltar no rio" });
       const b2 = Object.assign(document.createElement("button"), { className: "chip", textContent: "🧺 Guardar no cesto" });
       b1.addEventListener("click", () => { Motor.falar("Tchau, peixinho! Volte para o rio!"); fechar(); });
@@ -374,8 +381,8 @@
       fase = "fim"; botoes();
       const det = `🐟 ${pegos.length} peixes · 🌎 ${lixos} lixos tirados do rio · 📖 ${Object.keys(caderno()).length}/10 espécies no caderno`;
       Placar.recorde("pescaria", "peixes", pegos.length);
-      Motor.falar(`Acabou o tempo! Você pescou ${pegos.length} peixes!`);
-      P.fim("Fim da pescaria!", "🎣", det, [
+      Motor.falar(desafio ? `Acabou o tempo! Você pescou ${pegos.length} peixes!` : `Parabéns! Você pescou os ${META} peixes!`);
+      P.fim(desafio ? "Fim da pescaria!" : `${META} peixes pescados!`, "🎣", det, [
         { rotulo: "🔁 Pescar de novo", principal: true, aoClicar: () => pescar(area, op, fid) },
         { rotulo: "⚙️ Trocar opções", aoClicar: () => JOGOS.find(j => j.id === "pescaria").iniciar(area, { id: fid }) },
       ]);
@@ -478,7 +485,7 @@
       const k = Math.min(1.4, s);
       // cesto e caderno
       Palco.caixa(ctx, 74, 10, 230 * k, 34 * k, 10);
-      Palco.texto(ctx, `🧺 ${pegos.length}   📖 ${Object.keys(caderno()).length}/10   🌎 ${lixos}`, 74 + 12, 10 + 17 * k, 17 * k, "#fff", { alinhar: "left", contorno: null });
+      Palco.texto(ctx, `🧺 ${pegos.length}${desafio ? "" : ` de ${META}`}   📖 ${Object.keys(caderno()).length}/10   🌎 ${lixos}`, 74 + 12, 10 + 17 * k, 17 * k, "#fff", { alinhar: "left", contorno: null });
       if (desafio) { const t = Math.max(0, Math.ceil(tempoRestante)); Palco.caixa(ctx, W / 2 - 60 * k, 10, 120 * k, 34 * k, 10, t <= 15 ? "rgba(201,42,42,.85)" : undefined); Palco.texto(ctx, `⏱️ ${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`, W / 2, 10 + 17 * k, 18 * k, "#fff", { contorno: null }); }
       // profundidade da isca
       if (fase === "esperando") {
@@ -515,6 +522,6 @@
       if (!pausado && fase !== "fim") atualizar(dt);
       desenhar(dt);
     });
-    Motor.falar(`Pescaria no ${rio.nome}, de ${rio.info}! Segure lançar e solte na força certa.`);
+    Motor.falar(`Pescaria no ${rio.nome}, de ${rio.info}! ${desafio ? "Pesque o máximo que puder em 3 minutos!" : `Pesque ${META} peixes!`} Segure lançar e solte na força certa.`);
   }
 })();

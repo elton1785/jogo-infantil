@@ -268,7 +268,7 @@
       partes.forEach(t => { const s = document.createElement("span"); s.textContent = t; info.appendChild(s); });
     };
     // `lista`: classificação final [{ nome, hex, j }] (j = jogador, fica destacado)
-    const fim = (titulo, medalha, detalhe, aoDeNovo, aoOpcoes, lista) => {
+    const fim = (titulo, medalha, detalhe, aoDeNovo, aoOpcoes, lista, rotuloDeNovo = "🔁 Correr de novo") => {
       const caixa = document.createElement("div");
       caixa.className = "arcade-fim" + (lista ? " carros-fim" : "");
       caixa.innerHTML = `<div class="medalha-fim"></div><div class="titulo-fim"></div><div class="detalhe-fim"></div>`;
@@ -295,7 +295,7 @@
         if (typeof lista === "function") { const iv = setInterval(() => { if (!document.contains(ol)) clearInterval(iv); else montar(); }, 300); }
         caixa.appendChild(ol);
       }
-      const b = Object.assign(document.createElement("button"), { className: "chip executar", textContent: "🔁 Correr de novo" });
+      const b = Object.assign(document.createElement("button"), { className: "chip executar", textContent: rotuloDeNovo });
       b.addEventListener("click", () => { caixa.remove(); aoDeNovo(); });
       const o = Object.assign(document.createElement("button"), { className: "chip", textContent: "⚙️ Trocar pista ou carro" });
       o.addEventListener("click", aoOpcoes);
@@ -1437,6 +1437,9 @@
     const meuCarro = CORES[op.cor] || CORES.vermelho;
     const eu = { x: (CEL * 3 + 0.5) * L, y: (CEL * 3 + 1.5) * L + L * 0, ang: 0, v: 0 };
     let tempo = 0, entregas = 0, moedas = 0, avisoSinal = 0, cruzamentoAnt = null;
+    // Meta do passeio: 5 entregas (3 para 5 a 6 anos); no fim, tela de conclusão com tempo e estrelas
+    const META = op.fid === "5-6" ? 3 : 5;
+    let terminou = false;
     // ----- Trânsito: carros andando nas faixas da direita, virando nos cruzamentos -----
     const DIRS = { L: [1, 0], O: [-1, 0], S: [0, 1], N: [0, -1] };
     const faixaDe = (d, k) => (d === "L" ? (k + 1.5) * L : d === "O" ? (k + 0.5) * L : d === "N" ? (k + 1.5) * L : (k + 0.5) * L);
@@ -1569,7 +1572,9 @@
         } else {
           entregas++; moedas += 5;
           Motor.comemorar(T.tela); Motor.tim();
-          Motor.falar(`Entregue! Você já fez ${entregas} ${entregas === 1 ? "entrega" : "entregas"}! Vamos buscar outra encomenda.`);
+          if (entregas >= META) { concluir(); return; }
+          const faltam = META - entregas;
+          Motor.falar(`Entregue! Falta${faltam > 1 ? "m" : ""} ${faltam} ${faltam === 1 ? "entrega" : "entregas"}. Vamos buscar outra encomenda!`);
           missao = { fase: "buscar", alvo: longe() };
         }
       }
@@ -1636,21 +1641,31 @@
       if (pausado) { ctx.fillStyle = "rgba(0,0,0,.4)"; ctx.fillRect(0, 0, W, H); ctx.fillStyle = "#fff"; ctx.font = "bold 40px Fredoka, sans-serif"; ctx.textAlign = "center"; ctx.fillText("⏸️ Pausa", W / 2, H / 2); }
     }
 
+    // Fez todas as entregas: para o carro e mostra o resultado (recorde: estrelas pegas no caminho)
+    function concluir() {
+      terminou = true; eu.v = 0;
+      const seg = Math.round(tempo), t = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, "0")}`;
+      const novo = typeof Placar !== "undefined" && Placar.recorde("carros", `entregas-${META}`, moedas);
+      Motor.falar(`Parabéns! Você fez as ${META} entregas em ${Math.floor(seg / 60) ? Math.floor(seg / 60) + " minutos e " : ""}${seg % 60} segundos!`);
+      setTimeout(() => { if (vivo()) T.fim(`${META} entregas feitas!`, "📦", `⏱️ ${t} · ⭐ ${moedas}` + (novo ? " · 🏆 recorde de estrelas!" : ""),
+        () => cidade(area, op), () => JOGOS.find(j => j.id === "carros").iniciar(area, { id: op.fid }), null, "🔁 Passear de novo"); }, 900);
+    }
+
     let ultimo = performance.now(), infoAnt = "";
     const ronco = somDeMotor();
     function laco(t) {
       if (!vivo()) { T.desligar(); ronco.parar(); return; }
       const dt = Math.min(0.05, (t - ultimo) / 1000);
       ultimo = t;
-      if (!pausado) atualizar(dt);
+      if (!pausado && !terminou) atualizar(dt);
       ronco.tocar(pausado || !Motor.somLigado() ? null : Math.abs(eu.v) / NIVEL.vmax, !!(T.ent.acel || T.ent.freio && eu.v < 0));
       desenhar();
       const dist = Math.round(Math.hypot(missao.alvo.x - eu.x, missao.alvo.y - eu.y) / 12);
-      const inf = `${missao.fase === "buscar" ? "📦 Buscar" : "🏠 Entregar"}: ${dist} m|✅ ${entregas} entregas|⭐ ${moedas}`;
+      const inf = `${missao.fase === "buscar" ? "📦 Buscar" : "🏠 Entregar"}: ${dist} m|✅ ${entregas} de ${META} entregas|⭐ ${moedas}`;
       if (inf !== infoAnt) { infoAnt = inf; T.mostrarInfo(inf.split("|")); }
       requestAnimationFrame(laco);
     }
     requestAnimationFrame(laco);
-    Motor.falar("Passeio na cidade! Siga a seta amarela para buscar a encomenda. E atenção aos semáforos!");
+    Motor.falar(`Passeio na cidade! Faça ${META} entregas. Siga a seta amarela para buscar a encomenda. E atenção aos semáforos!`);
   }
 })();
