@@ -1037,6 +1037,34 @@
     if (sobrev) hud.appendChild(metaEl);
     const desenharMeta = () => { metaEl.textContent = venceu ? `🏆 ${noites} ${noites === 1 ? "noite" : "noites"}` : `🌙 Noites: ${noites} de ${META_NOITES}`; };
     desenharMeta();
+    // Guia da Sobrevivência: um passo de cada vez, no topo, conferido sozinho pelo que a criança tem
+    const PASSOS = [
+      { txt: "🌳 Ache uma árvore e segure o dedo no tronco para pegar madeira", ok: () => (inv[B.tronco] || 0) + (inv[B.tabuas] || 0) > 0 || inv.machado },
+      { txt: "🎒 Abra a mochila e faça Tábuas: 1 tronco vira 4 tábuas", ok: () => (inv[B.tabuas] || 0) > 0 || inv.machado },
+      { txt: "🪓 Na mochila, faça um Machado (3 tábuas)", ok: () => !!inv.machado },
+      { txt: "🪨 Segure o dedo numa pedra cinza para pegar 2 pedregulhos", ok: () => (inv[B.pedregulho] || 0) >= 2 || inv.espada },
+      { txt: "🗡️ Na mochila, faça uma Espada (2 pedregulhos e 1 tábua)", ok: () => !!inv.espada },
+      { txt: "⚫ Ache carvão (pedra com pintinhas pretas, nas montanhas e cavernas) e faça Tochas na mochila", ok: () => (inv[B.tocha] || 0) > 0 || tochas.size > 0 },
+      { txt: "🏠 Coloque tochas e faça uma casinha. À noite, toque nas criaturas para espantar!", ok: () => noites >= 1 },
+    ];
+    let passo = -1;
+    const guia = Object.assign(document.createElement("button"), { className: "mundo-guia" });
+    guia.addEventListener("pointerdown", e => e.stopPropagation());
+    guia.addEventListener("click", () => { if (PASSOS[passo]) Motor.falar(PASSOS[passo].txt.replace(/^\S+\s/, "")); });
+    if (sobrev) hud.appendChild(guia);
+    function atualizarGuia(falarProximo = true) {
+      let i = PASSOS.findIndex(p => !p.ok());
+      if (i < 0) i = PASSOS.length;
+      if (i === passo) return;
+      const avancou = passo >= 0 && i > passo;
+      passo = i;
+      if (i >= PASSOS.length) { guia.hidden = true; return; }
+      guia.innerHTML = `<small>Passo ${i + 1} de ${PASSOS.length}</small><span></span>`;
+      guia.querySelector("span").textContent = PASSOS[i].txt;
+      if (avancou) { Motor.animar(guia, "pula"); Motor.tim(); }
+      if (avancou && falarProximo) Motor.falar(`Muito bem! Agora: ${PASSOS[i].txt.replace(/^\S+\s/, "")}`, { naFila: true });
+    }
+    if (sobrev) atualizarGuia(false);
     function noiteVencida() {
       if (desmaiouNaNoite) { desmaiouNaNoite = false; Motor.falar("Amanheceu! Desta vez não valeu, você desmaiou. Tente a próxima noite!"); return; }
       noites++;
@@ -1385,6 +1413,7 @@
           if (sobrev && noite() && !antes) { Motor.falar("Está anoitecendo! Faça uma casinha ou coloque tochas: elas iluminam e as criaturas não chegam perto."); avisar("🌙 Anoiteceu: cuidado com as criaturas!"); }
           if (sobrev && !noite() && antes) { avisar("☀️ Amanheceu!"); noiteVencida(); }
         }
+        if (sobrev && Math.floor(relogio) !== Math.floor(relogio - dt)) atualizarGuia();
         // vida volta aos pouquinhos se ninguém machucar por um tempo
         if (sobrev && vida < 20 && vida > 0 && relogio - ultimoDano > 6 && Math.floor(relogio / 3) !== Math.floor((relogio - dt) / 3)) { vida++; desenharVida(); }
       }
@@ -1400,7 +1429,7 @@
     }
     requestAnimationFrame(laco);
     Motor.falar(sobrev
-      ? `Sobrevivência! A meta é passar ${META_NOITES} noites sem desmaiar. Sua mochila começa vazia: segure o dedo nos blocos para recolher. Faça tábuas e ferramentas na mochila, e prepare-se para a noite!`
+      ? `Sobrevivência! A meta é passar ${META_NOITES} noites sem desmaiar. Siga os passos do quadro lá em cima. Primeiro: ache uma árvore e segure o dedo no tronco!`
       : cfg.hd
       ? "Mundo novo! Ande com o joystick, arraste para olhar, toque para colocar um bloco e segure para quebrar."
       : "Mundo clássico! Ande com o joystick, arraste para olhar, toque para colocar um bloco e segure para quebrar.");

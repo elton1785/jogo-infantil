@@ -36,7 +36,7 @@
     faixas: ["5-6", "6-8", "8-10"],
     ajuda: [
       { figura: "🛫", texto: "Na pista, segure ACELERAR até a barra ficar verde. Depois puxe para cima ⬆️ e o avião decola!" },
-      { figura: "⬅️➡️⬆️⬇️", texto: "No ar, as setas viram o avião para os lados e sobem ou descem. No celular, arraste o dedo na tela como se fosse o manche." },
+      { figura: "⬅️➡️⬆️⬇️", texto: "No ar, as setas viram o avião para os lados e sobem ou descem. No celular, use as setas do canto da tela (ou arraste o dedo como se fosse o manche)." },
       { figura: "⭐", texto: "Passe por dentro das argolas douradas para ganhar estrelas. Elas mostram o caminho!" },
       { figura: "⛈️🐦", texto: "Desvie das nuvens escuras de tempestade (o avião balança!) e dos bandos de pássaros." },
       { figura: "🛬", texto: "Para pousar: alinhe com a pista e desça devagar. Torto ou rápido demais, o piloto arremete: sobe e tenta de novo." },
@@ -151,9 +151,23 @@
     // ----- Entradas -----
     const bAcel = P.botao("🛫<small>ACELERAR</small>", v => { acel = v; }, { segurar: true, classe: "principal" });
     P.controles.appendChild(bAcel);
-    const posicionar = () => Object.assign(bAcel.style, { right: "14px", bottom: "14px", minWidth: "150px", minHeight: "100px" });
-    posicionar();
     const teclasDown = {};
+    // Celular e tablet: setas na tela (direcional à esquerda), como as do teclado; arrastar o dedo
+    // na tela também funciona, como um manche
+    const toqueNaTela = matchMedia("(pointer: coarse)").matches;
+    const setas = toqueNaTela ? [["ArrowUp", "⬆️", "Subir"], ["ArrowDown", "⬇️", "Descer"], ["ArrowLeft", "⬅️", "Esquerda"], ["ArrowRight", "➡️", "Direita"]].map(([k, ic, nome]) => {
+      const b = P.botao(ic, v => { teclasDown[k] = v; }, { segurar: true, classe: "seta-aviao" });
+      b.setAttribute("aria-label", nome);
+      P.controles.appendChild(b);
+      return b;
+    }) : [];
+    const posicionar = () => {
+      Object.assign(bAcel.style, { right: "14px", bottom: "14px", minWidth: "150px", minHeight: "100px" });
+      const t = Math.max(58, Math.min(76, Math.min(P.W || 400, P.H || 400) * 0.13)), m = 12;
+      const pos = [[m + t, m + t * 2], [m + t, m], [m, m + t], [m + t * 2, m + t]]; // [left, bottom]: cima, baixo, esquerda, direita
+      setas.forEach((b, i) => Object.assign(b.style, { left: pos[i][0] + "px", bottom: `calc(${pos[i][1]}px + env(safe-area-inset-bottom, 0px))`, width: t + "px", height: t + "px", minWidth: "0", minHeight: "0", fontSize: t * 0.5 + "px", padding: "0" }));
+    };
+    posicionar();
     P.teclas((e, d) => {
       const k = e.key;
       if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", " "].includes(k)) { teclasDown[k] = d; if (d) e.preventDefault(); }
@@ -391,7 +405,8 @@
       ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.fillRect(bx + 14, by + 32 * s, bw - 28, 8 * s);
       ctx.fillStyle = "#ffd43b"; ctx.fillRect(bx + 14, by + 32 * s, (bw - 28) * prog, 8 * s);
       // instrumentos
-      const ix = 12, iy = H - (fase === "pista" ? 130 : 20) - 70 * s;
+      // com as setas na tela (celular), os instrumentos sobem para baixo do botão voltar
+      const ix = 12, iy = toqueNaTela ? 92 : H - (fase === "pista" ? 130 : 20) - 70 * s;
       Palco.caixa(ctx, ix, iy, 150 * s, 66 * s, 12);
       // valores de verdade: decola a uns 250 km/h e voa a uns 850 km/h, a até 11 mil metros
       const kmh = av.vel * (1.05 + 1.6 * Math.min(1, av.h / 300));
