@@ -207,24 +207,37 @@
 
   const ARTIGO = { casa: "a", peixe: "o", flor: "a", borboleta: "a", carro: "o", "arco-íris": "o", sorvete: "o", "canoa no rio": "a" };
 
+  // Uma rodada = 4 desenhos (começa num sorteado). "✅ Pronto" guarda o desenho e passa ao
+  // seguinte; "➡️" troca o desenho sem contar. No 4º: troféu e recompensa.
   function colorir(area) {
-    let cor = CORES[0], indice = Motor.aleatorio(0, DESENHOS.length - 1);
+    const TOTAL = 4;
+    let cor = CORES[0], indice = Motor.aleatorio(0, DESENHOS.length - 1), pintou = false;
     const folha = document.createElement("div");
     folha.className = "folha";
     area.appendChild(folha);
+    const fase = Motor.fases(area, () => colorir(area), TOTAL, {
+      rotulo: "Desenho",
+      fim: { texto: `Você coloriu ${TOTAL} desenhos! 🖍️`, fala: `Parabéns! Você coloriu ${TOTAL} desenhos!`, botao: "Colorir mais" },
+    });
 
     function mostrar() {
       const d = DESENHOS[indice % DESENHOS.length];
       folha.innerHTML = `<svg viewBox="-4 -4 208 208" class="desenho">${d.svg}</svg>`;
+      pintou = false;
       folha.querySelectorAll(".r").forEach(r => r.addEventListener("click", () => {
         r.style.fill = cor;
+        pintou = true;
         Motor.ploc();
       }));
       Motor.falar(`Vamos colorir ${ARTIGO[d.nome]} ${d.nome}!`);
     }
 
     area.appendChild(paleta(c => { cor = c; }, CORES, [
-      { icone: "✅", rotulo: "Pronto", aoClicar: () => { Motor.comemorar(folha); Motor.tim(); Motor.falar(`Que lindo! ${Motor.elogio()}`); } },
+      { icone: "✅", rotulo: "Pronto", aoClicar: () => {
+        if (!pintou) { Motor.falar("Pinte o desenho primeiro! Escolha uma cor e toque nas partes."); return; }
+        Motor.comemorar(folha); Motor.tim();
+        Motor.falar(`Que lindo! ${Motor.elogio()}`).then(() => { if (!fase()) { indice++; mostrar(); } });
+      } },
       { icone: "➡️", rotulo: "Outro desenho", aoClicar: () => { indice++; mostrar(); } },
     ]));
     mostrar();

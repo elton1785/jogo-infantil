@@ -13,6 +13,14 @@
     iniciar(area, faixa) {
       // Para 2-3 anos a bolha fala a cor; para 1-2, só o bichinho (quando tem)
       const falaCor = !!faixa && faixa.id === "2-3";
+      // Estourar 15 bolhas (10 para 1 a 2 anos): contador no topo e troféu no fim
+      const META = faixa && faixa.id === "1-2" ? 10 : 15;
+      let acabou = false;
+      const fase = Motor.fases(area, () => this.iniciar(area, faixa), META, {
+        rotulo: "🫧", contarFeitas: true,
+        fim: { texto: `Você estourou ${META} bolhas! 🫧`, fala: `Parabéns! Você estourou ${META} bolhas!`, botao: "Estourar mais" },
+      });
+      Motor.falar("Estoure as bolhas! Toque nelas!");
 
       function estourar(b, fig, cor) {
         if (b.dataset.estourou) return;
@@ -27,6 +35,7 @@
           b.style.opacity = "0";
         });
         setTimeout(() => b.remove(), 250);
+        if (!acabou && fase()) { acabou = true; area.querySelectorAll(".bolha").forEach(x => x.remove()); return; }
         if (fig) Motor.falar(`${Motor.maiuscula(fig.artigo)} ${fig.nome}!`);
         else if (falaCor) Motor.falar(Motor.maiuscula(cor.nome));
       }
@@ -49,6 +58,7 @@
 
       // Loop de bolhas: para sozinho quando a sessão muda (criança saiu do jogo)
       (function ciclo() {
+        if (acabou) return;
         if (area.querySelectorAll(".bolha").length < 8) soltarBolha();
         Motor.depois(ciclo, 900);
       })();

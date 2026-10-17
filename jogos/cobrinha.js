@@ -24,7 +24,7 @@
     icone: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 50 H34 a10 10 0 0 0 0 -20 H26 a8 8 0 0 1 0 -16 H44" fill="none" stroke="#151515" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 50 H34 a10 10 0 0 0 0 -20 H26 a8 8 0 0 1 0 -16 H44" fill="none" stroke="#3cb44b" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="46" cy="14" r="8" fill="#3cb44b" stroke="#151515" stroke-width="2"/><circle cx="48" cy="11" r="2.4" fill="#fff"/><circle cx="48.5" cy="11" r="1.2" fill="#151515"/><path d="M53 15 l6 1 m-6 -1 l5 4" stroke="#e63946" stroke-width="2" stroke-linecap="round"/><circle cx="55" cy="47" r="6" fill="#e63946" stroke="#151515" stroke-width="2"/><path d="M55 41 q2 -4 5 -4" stroke="#2a9d55" stroke-width="2.5" fill="none"/></svg>',
     faixas: ["5-6", "6-8", "8-10"],
     iniciar(area, faixa) {
-      const pequenos = faixa === "5-6";
+      const pequenos = !!faixa && faixa.id === "5-6";
       const opcoes = modo => Motor.telaOpcoes(area, {
         opcoes: [
           { titulo: "Velocidade", chave: "vel", valores: [["devagar", "🐢 Devagar"], ["normal", "🐇 Normal"], ["rapido", "🚀 Rápido"]] },

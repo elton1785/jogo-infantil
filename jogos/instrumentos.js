@@ -23,6 +23,7 @@
   const ESTRELINHA = [0, 0, 4, 4, 5, 5, 4, -1, 3, 3, 2, 2, 1, 1, 0];
 
   function piano(area) {
+    Motor.falar("Toque nas teclas para fazer música! O botão de nota toca uma cantiga.");
     const teclado = document.createElement("div");
     teclado.className = "teclado";
     const botoes = TECLAS.map(t => {

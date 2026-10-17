@@ -516,7 +516,7 @@
     function passo() {
       const a = lista[i];
       const tela = telaRelogio(area, {
-        titulo: `<span class="hr-emoji-tit">${a.emoji}</span> ${a.pergunta}`,
+        titulo: `<span class="hr-passo">${i + 1} de ${lista.length}</span><span class="hr-emoji-tit">${a.emoji}</span> ${a.pergunta}`,
         total: salvo[a.id] != null ? salvo[a.id] : a.padrao, rotulos: nivel > 0, passo: () => (nivel === 2 ? 5 : 15),
         aoMudar: t => pintar(t),
         aoSoltar: t => { const tt = ajustarAoDia(t, a); Motor.falar(Motor.maiuscula(horaFalada(hDe(tt), mDe(tt)))); },

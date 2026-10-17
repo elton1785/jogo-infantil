@@ -11,10 +11,10 @@
 
   function explorarFamilia(area, c) {
     Motor.modoExplorar({
-      area, itens: familia(c), porTela: 5, emOrdem: true, desenhar,
+      area, itens: familia(c), porTela: 5, emOrdem: true, desenhar, instrucao: false,
       aoTocar: s => Motor.falar(s.fala),
     });
-    Motor.falar(familia(c).map(s => s.fala).join(", "));
+    Motor.falar(`${familia(c).map(s => s.fala).join(", ")}. Toque em cada sílaba para ouvir!`);
   }
 
   function cadeSilaba(area, opcoes) {

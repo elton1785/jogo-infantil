@@ -77,6 +77,7 @@
     const op = { ...opcoes };
     // Bichinhos não têm valor para somar: com eles o jogo é sempre o tradicional
     const cinco = op.tipo === "cinco" && op.pecas !== "figuras";
+    if (op === SIMPLES || opcoes === SIMPLES) Motor.falar("Dominó! Encaixe uma peça que tenha a mesma figura da ponta. Ganha quem acabar com as peças primeiro!", { importante: true });
     const jogadores = MESAS[op.jogadores].map((j, i) => ({ ...j, lugar: i, mao: [] }));
     const n = jogadores.length;
     const voce = jogadores[0];

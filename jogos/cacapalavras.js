@@ -156,8 +156,9 @@
           Motor.tim();
           Motor.comemorar(p.botao);
           if (achadas === colocadas.length) {
-            Motor.falar(p.palavra).then(() => Motor.falar(`${Motor.elogio()} Você achou todas as palavras!`))
-              .then(() => Motor.depois(jogo, 1500));
+            Motor.falar(p.palavra).then(() => Motor.depois(() => Motor.telaFim(area, colocadas.length, colocadas.length, jogo, {
+              texto: `Você achou as ${colocadas.length} palavras! 🔎`, fala: `${Motor.elogio()} Você achou todas as palavras!`, botao: "Outro caça-palavras",
+            }), 600));
           } else {
             Motor.falar(p.palavra);
           }

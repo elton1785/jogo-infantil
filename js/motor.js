@@ -656,7 +656,8 @@ const Motor = (() => {
 
   // Explorar: grade de itens; tocar faz o item pular e chama aoTocar(item).
   // `emOrdem`: mostra os itens na sequência (ex.: alfabeto) em vez de sortear.
-  function modoExplorar({ area, itens, porTela = 4, desenhar, aoTocar, emOrdem = false }) {
+  // `instrucao`: o que falar ao abrir (padrão: "Toque nas figuras para ouvir!"; false = nada)
+  function modoExplorar({ area, itens, porTela = 4, desenhar, aoTocar, emOrdem = false, instrucao }) {
     const grade = document.createElement("div");
     grade.className = `grade g${porTela}`;
     let fila = [];
@@ -673,8 +674,10 @@ const Motor = (() => {
     }
 
     area.appendChild(grade);
-    if (itens.length > porTela) area.appendChild(botaoCanto("proximo", "➡️", "Outros", montar));
+    const mais = itens.length > porTela;
+    if (mais) area.appendChild(botaoCanto("proximo", "➡️", "Outros", montar));
     montar();
+    if (instrucao !== false) falar(instrucao || `Toque em cada figura para ouvir!${mais ? " A seta mostra outras." : ""}`);
   }
 
   // Tela de fim de rodada com troféu e botão para jogar de novo.
@@ -708,12 +711,15 @@ const Motor = (() => {
     return ["1-2", "2-3"].includes(id) ? 5 : ["3-4", "4-5"].includes(id) ? 6 : 8;
   }
   // Placar de fases: "Fase 3 de 6" e as bolinhas das fases feitas
-  function criarPlacar(area, rodada) {
+  function criarPlacar(area, rodada, rotulo = "Fase", contarFeitas = false) {
     const placar = document.createElement("div");
     placar.className = "placar fases";
     const atualizar = feitas => {
-      placar.innerHTML = `<span class="fase-txt">Fase <b>${Math.min(feitas + 1, rodada)}</b> de ${rodada}</span><span class="fase-pontos">${
-        Array.from({ length: rodada }, (_, i) => `<i class="${i < feitas ? "feita" : i === feitas ? "atual" : ""}"></i>`).join("")}</span>`;
+      const n = contarFeitas ? feitas : Math.min(feitas + 1, rodada);
+      const marcas = rodada <= 12
+        ? `<span class="fase-pontos">${Array.from({ length: rodada }, (_, i) => `<i class="${i < feitas ? "feita" : i === feitas ? "atual" : ""}"></i>`).join("")}</span>`
+        : `<span class="fase-barra"><i style="width:${feitas / rodada * 100}%"></i></span>`;
+      placar.innerHTML = `<span class="fase-txt">${rotulo} <b>${n}</b> de ${rodada}</span>${marcas}`;
     };
     if (rodada) { area.appendChild(placar); atualizar(0); }
     atualizar.el = placar;
@@ -721,14 +727,15 @@ const Motor = (() => {
   }
   // Para jogos com repetição própria (contar, esconde-esconde): fases com placar e troféu no fim.
   // `fase(dePrimeira)` ao terminar cada fase; devolve true quando a rodada acabou (o troféu já abriu).
-  function fases(area, jogarDeNovo, total = rodadaPadrao()) {
+  // `opcoes`: { rotulo ("Bolha"), contarFeitas (mostra quantas já foram), fim: { texto, fala, botao } }
+  function fases(area, jogarDeNovo, total = rodadaPadrao(), opcoes = {}) {
     let feitas = 0, certas = 0;
-    const atualizar = criarPlacar(area, total);
+    const atualizar = criarPlacar(area, total, opcoes.rotulo, opcoes.contarFeitas);
     const fase = dePrimeira => {
       feitas++; if (dePrimeira !== false) certas++;
       atualizar(feitas);
       if (feitas < total) return false;
-      depois(() => telaFim(area, certas, total, jogarDeNovo), 300);
+      depois(() => telaFim(area, certas, total, jogarDeNovo, opcoes.fim), 300);
       return true;
     };
     // Jogo que limpa a área a cada fase: chama fase.mostrar() depois de redesenhar

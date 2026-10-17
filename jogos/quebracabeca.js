@@ -418,7 +418,9 @@
               Motor.comemorar(tabuleiro);
               Motor.tim();
               const fala = simples ? `${Motor.elogio()} Você montou o quebra-cabeça!` : `${Motor.elogio()} Você montou ${nome}!`;
-              Motor.falar(fala).then(() => Motor.depois(() => jogo(), 2200));
+              Motor.falar(fala).then(() => Motor.depois(() => Motor.telaFim(area, 1, 1, () => jogo(), {
+                texto: simples ? "Você montou o quebra-cabeça! 🧩" : `Você montou ${nome}! 🧩`, fala: "Parabéns!", botao: "Outro quebra-cabeça",
+              }), 1200));
             }
             return true;
           }
