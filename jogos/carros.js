@@ -401,58 +401,90 @@
     });
     return cv;
   }
-  // Carro de fórmula visto de trás (Grande Prêmio): rodas grandes de fora, asa traseira alta,
-  // capa do motor estreita com a barbatana, o capacete do piloto e o halo, e a luz vermelha no meio
+  // Carro de fórmula visto de trás (Grande Prêmio), desenhado de trás para a frente:
+  // rodas e asa dianteiras lá na frente, pneus traseiros enormes, assoalho e difusor com a luz
+  // vermelha, pontões, capa do motor alta e estreita com a entrada de ar sobre o capacete, o halo,
+  // a barbatana e a asa traseira com dois planos, placas laterais e o número
   function formulaDeTras(cor, curva = 0, freio = false, fase = 0) {
-    const W = 220, H = 130, cv = document.createElement("canvas");
+    const W = 230, H = 134, cv = document.createElement("canvas");
     cv.width = W; cv.height = H;
     const c = cv.getContext("2d");
     c.translate(W / 2, H);
-    const sk = curva * 8;
-    const gs = c.createRadialGradient(0, 0, 10, 0, 0, 112);
-    gs.addColorStop(0, "rgba(0,0,0,.5)"); gs.addColorStop(1, "rgba(0,0,0,0)");
-    c.save(); c.translate(0, -6); c.scale(1, 0.13); c.fillStyle = gs; c.beginPath(); c.arc(0, 0, 112, 0, 7); c.fill(); c.restore();
-    // braços da suspensão
-    c.strokeStyle = "#222"; c.lineWidth = 4;
-    [-1, 1].forEach(l => { c.beginPath(); c.moveTo(l * 30, -36); c.lineTo(l * 70, -40); c.moveTo(l * 30, -22); c.lineTo(l * 70, -22); c.stroke(); });
-    // pneus traseiros largos, de fora da carroceria
+    const sk = curva * 7; // a parte de cima inclina um pouco na curva
+    const escuro = clarear(cor, -0.45), claro = clarear(cor, 0.35);
+    // sombra no chão
+    const gs = c.createRadialGradient(0, 0, 10, 0, 0, 118);
+    gs.addColorStop(0, "rgba(0,0,0,.55)"); gs.addColorStop(1, "rgba(0,0,0,0)");
+    c.save(); c.translate(0, -5); c.scale(1, 0.12); c.fillStyle = gs; c.beginPath(); c.arc(0, 0, 118, 0, 7); c.fill(); c.restore();
+    // ---- lá na frente: rodas dianteiras (menores e mais altas) e a asa dianteira
     [-1, 1].forEach(l => {
-      const px = l < 0 ? -110 : 66;
-      const gp = c.createLinearGradient(px, 0, px + 44, 0);
-      gp.addColorStop(0, "#0d0d0d"); gp.addColorStop(0.5, "#2e2e2e"); gp.addColorStop(1, "#0d0d0d");
-      c.fillStyle = gp; c.beginPath(); c.roundRect(px, -60, 44, 56, 9); c.fill();
-      c.fillStyle = "rgba(0,0,0,.6)"; for (let y = -56 + fase * 5; y < -8; y += 10) c.fillRect(px + 5, y, 34, 2);
-      c.fillStyle = "rgba(255,255,255,.12)"; c.fillRect(px + 6, -58, 4, 50);
+      const x = l * 60 + l * curva * 2;
+      c.fillStyle = "#151518"; c.beginPath(); c.roundRect(x - 13, -74, 26, 26, 6); c.fill();
+      c.fillStyle = "rgba(255,255,255,.1)"; c.fillRect(x - 10, -72, 3, 22);
     });
-    // difusor
-    c.fillStyle = "#1b1b1f"; c.beginPath(); c.moveTo(-52, -8); c.lineTo(52, -8); c.lineTo(42, -28); c.lineTo(-42, -28); c.closePath(); c.fill();
-    c.strokeStyle = "#3a3a40"; c.lineWidth = 2; for (let x = -30; x <= 30; x += 15) { c.beginPath(); c.moveTo(x, -9); c.lineTo(x * 0.85, -27); c.stroke(); }
-    // pontões laterais
-    [-1, 1].forEach(l => { c.fillStyle = clarear(cor, -0.2); c.beginPath(); c.roundRect(l < 0 ? -64 : 36, -46, 28, 22, 8); c.fill(); });
-    // capacete e halo (ficam atrás da capa do motor)
-    c.fillStyle = "#f8f9fa"; c.beginPath(); c.arc(sk, -80, 14, Math.PI, 0); c.lineTo(14 + sk, -70); c.lineTo(-14 + sk, -70); c.fill();
-    c.fillStyle = clarear(cor, -0.35); c.fillRect(-14 + sk, -84, 28, 5);
-    c.strokeStyle = "#1d1d22"; c.lineWidth = 5; c.beginPath(); c.moveTo(-18 + sk, -68); c.quadraticCurveTo(sk, -98, 18 + sk, -68); c.stroke();
-    // capa do motor estreita com degradê
-    const corpo = () => { c.beginPath(); c.moveTo(-36, -24); c.quadraticCurveTo(-40, -50, -20 + sk, -70); c.lineTo(20 + sk, -70); c.quadraticCurveTo(40, -50, 36, -24); c.closePath(); };
-    const g = c.createLinearGradient(0, -72, 0, -24);
-    g.addColorStop(0, clarear(cor, 0.35)); g.addColorStop(0.5, cor); g.addColorStop(1, clarear(cor, -0.4));
-    c.fillStyle = g; corpo(); c.fill();
-    c.strokeStyle = "rgba(0,0,0,.4)"; c.lineWidth = 2; corpo(); c.stroke();
-    // entrada de ar e barbatana
-    c.fillStyle = clarear(cor, -0.25); c.beginPath(); c.roundRect(-8 + sk, -98, 16, 30, 6); c.fill();
-    c.fillStyle = "#111"; c.beginPath(); c.roundRect(-5 + sk, -95, 10, 7, 3); c.fill();
-    c.fillStyle = clarear(cor, 0.1); c.beginPath(); c.moveTo(-2 + sk, -100); c.lineTo(2 + sk, -100); c.lineTo(2, -62); c.lineTo(-2, -62); c.fill();
-    // asa traseira: suportes, dois planos e as placas dos lados
-    c.fillStyle = "#222"; c.fillRect(-7, -112, 4, 46); c.fillRect(3, -112, 4, 46);
-    const ga = c.createLinearGradient(0, -122, 0, -108);
-    ga.addColorStop(0, clarear(cor, 0.15)); ga.addColorStop(1, clarear(cor, -0.55));
-    c.fillStyle = ga; c.beginPath(); c.roundRect(-84, -122, 168, 12, 3); c.fill();
-    c.fillStyle = "#1d1d22"; c.beginPath(); c.roundRect(-82, -108, 164, 6, 2); c.fill();
-    c.fillStyle = clarear(cor, -0.5); c.fillRect(-88, -126, 7, 30); c.fillRect(81, -126, 7, 30);
-    // luz vermelha do meio (forte ao frear)
-    c.fillStyle = freio ? "#ff2a2a" : "#7a1010"; c.fillRect(-7, -34, 14, 7);
-    if (freio) { const gl = c.createRadialGradient(0, -30, 2, 0, -30, 30); gl.addColorStop(0, "rgba(255,60,60,.7)"); gl.addColorStop(1, "rgba(255,60,60,0)"); c.fillStyle = gl; c.fillRect(-30, -60, 60, 60); }
+    c.fillStyle = escuro; c.beginPath(); c.roundRect(-84, -52, 168, 5, 2); c.fill();
+    c.fillStyle = cor; [-1, 1].forEach(l => c.fillRect(l < 0 ? -88 : 82, -60, 6, 14));
+    // ---- braços da suspensão traseira
+    c.strokeStyle = "#202024"; c.lineWidth = 4;
+    [-1, 1].forEach(l => { c.beginPath(); c.moveTo(l * 26, -40); c.lineTo(l * 72, -44); c.moveTo(l * 26, -22); c.lineTo(l * 72, -20); c.stroke(); });
+    // ---- assoalho largo e difusor com canais
+    c.fillStyle = "#18181c"; c.beginPath(); c.roundRect(-78, -16, 156, 10, 3); c.fill();
+    c.fillStyle = "#222228"; c.beginPath(); c.moveTo(-46, -6); c.lineTo(46, -6); c.lineTo(36, -30); c.lineTo(-36, -30); c.closePath(); c.fill();
+    c.strokeStyle = "#3b3b44"; c.lineWidth = 2;
+    for (let x = -27; x <= 27; x += 13.5) { c.beginPath(); c.moveTo(x, -7); c.lineTo(x * 0.78, -29); c.stroke(); }
+    // ---- pneus traseiros enormes
+    [-1, 1].forEach(l => {
+      const px = l < 0 ? -114 : 68;
+      const gp = c.createLinearGradient(px, 0, px + 46, 0);
+      gp.addColorStop(0, "#0b0b0d"); gp.addColorStop(0.45, "#2f2f33"); gp.addColorStop(1, "#0b0b0d");
+      c.fillStyle = gp; c.beginPath(); c.roundRect(px, -64, 46, 60, 10); c.fill();
+      c.fillStyle = "rgba(0,0,0,.55)"; for (let y = -60 + fase * 6; y < -8; y += 12) c.fillRect(px + 5, y, 36, 2.5);
+      c.fillStyle = "rgba(255,255,255,.13)"; c.fillRect(px + 7, -61, 4, 54);
+      c.fillStyle = "#ffd43b"; c.fillRect(l < 0 ? px + 41 : px + 1, -54, 4, 40); // faixa do pneu (composto)
+    });
+    // ---- asinha baixa entre as rodas
+    c.fillStyle = "#1d1d22"; c.beginPath(); c.roundRect(-58, -44, 116, 6, 2); c.fill();
+    // ---- pontões laterais, com a cor da equipe
+    [-1, 1].forEach(l => {
+      const x0 = l < 0 ? -66 : 30;
+      const gp = c.createLinearGradient(0, -56, 0, -24); gp.addColorStop(0, claro); gp.addColorStop(1, escuro);
+      c.fillStyle = gp; c.beginPath(); c.roundRect(x0, -54, 36, 30, [14, 14, 4, 4]); c.fill();
+    });
+    // ---- capacete e halo (atrás da capa do motor)
+    c.fillStyle = "#f8f9fa"; c.beginPath(); c.arc(sk * 0.8, -84, 13, Math.PI, 0); c.lineTo(13 + sk * 0.8, -76); c.lineTo(-13 + sk * 0.8, -76); c.fill();
+    c.fillStyle = claro; c.fillRect(-13 + sk * 0.8, -88, 26, 4);
+    c.strokeStyle = "#141418"; c.lineWidth = 5; c.lineCap = "round";
+    c.beginPath(); c.moveTo(-20 + sk * 0.8, -72); c.quadraticCurveTo(sk * 0.8, -104, 20 + sk * 0.8, -72); c.stroke(); c.lineCap = "butt";
+    // ---- capa do motor alta e estreita (com faixa branca), entrada de ar e barbatana
+    const capa = () => { c.beginPath(); c.moveTo(-26, -24); c.lineTo(-16 + sk * 0.6, -74); c.quadraticCurveTo(sk, -80, 16 + sk * 0.6, -74); c.lineTo(26, -24); c.closePath(); };
+    const g = c.createLinearGradient(-26, 0, 26, 0);
+    g.addColorStop(0, escuro); g.addColorStop(0.3, cor); g.addColorStop(0.55, claro); g.addColorStop(1, escuro);
+    c.fillStyle = g; capa(); c.fill();
+    c.save(); capa(); c.clip(); c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(-4 + sk * 0.3, -80, 8, 60); c.restore();
+    c.strokeStyle = "rgba(0,0,0,.35)"; c.lineWidth = 2; capa(); c.stroke();
+    // entrada de ar triangular sobre o capacete
+    c.fillStyle = escuro; c.beginPath(); c.moveTo(-11 + sk, -86); c.lineTo(11 + sk, -86); c.lineTo(7 + sk, -104); c.lineTo(-7 + sk, -104); c.closePath(); c.fill();
+    c.fillStyle = "#0e0e10"; c.beginPath(); c.roundRect(-6 + sk, -102, 12, 8, 3); c.fill();
+    // barbatana até a asa
+    c.fillStyle = cor; c.beginPath(); c.moveTo(-2 + sk, -104); c.lineTo(2 + sk, -104); c.lineTo(2, -78); c.lineTo(-2, -78); c.fill();
+    // ---- caixa de câmbio e a luz vermelha (pisca forte ao frear)
+    c.fillStyle = "#2a2a30"; c.beginPath(); c.roundRect(-12, -36, 24, 14, 3); c.fill();
+    c.fillStyle = freio ? "#ff2a2a" : "#8a1414"; c.fillRect(-8, -33, 16, 7);
+    if (freio) { const gl = c.createRadialGradient(0, -30, 2, 0, -30, 34); gl.addColorStop(0, "rgba(255,60,60,.75)"); gl.addColorStop(1, "rgba(255,60,60,0)"); c.fillStyle = gl; c.fillRect(-34, -64, 68, 68); }
+    // ---- asa traseira: suporte central, plano principal, aba de cima e placas dos lados com o número
+    c.fillStyle = "#1a1a1e"; c.fillRect(-4, -116, 8, 40);
+    const ga = c.createLinearGradient(0, -124, 0, -110);
+    ga.addColorStop(0, clarear(cor, 0.2)); ga.addColorStop(1, escuro);
+    c.fillStyle = ga; c.beginPath(); c.roundRect(-80, -122, 160, 10, 3); c.fill();
+    c.fillStyle = "#1d1d22"; c.beginPath(); c.roundRect(-78, -110, 156, 6, 2); c.fill();
+    c.fillStyle = "rgba(255,255,255,.7)"; c.fillRect(-76, -120, 152, 2);
+    [-1, 1].forEach(l => {
+      const x = l < 0 ? -90 : 80;
+      c.fillStyle = cor; c.beginPath(); c.roundRect(x, -130, 10, 46, 3); c.fill();
+      c.fillStyle = escuro; c.fillRect(x, -96, 10, 12);
+    });
+    c.fillStyle = "#fff"; c.font = "bold 11px sans-serif"; c.textAlign = "center";
+    c.fillText(String((parseInt(cor.slice(1, 3), 16) % 30) + 1), -85, -112);
     return cv;
   }
 
