@@ -9,10 +9,10 @@
 (() => {
   const OPCOES = [
     { chave: "modo", titulo: "Jogar contra", valores: [["robo", "🤖 Computador"], ["dois", "👥 2 jogadores"]] },
-    { chave: "nivel", titulo: "Computador", valores: [["facil", "😊 Fácil"], ["medio", "🧠 Médio"], ["dificil", "🦉 Difícil"]] },
+    { chave: "nivel", quando: op => op.modo !== "dois", titulo: "Computador", valores: [["facil", "😊 Fácil"], ["medio", "🧠 Médio"], ["dificil", "🦉 Difícil"]] },
     { chave: "cor", titulo: "Suas peças", valores: [["b", "⚪ Brancas (começam)"], ["p", "⚫ Pretas"]] },
-    { chave: "obrigatoria", titulo: "Captura obrigatória", valores: [["sim", "✅ Sim (oficial)"], ["nao", "🙂 Não"]] },
-    { chave: "dicas", titulo: "Mostrar jogadas", valores: [["sim", "💡 Sim"], ["nao", "🙈 Não"]] },
+    { chave: "obrigatoria", regra: true, titulo: "Captura obrigatória", valores: [["sim", "✅ Sim (oficial)"], ["nao", "🙂 Não"]] },
+    { chave: "dicas", regra: true, titulo: "Mostrar jogadas", valores: [["sim", "💡 Sim"], ["nao", "🙈 Não"]] },
   ];
   const PADRAO = {
     "5-6":  { modo: "robo", nivel: "facil", cor: "b", obrigatoria: "nao", dicas: "sim" },

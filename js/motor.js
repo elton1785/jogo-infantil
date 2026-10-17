@@ -357,48 +357,227 @@ const Motor = (() => {
   // aparelho em `chave`. `antes`: elemento mostrado no topo (ex.: placar). `aoJogar(op)` ao tocar em Jogar.
   // `aoMudar(op, chave)`: pode ajustar outras opções que não combinam com a escolhida.
   function telaOpcoes(area, { opcoes, padrao, chave, antes, aoJogar, aoMudar }) {
+    // As escolhas aparecem uma de cada vez, em cartões grandes com figura (como num videogame);
+    // no fim, a tela "Tudo pronto!" mostra o que foi escolhido (toque para trocar), as regras
+    // e o botão Jogar. Cada opção: { chave, titulo, valores, regra, quando, tipo, sugestoes, dica, fala }
+    //  - valores: [[valor, rótulo, figura?]] ou (op) => lista; o emoji do começo do rótulo vira a figura.
+    //    figura: emoji, "<svg...", elemento ou (op) => um desses.
+    //  - regra: true → não vira passo; fica como chips na tela final (regras de jogo, dicas...).
+    //  - quando: (op) => false pula a opção (ex.: nível do computador com 2 jogadores).
+    //  - tipo: "texto" → nome digitado no teclado da tela (dá para usar o controle de videogame).
+    //  - titulo pode ser (op) => texto.
     let salvo = null;
     try { salvo = JSON.parse(localStorage.getItem(chave)); } catch (e) { /* sem armazenamento */ }
     const op = { ...padrao, ...(salvo || {}) };
-    area.innerHTML = "";
-    const caixa = document.createElement("div");
-    caixa.className = "opcoes-jogo";
-    if (antes) caixa.appendChild(antes);
-    const botoes = []; // [chave, valor, botão]
-    const marcar = () => botoes.forEach(([k, v, b]) => b.classList.toggle("ativo", op[k] === v));
-    opcoes.forEach(o => {
-      const grupo = document.createElement("div");
-      grupo.className = "grupo-op";
+    const tituloDe = o => (typeof o.titulo === "function" ? o.titulo(op) : o.titulo);
+    const valoresDe = o => (typeof o.valores === "function" ? o.valores(op) : o.valores || []);
+    const vale = o => !o.quando || o.quando(op);
+    const passos = opcoes.filter(o => !o.regra), regras = opcoes.filter(o => o.regra);
+    const guardar = () => { try { localStorage.setItem(chave, JSON.stringify(op)); } catch (e) { /* sem armazenamento */ } };
+    // se a opção guardada não existe mais na lista (ex.: cor igual à do outro time), fica com a primeira
+    const conferir = o => { if (o.tipo === "texto") return; const vs = valoresDe(o); if (vs.length && !vs.some(v => v[0] === op[o.chave])) op[o.chave] = vs[0][0]; };
+    const mudar = (o, v) => { op[o.chave] = v; if (aoMudar) aoMudar(op, o.chave); };
+    const figuraDe = (v, emoji) => { const f = typeof v[2] === "function" ? v[2](op) : v[2]; return f != null ? f : emoji; };
+    const porFigura = (ic, f) => {
+      if (f && typeof f !== "string") ic.appendChild(f);
+      else if (f && f.startsWith("<svg")) ic.innerHTML = f;
+      else ic.textContent = f || "";
+    };
+
+    function passo(i, paraResumo) {
+      while (i < passos.length && !vale(passos[i])) i++;
+      if (i >= passos.length) return resumo();
+      const o = passos[i], depois = () => (paraResumo ? resumo() : passo(i + 1));
+      area.innerHTML = "";
+      const caixa = document.createElement("div");
+      caixa.className = "modos passo-tela";
       const t = document.createElement("div");
-      t.className = "titulo-op";
-      t.textContent = o.titulo;
-      const chips = document.createElement("div");
-      chips.className = "chips";
-      o.valores.forEach(([valor, rotulo]) => {
+      t.className = "passo-titulo";
+      t.textContent = tituloDe(o);
+      caixa.appendChild(t);
+      if (o.tipo === "texto") {
+        caixa.classList.add("passo-texto");
+        const dica = typeof o.dica === "function" ? o.dica(op) : o.dica || "";
+        caixa.appendChild(teclado({ valor: op[o.chave] || "", dica, sugestoes: o.sugestoes, aoPronto: v => { mudar(o, v); falar(v || dica ? `${v || dica}!` : "Tudo bem!"); depois(); } }));
+        area.appendChild(caixa);
+        falar(o.fala || tituloDe(o));
+        return;
+      }
+      conferir(o);
+      const vs = valoresDe(o);
+      if (vs.length > 6) caixa.classList.add("muitos");
+      vs.forEach(v => {
+        const [valor, rotulo] = v, [emoji, texto] = separarEmoji(rotulo);
         const b = document.createElement("button");
-        b.className = "chip" + (op[o.chave] === valor ? " ativo" : "");
-        b.textContent = rotulo;
-        b.addEventListener("click", () => {
-          op[o.chave] = valor;
-          if (aoMudar) aoMudar(op, o.chave);
-          marcar();
-        });
-        botoes.push([o.chave, valor, b]);
-        chips.appendChild(b);
+        b.className = "modo" + (op[o.chave] === valor ? " ativo" : "");
+        b.innerHTML = `<span class="icone"></span><span class="rotulo"></span>`;
+        const ic = b.querySelector(".icone");
+        let f = figuraDe(v, emoji), rot = texto;
+        // sem emoji e começando com número ("50 pontos", "3"): o número vira a figura
+        if (!f && /^\d/.test(texto)) { f = texto.match(/^[\d×x]+/)[0]; rot = texto.slice(f.length).trim(); ic.classList.add("numero"); }
+        porFigura(ic, f);
+        b.querySelector(".rotulo").textContent = rot;
+        b.addEventListener("click", () => { mudar(o, valor); falar(texto); depois(); });
+        caixa.appendChild(b);
       });
-      grupo.append(t, chips);
-      caixa.appendChild(grupo);
+      area.appendChild(caixa);
+      falar(o.fala || tituloDe(o));
+    }
+
+    function resumo() {
+      area.innerHTML = "";
+      const caixa = document.createElement("div");
+      caixa.className = "opcoes-jogo resumo-opcoes";
+      const t = document.createElement("div");
+      t.className = "passo-titulo";
+      t.textContent = "Tudo pronto!";
+      caixa.appendChild(t);
+      if (antes) caixa.appendChild(antes);
+      const lista = document.createElement("div");
+      lista.className = "resumo-escolhas";
+      passos.forEach((o, i) => {
+        if (!vale(o)) return;
+        let fig, texto;
+        if (o.tipo === "texto") { fig = "✏️"; texto = op[o.chave] || (typeof o.dica === "function" ? o.dica(op) : o.dica) || "—"; }
+        else {
+          conferir(o);
+          const v = valoresDe(o).find(x => x[0] === op[o.chave]);
+          if (!v) return;
+          const [emoji, tx] = separarEmoji(v[1]);
+          texto = tx;
+          fig = figuraDe(v, emoji) || (/^\d/.test(tx) ? tx.match(/^[\d×x]+/)[0] : "⚙️");
+        }
+        const b = document.createElement("button");
+        b.className = "resumo-item";
+        b.innerHTML = `<span class="icone"></span><span class="textos"><small></small><b></b></span>`;
+        porFigura(b.querySelector(".icone"), fig);
+        b.querySelector("small").textContent = tituloDe(o);
+        b.querySelector("b").textContent = texto;
+        b.addEventListener("click", () => passo(i, true));
+        lista.appendChild(b);
+      });
+      caixa.appendChild(lista);
+      // regras do jogo: chips, como antes (mudam na hora)
+      const regs = regras.filter(vale);
+      if (regs.length) {
+        const r = document.createElement("div");
+        r.className = "resumo-regras";
+        const h = document.createElement("div");
+        h.className = "resumo-regras-titulo";
+        h.textContent = "⚙️ Regras e ajudas";
+        r.appendChild(h);
+        const botoes = [];
+        const marcar = () => botoes.forEach(([k, v, b]) => b.classList.toggle("ativo", op[k] === v));
+        regs.forEach(o => {
+          conferir(o);
+          const grupo = document.createElement("div");
+          grupo.className = "grupo-op";
+          const tt = document.createElement("div");
+          tt.className = "titulo-op";
+          tt.textContent = tituloDe(o);
+          const chips = document.createElement("div");
+          chips.className = "chips";
+          valoresDe(o).forEach(([valor, rotulo]) => {
+            const b = document.createElement("button");
+            b.className = "chip";
+            b.textContent = rotulo;
+            b.addEventListener("click", () => { mudar(o, valor); marcar(); });
+            botoes.push([o.chave, valor, b]);
+            chips.appendChild(b);
+          });
+          grupo.append(tt, chips);
+          r.appendChild(grupo);
+        });
+        marcar();
+        caixa.appendChild(r);
+      }
+      const jogar = document.createElement("button");
+      jogar.className = "chip jogar";
+      jogar.textContent = "▶️ Jogar";
+      jogar.addEventListener("click", () => { guardar(); aoJogar({ ...op }); });
+      caixa.appendChild(jogar);
+      area.appendChild(caixa);
+      falar("Tudo pronto! Toque em jogar!");
+    }
+    passo(0);
+  }
+  // "🐢 Fácil" → ["🐢", "Fácil"]; "🔴 🔵 Coloridas" → ["🔴 🔵", "Coloridas"]; "50 pontos" → ["", "50 pontos"]
+  function separarEmoji(rotulo) {
+    const txt = String(rotulo);
+    const m = txt.match(/^(?:(?:\p{Extended_Pictographic}|\p{Regional_Indicator})(?:️|‍\p{Extended_Pictographic})*️?\s*|[0-9#*]️⃣\s*)+/u);
+    if (!m) return ["", txt];
+    return [m[0].trim(), txt.slice(m[0].length).trim()];
+  }
+
+  // Teclado na tela para escrever um nome (toque, mouse, controle de videogame ou o teclado do
+  // computador). Devolve o elemento; aoPronto(texto) quando aperta ✓ (vazio = usa a dica).
+  function teclado({ valor = "", dica = "", sugestoes, max = 12, aoPronto }) {
+    const caixa = document.createElement("div");
+    caixa.className = "teclado";
+    const visor = document.createElement("div");
+    visor.className = "teclado-visor";
+    caixa.appendChild(visor);
+    const ok = document.createElement("button");
+    ok.className = "chip jogar";
+    const pintar = () => {
+      visor.textContent = valor || dica || " ";
+      visor.classList.toggle("vazio", !valor);
+      ok.textContent = "✓ Pronto";
+    };
+    const por = letra => {
+      if (valor.length >= max) return;
+      if (letra === " ") { if (valor && !valor.endsWith(" ")) valor += " "; }
+      else valor += !valor || valor.endsWith(" ") ? letra.toLocaleUpperCase("pt-BR") : letra.toLocaleLowerCase("pt-BR");
+      pintar();
+    };
+    const apagar = () => { valor = valor.slice(0, -1); pintar(); };
+    if (sugestoes && sugestoes.length) {
+      const sg = document.createElement("div");
+      sg.className = "teclado-sugestoes";
+      sugestoes.forEach(nm => {
+        const b = document.createElement("button");
+        b.className = "chip";
+        b.textContent = nm;
+        b.addEventListener("click", () => { valor = separarEmoji(nm)[1].slice(0, max); pintar(); falar(valor); });
+        sg.appendChild(b);
+      });
+      caixa.appendChild(sg);
+    }
+    ["QWERTYUIOP", "ASDFGHJKLÇ", "ZXCVBNM", "ÁÉÍÓÚÃÕÂÊÔ"].forEach(l => {
+      const ln = document.createElement("div");
+      ln.className = "teclado-linha";
+      [...l].forEach(ch => {
+        const b = document.createElement("button");
+        b.className = "tecla";
+        b.textContent = ch;
+        b.addEventListener("click", () => { por(ch); falar(ch.toLowerCase()); });
+        ln.appendChild(b);
+      });
+      caixa.appendChild(ln);
     });
-    const jogar = document.createElement("button");
-    jogar.className = "chip jogar";
-    jogar.textContent = "▶️ Jogar";
-    jogar.addEventListener("click", () => {
-      try { localStorage.setItem(chave, JSON.stringify(op)); } catch (e) { /* sem armazenamento */ }
-      aoJogar({ ...op });
-    });
-    caixa.appendChild(jogar);
-    area.appendChild(caixa);
-    falar("Escolha como quer jogar e toque em jogar!");
+    const fim = document.createElement("div");
+    fim.className = "teclado-linha";
+    const apg = document.createElement("button");
+    apg.className = "tecla larga";
+    apg.textContent = "⌫ Apagar";
+    apg.addEventListener("click", apagar);
+    const esp = document.createElement("button");
+    esp.className = "tecla espaco";
+    esp.textContent = "espaço";
+    esp.addEventListener("click", () => por(" "));
+    ok.addEventListener("click", () => { document.removeEventListener("keydown", fisico); aoPronto(valor.trim()); });
+    fim.append(apg, esp, ok);
+    caixa.appendChild(fim);
+    // o teclado do computador também escreve
+    const fisico = e => {
+      if (!document.contains(caixa)) { document.removeEventListener("keydown", fisico); return; }
+      if (e.doControle || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (e.key === "Backspace") { e.preventDefault(); apagar(); }
+      else if (e.key.length === 1 && /[\p{L} ]/u.test(e.key)) { e.preventDefault(); por(e.key); }
+    };
+    document.addEventListener("keydown", fisico);
+    pintar();
+    return caixa;
   }
 
   // ---------- Modos prontos ----------
@@ -764,7 +943,7 @@ const Motor = (() => {
   }
 
   return {
-    novaSessao, sessaoAtual, depois, falar, tocarSom, somLigado, audio, alternarSom, botaoSom, ajustarTextos, nota, ruido, ploc, tim,
+    novaSessao, sessaoAtual, depois, falar, teclado, separarEmoji, tocarSom, somLigado, audio, alternarSom, botaoSom, ajustarTextos, nota, ruido, ploc, tim,
     embaralhar, sortear, aleatorio, maiuscula, elogio, ehPequeno, opcoesNumericas,
     animar, comemorar, criarCartao, desenharTexto, botaoCanto, telaFim, arrastavel, comEmoji, comTexto,
     telaOpcoes, escolherModo, modoExplorar, modoQuiz, modoCade, modoMontar, modoArrastar, vocabulario,

@@ -204,12 +204,12 @@
     { chave: "jogadores", titulo: "Jogadores", valores: [["2", "2"], ["3", "3"], ["4", "4"]] },
     { chave: "pessoas", titulo: "Quantas pessoas (o resto é computador)", valores: [["1", "🧒 1"], ["2", "👥 2"], ["3", "3"], ["4", "4"]] },
     { chave: "cor", titulo: "Cor de quem começa", valores: CORES.map((c, i) => [String(i), `${c.emoji} ${c.Nome}`]) },
-    { chave: "nivel", titulo: "Computador", valores: [["facil", NIVEIS.facil], ["esperto", NIVEIS.esperto]] },
-    { chave: "sair", titulo: "Sair de casa", valores: [["6", "🎲 Só com 6"], ["16", "🙂 Com 1 ou 6"]] },
-    { chave: "tres6", titulo: "Três 6 seguidos", valores: [["perde", "🚫 Perde a vez"], ["nada", "🙂 Pode"]] },
-    { chave: "barreira", titulo: "Barreira (2 peões juntos)", valores: [["sim", "🧱 Ninguém passa"], ["nao", "🙂 Sem barreira"]] },
-    { chave: "final", titulo: "Chegar ao centro", valores: [["exato", "🎯 Número exato"], ["livre", "🙂 Sobrou, chegou"]] },
-    { chave: "bonus", titulo: "Capturou ou chegou ao centro", valores: [["sim", "🎁 Joga de novo"], ["nao", "➖ Passa a vez"]] },
+    { chave: "nivel", quando: op => +op.pessoas < +op.jogadores, titulo: "Computador", valores: [["facil", NIVEIS.facil], ["esperto", NIVEIS.esperto]] },
+    { chave: "sair", regra: true, titulo: "Sair de casa", valores: [["6", "🎲 Só com 6"], ["16", "🙂 Com 1 ou 6"]] },
+    { chave: "tres6", regra: true, titulo: "Três 6 seguidos", valores: [["perde", "🚫 Perde a vez"], ["nada", "🙂 Pode"]] },
+    { chave: "barreira", regra: true, titulo: "Barreira (2 peões juntos)", valores: [["sim", "🧱 Ninguém passa"], ["nao", "🙂 Sem barreira"]] },
+    { chave: "final", regra: true, titulo: "Chegar ao centro", valores: [["exato", "🎯 Número exato"], ["livre", "🙂 Sobrou, chegou"]] },
+    { chave: "bonus", regra: true, titulo: "Capturou ou chegou ao centro", valores: [["sim", "🎁 Joga de novo"], ["nao", "➖ Passa a vez"]] },
   ];
   const PADRAO = {
     "5-6":  { jogadores: "2", pessoas: "1", cor: "0", nivel: "facil", sair: "16", tres6: "nada", barreira: "nao", final: "livre", bonus: "nao" },

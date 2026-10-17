@@ -674,12 +674,12 @@ onmessage = e => { const d = e.data; let m = null; try { m = X.melhor(d.pos, d.n
   // =====================================================================
   const OPCOES = [
     { chave: "modo", titulo: "Jogar contra", valores: [["robo", "🤖 Computador"], ["dois", "👥 2 jogadores"]] },
-    { chave: "nivel", titulo: "Computador", valores: [["facil", "😊 Fácil"], ["medio", "🧠 Médio"], ["dificil", "🦉 Difícil"]] },
+    { chave: "nivel", quando: op => op.modo !== "dois", titulo: "Computador", valores: [["facil", "😊 Fácil"], ["medio", "🧠 Médio"], ["dificil", "🦉 Difícil"]] },
     { chave: "cor", titulo: "Suas peças", valores: [["b", "⚪ Brancas (começam)"], ["p", "⚫ Pretas"]] },
-    { chave: "dicas", titulo: "Mostrar para onde a peça vai", valores: [["sim", "💡 Sim"], ["nao", "🙈 Não"]] },
-    { chave: "avisos", titulo: "Avisos de xeque e de perigo", valores: [["sim", "🔔 Sim"], ["nao", "🔕 Não"]] },
-    { chave: "promo", titulo: "Peão que chega ao fim vira", valores: [["dama", "👑 Sempre dama"], ["escolher", "🤔 Eu escolho"]] },
-    { chave: "girar", titulo: "2 jogadores: girar o tabuleiro", valores: [["sim", "🔄 Sim"], ["nao", "⏹️ Não"]] },
+    { chave: "dicas", regra: true, titulo: "Mostrar para onde a peça vai", valores: [["sim", "💡 Sim"], ["nao", "🙈 Não"]] },
+    { chave: "avisos", regra: true, titulo: "Avisos de xeque e de perigo", valores: [["sim", "🔔 Sim"], ["nao", "🔕 Não"]] },
+    { chave: "promo", regra: true, titulo: "Peão que chega ao fim vira", valores: [["dama", "👑 Sempre dama"], ["escolher", "🤔 Eu escolho"]] },
+    { chave: "girar", regra: true, quando: op => op.modo === "dois", titulo: "2 jogadores: girar o tabuleiro", valores: [["sim", "🔄 Sim"], ["nao", "⏹️ Não"]] },
   ];
   const PADRAO = {
     "6-8": { modo: "robo", nivel: "facil", cor: "b", dicas: "sim", avisos: "sim", promo: "dama", girar: "sim" },

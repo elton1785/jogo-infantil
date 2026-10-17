@@ -32,11 +32,11 @@
     { chave: "tipo", titulo: "Tipo de jogo", valores: [["normal", "🎯 Tradicional"], ["cinco", "5️⃣ Pontas de 5"]] },
     { chave: "pecas", titulo: "Peças", valores: [["figuras", "🐶 Bichinhos"], ["numeros", "🔢 Números"], ["pontos", "⚫ Bolinhas"]] },
     { chave: "jogadores", titulo: "Jogadores", valores: [["2", "👤 2"], ["3", "👥 3"], ["4", "👥 4"], ["duplas", "🤝 Duplas"]] },
-    { chave: "compra", titulo: "Comprar no monte", valores: [["sim", "🛒 Sim"], ["nao", "🚫 Não"]] },
-    { chave: "meta", titulo: "Partida", valores: [["0", "1 rodada"], ["50", "50 pontos"], ["100", "100 pontos"], ["200", "200 pontos"]] },
+    { chave: "compra", regra: true, titulo: "Comprar no monte", valores: [["sim", "🛒 Sim"], ["nao", "🚫 Não"]] },
+    { chave: "meta", regra: true, titulo: "Partida", valores: [["0", "1 rodada"], ["50", "50 pontos"], ["100", "100 pontos"], ["200", "200 pontos"]] },
     { chave: "nivel", titulo: "Computador", valores: [["facil", "😊 Fácil"], ["esperto", "🧠 Esperto"]] },
-    { chave: "dicas", titulo: "Mostrar dicas", valores: [["sim", "💡 Sim"], ["nao", "🙈 Não"]] },
-    { chave: "tempo", titulo: "Tempo para jogar", valores: [["20", "⏱️ 20 segundos"], ["0", "♾️ Sem limite"]] },
+    { chave: "dicas", regra: true, titulo: "Mostrar dicas", valores: [["sim", "💡 Sim"], ["nao", "🙈 Não"]] },
+    { chave: "tempo", regra: true, titulo: "Tempo para jogar", valores: [["20", "⏱️ 20 segundos"], ["0", "♾️ Sem limite"]] },
   ];
   const PADRAO = {
     "5-6":  { tipo: "normal", pecas: "numeros", jogadores: "2", compra: "sim", meta: "0", nivel: "facil", dicas: "sim", tempo: "0" },

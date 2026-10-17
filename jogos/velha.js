@@ -5,9 +5,9 @@
 (() => {
   const OPCOES = [
     { chave: "modo", titulo: "Jogar contra", valores: [["robo", "🤖 Computador"], ["dois", "👥 2 jogadores"]] },
-    { chave: "nivel", titulo: "Computador", valores: [["facil", "😊 Fácil"], ["medio", "🧠 Médio"], ["impossivel", "🦉 Impossível"]] },
+    { chave: "nivel", quando: op => op.modo !== "dois", titulo: "Computador", valores: [["facil", "😊 Fácil"], ["medio", "🧠 Médio"], ["impossivel", "🦉 Impossível"]] },
     { chave: "pecas", titulo: "Peças", valores: [["xo", "❌ ⭕"], ["bichos", "🐶 🐱"]] },
-    { chave: "comeca", titulo: "Quem começa", valores: [["revezar", "🔄 Revezar"], ["eu", "🧒 Sempre você"], ["robo", "🤖 Sempre o outro"]] },
+    { chave: "comeca", regra: true, titulo: "Quem começa", valores: [["revezar", "🔄 Revezar"], ["eu", "🧒 Sempre você"], ["robo", "🤖 Sempre o outro"]] },
   ];
   const PADRAO = {
     "4-5":  { modo: "robo", nivel: "facil", pecas: "bichos", comeca: "revezar" },

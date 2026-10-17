@@ -102,7 +102,7 @@ const Controle = (() => {
   }
   // Primeiro destaque: o botão principal se houver (Jogar, Entendi...), senão o de cima à esquerda
   function primeiro(lista) {
-    const principal = lista.find(el => el.matches(".jogar, .executar"));
+    const principal = lista.find(el => el.matches(".modo.ativo")) || lista.find(el => el.matches(".jogar, .executar")); // nos passos de escolha: o cartão escolhido da última vez
     if (principal) return principal;
     const semCanto = lista.filter(el => !el.matches(".canto"));
     return (semCanto.length ? semCanto : lista).slice().sort((a, b) => {
@@ -141,7 +141,7 @@ const Controle = (() => {
       voltar();
       return;
     }
-    const seta = SETAS[k], ok = k === "Enter" || (k === " " && !jogoTeclas());
+    const seta = SETAS[k], ok = k === "Enter" || (k === " " && !jogoTeclas() && !(document.querySelector(".teclado") && !e.doControle)); // espaço do teclado escreve no teclado da tela
     if (!seta && !ok) return;
     modoControle = true;
     document.body.classList.add("modo-controle");

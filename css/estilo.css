@@ -1239,3 +1239,46 @@ button { font-family: inherit; }
 .mundo-mochila > * { flex: none; }
 .mundo-mochila-grade { overflow: visible; }
 .mundo-receitas { max-height: none; overflow: visible; }
+
+/* ---------- Escolhas passo a passo (Motor.telaOpcoes) ---------- */
+.modos.passo-tela { gap: 18px; max-width: 1100px; align-content: center; }
+.passo-titulo { flex-basis: 100%; grid-column: 1 / -1; text-align: center; font-weight: bold; font-size: clamp(22px, 3.4vw, 38px); color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.18); margin-bottom: 2px; }
+.passo-tela .modo { width: min(42vw, 30vh, 240px); aspect-ratio: auto; min-height: min(36vw, 26vh, 200px); padding: 12px 10px 14px; gap: 8px; border-radius: 28px; }
+.passo-tela .modo .icone { font-size: min(16vw, 11vh, 96px); display: flex; align-items: center; justify-content: center; text-align: center; }
+.passo-tela .modo .icone.numero { font-size: min(18vw, 12vh, 104px); color: #1d6fb8; }
+.passo-tela .modo .icone svg { width: min(26vw, 15vh, 130px); height: min(26vw, 15vh, 130px); }
+.passo-tela .modo .icone canvas { display: block; width: 100%; height: auto; border-radius: 18px; }
+.passo-tela .modo .icone:has(canvas) { width: 100%; }
+.passo-tela .modo .icone .fut-fig { width: auto; max-width: 100%; max-height: min(20vh, 170px); border-radius: 0; }
+.passo-tela .modo .rotulo { font-size: clamp(16px, 2.2vw, 23px); text-align: center; line-height: 1.15; }
+.passo-tela .modo.ativo { outline: 5px solid #ffd60a; outline-offset: 2px; }
+.passo-tela.muitos { gap: 12px; }
+.passo-tela.muitos .modo { width: min(28vw, 22vh, 170px); min-height: 0; }
+.passo-tela.muitos .modo .icone { font-size: min(11vw, 8vh, 64px); }
+/* Tudo pronto: o que foi escolhido, as regras e Jogar */
+.resumo-opcoes { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.resumo-escolhas { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
+.resumo-item { display: flex; align-items: center; gap: 10px; border: none; cursor: pointer; background: var(--cartao); border-radius: 20px; padding: 8px 16px 8px 10px; box-shadow: 0 5px 0 var(--sombra); font: inherit; text-align: left; max-width: 100%; }
+.resumo-item .icone { font-size: 36px; line-height: 1; display: flex; }
+.resumo-item .icone svg, .resumo-item .icone canvas { width: 64px; height: auto; max-height: 52px; object-fit: contain; }
+.resumo-item small { display: block; font-size: 13px; color: #5b6b80; font-weight: bold; }
+.resumo-item b { font-size: 18px; }
+.resumo-item:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--sombra); }
+.resumo-regras { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; width: 100%; }
+.resumo-regras-titulo { grid-column: 1 / -1; text-align: center; color: #fff; font-weight: bold; font-size: 20px; text-shadow: 0 2px 0 rgba(0,0,0,.15); }
+.resumo-opcoes > .chip.jogar { font-size: 28px; padding: 12px 44px; }
+/* Teclado da tela (nomes) */
+.passo-texto { flex-direction: column; align-items: center; flex-wrap: nowrap; }
+.teclado { display: flex; flex-direction: column; align-items: center; gap: 7px; width: min(96vw, 780px); }
+.teclado-visor { width: min(92vw, 520px); background: #fff; border: 4px solid #2f80ed; border-radius: 20px; padding: 8px 18px; font-weight: bold; font-size: clamp(26px, 4.4vw, 40px); color: #1d3557; text-align: center; min-height: 1.6em; box-shadow: 0 5px 0 var(--sombra); }
+.teclado-visor::after { content: "|"; margin-left: 2px; color: #2f80ed; animation: piscaCursor 1s steps(1) infinite; }
+.teclado-visor.vazio { color: #9aa8b8; }
+@keyframes piscaCursor { 50% { opacity: 0; } }
+.teclado-sugestoes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.teclado-sugestoes .chip { font-size: 17px; padding: 6px 12px; }
+.teclado-linha { display: flex; gap: 5px; justify-content: center; width: 100%; }
+.tecla { flex: 1 1 0; max-width: 64px; min-width: 0; height: clamp(40px, 7vh, 58px); border: none; border-radius: 12px; background: var(--cartao); box-shadow: 0 4px 0 var(--sombra); font: inherit; font-weight: bold; font-size: clamp(17px, 3vw, 26px); color: #1d3557; cursor: pointer; padding: 0; }
+.tecla:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--sombra); }
+.tecla.larga { flex: 0 0 auto; max-width: none; padding: 0 16px; font-size: clamp(15px, 2.4vw, 20px); background: #ffe3e3; }
+.tecla.espaco { flex: 1 1 auto; max-width: 260px; font-size: clamp(15px, 2.4vw, 20px); }
+.teclado-linha .chip.jogar { flex: 0 0 auto; height: clamp(40px, 7vh, 58px); padding: 0 20px; font-size: clamp(16px, 2.6vw, 22px); }

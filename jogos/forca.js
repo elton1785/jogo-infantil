@@ -148,7 +148,7 @@
     { chave: "modo", titulo: "Jogar", valores: [["sozinho", "🧒 Sozinho"], ["dois", "👥 2 jogadores"]] },
     { chave: "tema", titulo: "Tema", valores: [["todos", "🎲 Misturado"], ...Object.entries(TEMAS).map(([k, t]) => [k, `${t.icone} ${t.nome}`])] },
     { chave: "nivel", titulo: "Palavras", valores: [["curta", "🌱 Curtas (até 5 letras)"], ["media", "🌿 Médias (6 e 7)"], ["longa", "🌳 Longas (8 ou mais)"]] },
-    { chave: "dica", titulo: "Figura da dica", valores: [["ja", "👀 Já aparece"], ["pedir", "💡 Só quando pedir"]] },
+    { chave: "dica", regra: true, titulo: "Figura da dica", valores: [["ja", "👀 Já aparece"], ["pedir", "💡 Só quando pedir"]] },
   ];
   const PADRAO = {
     "6-8": { modo: "sozinho", tema: "todos", nivel: "curta", dica: "ja" },

@@ -221,11 +221,11 @@
   // ---------- Opções ----------
   const OPCOES = [
     { chave: "modo", titulo: "Jogar contra", valores: [["robo", "🤖 Computador"], ["dois", "👥 2 jogadores"]] },
-    { chave: "nivel", titulo: "Computador", valores: [["facil", "😊 Fácil"], ["medio", "🧠 Médio"], ["dificil", "🦉 Difícil"]] },
-    { chave: "voo", titulo: "Com 3 peças", valores: [["sim", "🦋 Pode voar"], ["nao", "🚶 Só anda"]] },
-    { chave: "comeca", titulo: "Quem começa", valores: [["revezar", "🔄 Revezar"], ["eu", "🧒 Sempre você"], ["robo", "🤖 Sempre o outro"]] },
+    { chave: "nivel", quando: op => op.modo !== "dois", titulo: "Computador", valores: [["facil", "😊 Fácil"], ["medio", "🧠 Médio"], ["dificil", "🦉 Difícil"]] },
+    { chave: "voo", regra: true, titulo: "Com 3 peças", valores: [["sim", "🦋 Pode voar"], ["nao", "🚶 Só anda"]] },
+    { chave: "comeca", regra: true, titulo: "Quem começa", valores: [["revezar", "🔄 Revezar"], ["eu", "🧒 Sempre você"], ["robo", "🤖 Sempre o outro"]] },
     { chave: "pecas", titulo: "Peças", valores: [["coloridas", "🔴 🔵 Coloridas"], ["classicas", "⚪ ⚫ Clássicas"]] },
-    { chave: "dicas", titulo: "Mostrar jogadas", valores: [["sim", "💡 Sim"], ["nao", "🙈 Não"]] },
+    { chave: "dicas", regra: true, titulo: "Mostrar jogadas", valores: [["sim", "💡 Sim"], ["nao", "🙈 Não"]] },
   ];
   const PADRAO = {
     "6-8":  { modo: "robo", nivel: "facil", voo: "sim", comeca: "revezar", pecas: "coloridas", dicas: "sim" },

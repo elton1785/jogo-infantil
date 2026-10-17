@@ -67,9 +67,9 @@
     const LW = 150, LH = 70, dpr = window.devicePixelRatio || 1;
     Object.assign(previa, { width: LW * 2 * dpr, height: LH * 2 * dpr });
     const pc = previa.getContext("2d");
-    const t0 = performance.now();
+    const t0 = performance.now(), sessao = Motor.sessaoAtual();
     (function animar() {
-      if (!document.contains(previa) && performance.now() - t0 > 1000) return;
+      if (sessao !== Motor.sessaoAtual()) return; // a prévia só aparece no fim das escolhas: anima enquanto o jogo estiver aberto
       const t = (performance.now() - t0) / 1000;
       pc.setTransform(2 * dpr, 0, 0, 2 * dpr, 0, 0);
       pc.clearRect(0, 0, LW, LH);
@@ -85,12 +85,28 @@
     Motor.telaOpcoes(area, {
       chave: CHAVE, padrao: PADRAO, antes: previa,
       opcoes: [
-        { chave: "personagem", titulo: "Quem vai correr?", valores: Object.entries(CORREDORES).map(([id, c]) => [id, c.nome]) },
+        { chave: "personagem", titulo: "Quem vai correr?", valores: Object.entries(CORREDORES).map(([id, c]) => [id, c.nome, () => figura(id)]) },
         { chave: "modo", titulo: "Velocidade", valores: [["calmo", "🐢 Calmo"], ["normal", "🐇 Normal"], ["rapido", "🚀 Rápido"]] },
       ],
       aoMudar: (op, chave) => { if (chave === "personagem") { escolhido = op.personagem; Motor.falar(`Vai correr ${CORREDORES[escolhido].fala}!`); } },
       aoJogar: op => jogo(area, op.modo, CORREDORES[op.personagem] ? op.personagem : "dino"),
     });
+  }
+  // Figura do cartão de escolha: o bicho parado na areia
+  function figura(id) {
+    const cv = document.createElement("canvas"), W = 150, H = 96;
+    cv.width = W * 2; cv.height = H * 2;
+    const c = cv.getContext("2d");
+    c.scale(2, 2);
+    const g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#bfe6ff"); g.addColorStop(1, "#e8f6ff");
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.fillStyle = "#e9c46a"; c.fillRect(0, H - 14, W, 14);
+    c.save(); c.translate(W / 2 + 4, H - 14); c.scale(1.35, 1.35);
+    sombra(c, 0);
+    CORREDORES[id].desenhar(c, { fi: 0, correndo: false, t: 0, piscando: false });
+    c.restore();
+    return cv;
   }
   // Sombra no chão: menor e mais clara quanto mais alto o bicho está
   function sombra(c, h) {

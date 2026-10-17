@@ -14,8 +14,8 @@
   const FRUTAS = ["🍎", "🍌", "🍇", "🍓", "🍊", "🍉"];
   const OPCOES = [
     { chave: "tamanho", titulo: "Tamanho", valores: [["4", "🐣 4×4"], ["6", "🐥 6×6"], ["9f", "🦉 9×9 fácil"], ["9m", "🦅 9×9 médio"]] },
-    { chave: "simbolos", titulo: "No 4×4 e no 6×6, usar", valores: [["numeros", "🔢 Números"], ["frutas", "🍎 Frutas"]] },
-    { chave: "erros", titulo: "Mostrar erros", valores: [["sim", "🟥 Sim"], ["nao", "🙈 Não"]] },
+    { chave: "simbolos", quando: op => op.tamanho === "4" || op.tamanho === "6", titulo: "No 4×4 e no 6×6, usar", valores: [["numeros", "🔢 Números"], ["frutas", "🍎 Frutas"]] },
+    { chave: "erros", regra: true, titulo: "Mostrar erros", valores: [["sim", "🟥 Sim"], ["nao", "🙈 Não"]] },
   ];
   const PADRAO = {
     "6-8":  { tamanho: "4", simbolos: "numeros", erros: "sim" },

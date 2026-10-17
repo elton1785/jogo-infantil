@@ -70,42 +70,72 @@
 
   // ---------- Tela de opções ----------
   const CHAVE = "futebol-opcoes";
-  const PADRAO = { modo: "penaltis", jogadores: 1, nivel: "facil", cor1: "azul", cor2: "vermelho" };
+  const PADRAO = { modo: "penaltis", jogadores: 1, nivel: "facil", cor1: "azul", cor2: "vermelho", nome1: "", nome2: "" };
 
-  function camisaSVG(cor, num) {
-    const c = CORES[cor];
-    return `<svg viewBox="0 0 80 76" aria-hidden="true"><path d="M22 6 L32 2 Q40 10 48 2 L58 6 L76 20 L66 33 L58 28 L58 72 Q40 76 22 72 L22 28 L14 33 L4 20 Z" fill="${c.c}" stroke="${c.e}" stroke-width="3" stroke-linejoin="round"/><path d="M32 2 Q40 10 48 2" fill="none" stroke="${c.e}" stroke-width="4"/><text x="40" y="56" text-anchor="middle" font-size="26" font-weight="700" fill="${c.texto || "#fff"}" font-family="Fredoka, sans-serif">${num}</text></svg>`;
+  // Escolhas uma de cada vez (Motor.telaOpcoes): modo, jogadores, nível, a camisa de cada time
+  // (com o jogador vestindo) e o nome de cada time, digitado no teclado da tela.
+  const SUGESTOES_TIME = ["🦁 Leões", "🐯 Tigres", "🦅 Águias", "🦈 Tubarões", "🚀 Foguetes", "⚡ Raios", "🐆 Onças", "🐉 Dragões", "⭐ Estrelas", "🌪️ Furacões"];
+  const nomeDe = (op, t) => op["nome" + t] || nomeTime(op["cor" + t]);
+  // Jogador de pé, de frente, com a camisa do time (canvas para os cartões e para a prévia)
+  function figuraJogador(cor, num, pele, cabelo, estilo, W = 150, H = 160) {
+    const cv = document.createElement("canvas");
+    cv.width = W * 2; cv.height = H * 2; cv.className = "fut-fig";
+    const c = cv.getContext("2d"), k = CORES[cor], e = H / 2.55;
+    c.setTransform(2 * e, 0, 0, 2 * e, W, (H - 6) * 2);
+    c.fillStyle = "rgba(0,0,0,.18)"; c.beginPath(); c.ellipse(0, 0, 0.55, 0.12, 0, 0, Math.PI * 2); c.fill();
+    boneco(c, { camisa: k.c, escuro: k.e, calcao: "#ffffff", meiao: k.c, faixaMeiao: "#ffffff", pele, cabelo, estilo, numero: String(num), textoCor: k.texto || "#fff", frente: true });
+    return cv;
   }
+  const jogadorDoTime = (cor, t) => (t === 1 ? figuraJogador(cor, 10, PELES[2], CABELOS[0], 0) : figuraJogador(cor, 7, PELES[0], CABELOS[3], 3));
+  // Dois jogadores lado a lado (cartão "quantos jogadores"), com 🤖 em cima de quem é o computador
+  function figuraDupla(op, robo) {
+    const W = 200, H = 150, cv = document.createElement("canvas");
+    cv.width = W * 2; cv.height = H * 2; cv.className = "fut-fig";
+    const c = cv.getContext("2d");
+    [[jogadorDoTime(op.cor1, 1), 0], [jogadorDoTime(op.cor2, 2), 1]].forEach(([f, i]) => c.drawImage(f, i * W * 0.95, H * 2 - 226, W * 1.05, 224));
+    c.font = "56px sans-serif"; c.textAlign = "center";
+    c.fillText("🧒", W * 0.5, 56);
+    c.fillText(robo ? "🤖" : "🧒", W * 1.5, 56);
+    return cv;
+  }
+  const SVG_PENALTI = '<svg viewBox="0 0 120 100" aria-hidden="true"><rect width="120" height="100" rx="14" fill="#7cc6fe"/><path d="M0 62h120v38H0z" fill="#4caf50"/><path d="M0 70h120M0 84h120" stroke="#43a047" stroke-width="6"/><rect x="22" y="20" width="76" height="44" fill="none" stroke="#fff" stroke-width="5"/><path d="M27 25h66M27 35h66M27 45h66M27 55h66M37 22v40M50 22v40M63 22v40M76 22v40M89 22v40" stroke="#fff" stroke-width="1.2" opacity=".7"/><circle cx="60" cy="84" r="10" fill="#fff" stroke="#333" stroke-width="2"/><path d="M60 78l5 4-2 6h-6l-2-6z" fill="#333"/></svg>';
+  const SVG_PARTIDA = '<svg viewBox="0 0 120 100" aria-hidden="true"><rect width="120" height="100" rx="14" fill="#43a047"/><path d="M0 0h20v100H0zM40 0h20v100H40zM80 0h20v100H80z" fill="#4caf50"/><rect x="8" y="10" width="104" height="80" fill="none" stroke="#fff" stroke-width="3"/><path d="M60 10v80" stroke="#fff" stroke-width="3"/><circle cx="60" cy="50" r="13" fill="none" stroke="#fff" stroke-width="3"/><rect x="8" y="34" width="14" height="32" fill="none" stroke="#fff" stroke-width="3"/><rect x="98" y="34" width="14" height="32" fill="none" stroke="#fff" stroke-width="3"/><circle cx="70" cy="56" r="5" fill="#fff" stroke="#333" stroke-width="1.5"/><circle cx="44" cy="40" r="5" fill="#1c7ed6"/><circle cx="84" cy="64" r="5" fill="#e03131"/></svg>';
 
   function opcoes(area, faixa) {
+    // prévia do confronto, na tela "Tudo pronto!": os dois jogadores com as camisas e os nomes
     const previa = el("div", "fut-previa");
     const pintar = op => {
       const dois = op.jogadores === 2;
-      previa.innerHTML = `<div class="fut-time">${camisaSVG(op.cor1, 10)}<span>${dois ? "Jogador 1" : "Você"}</span></div>` +
-        `<div class="fut-x">x</div><div class="fut-time">${camisaSVG(op.cor2, 7)}<span>${dois ? "Jogador 2" : "Computador"}</span></div>`;
+      previa.innerHTML = "";
+      [1, 2].forEach(t => {
+        if (t === 2) { const x = el("div", "fut-x"); x.textContent = "x"; previa.appendChild(x); }
+        const d = el("div", "fut-time");
+        const nm = el("b"); nm.textContent = nomeDe(op, t);
+        const quem = el("span"); quem.textContent = dois ? `Jogador ${t}` : t === 1 ? "Você" : "Computador";
+        d.append(jogadorDoTime(op["cor" + t], t), nm, quem);
+        previa.appendChild(d);
+      });
     };
     let salvo = {};
     try { salvo = JSON.parse(localStorage.getItem(CHAVE)) || {}; } catch (e) { /* sem armazenamento */ }
     const op0 = { ...PADRAO, ...salvo };
     if (!CORES[op0.cor1] || !CORES[op0.cor2] || op0.cor1 === op0.cor2) { op0.cor1 = "azul"; op0.cor2 = "vermelho"; }
     pintar(op0);
-    const valCores = Object.entries(CORES).map(([id, c]) => [id, `${c.emoji} ${c.nome}`]);
+    const camisas = (t, exceto) => Object.entries(CORES).filter(([id]) => id !== exceto).map(([id, c]) => [id, c.nome, () => jogadorDoTime(id, t)]);
     Motor.telaOpcoes(area, {
       chave: CHAVE, padrao: PADRAO, antes: previa,
       opcoes: [
-        { chave: "modo", titulo: "Modo", valores: [["penaltis", "⚽ Pênaltis"], ["partida", "🏟️ Partida"]] },
-        { chave: "jogadores", titulo: "Jogadores", valores: [[1, "🤖 1 contra o computador"], [2, "👫 2 jogadores"]] },
-        { chave: "nivel", titulo: "Nível do computador", valores: [["facil", "😊 Fácil"], ["medio", "🧠 Médio"], ["dificil", "🦉 Difícil"]] },
-        { chave: "cor1", titulo: "Camisa do time 1", valores: valCores },
-        { chave: "cor2", titulo: "Camisa do time 2", valores: valCores },
+        { chave: "modo", titulo: "O que vamos jogar?", valores: [["penaltis", "Pênaltis", SVG_PENALTI], ["partida", "Partida", SVG_PARTIDA]] },
+        { chave: "jogadores", titulo: "Quem vai jogar?", valores: [[1, "Contra o computador", op => figuraDupla(op, true)], [2, "2 jogadores", op => figuraDupla(op, false)]] },
+        { chave: "nivel", titulo: "Nível do computador", quando: op => op.jogadores !== 2, valores: [["facil", "😊 Fácil"], ["medio", "🧠 Médio"], ["dificil", "🦉 Difícil"]] },
+        { chave: "cor1", titulo: op => (op.jogadores === 2 ? "Camisa do jogador 1" : "A camisa do seu time"), valores: () => camisas(1) },
+        { chave: "nome1", tipo: "texto", titulo: op => (op.jogadores === 2 ? "Nome do time do jogador 1" : "Nome do seu time"), dica: op => nomeTime(op.cor1), sugestoes: SUGESTOES_TIME },
+        { chave: "cor2", titulo: op => (op.jogadores === 2 ? "Camisa do jogador 2" : "A camisa do computador"), valores: op => camisas(2, op.cor1) },
+        { chave: "nome2", tipo: "texto", titulo: op => (op.jogadores === 2 ? "Nome do time do jogador 2" : "Nome do time do computador"), dica: op => nomeTime(op.cor2), sugestoes: SUGESTOES_TIME },
       ],
       aoMudar: (op, chave) => {
         if (chave === "cor1" && op.cor2 === op.cor1) op.cor2 = Object.keys(CORES).find(k => k !== op.cor1);
-        if (chave === "cor2" && op.cor1 === op.cor2) op.cor1 = Object.keys(CORES).find(k => k !== op.cor2);
         pintar(op);
-        if (chave === "cor1" || chave === "cor2") Motor.falar(nomeTime(op[chave]));
-        else if (chave === "modo") Motor.falar(op.modo === "penaltis" ? "Disputa de pênaltis!" : "Partida no campo inteiro!");
-        else if (chave === "jogadores") Motor.falar(op.jogadores === 2 ? "Dois jogadores!" : "Contra o computador!");
       },
       aoJogar: op => jogo(area, op, faixa),
     });
@@ -219,7 +249,7 @@
 
   // Bonequinho em pé (pênaltis), em metros: origem nos pés, y para cima é negativo.
   // o: { camisa, escuro, calcao, meiao, faixaMeiao, pele, cabelo, estilo, numero, textoCor, frente, maos, luvas, peE, peD }
-  // Estilo do cabelo: 0 curto, 1 crespo volumoso, 2 raspado, 3 com coque.
+  // Estilo do cabelo: 0 curto com franja, 1 crespo volumoso, 2 raspado, 3 topete arrepiado.
   function boneco(c, o) {
     c.lineCap = "round"; c.lineJoin = "round";
     const peleSombra = tom(o.pele, -0.18);
@@ -304,56 +334,62 @@
     c.fillStyle = o.textoCor;
     c.fillText(o.numero, o.frente ? 13 : 0, o.frente ? -143 : -130);
     c.restore();
-    // pescoço e cabeça (com sombreado)
+    // pescoço e cabeça: cabeça grandinha (jeito de criança), olhos grandes com brilho, bochechas
+    // rosadas e cabelo sempre cheio (o raspado não fica parecendo careca)
     c.fillStyle = peleSombra; c.fillRect(-0.07, -1.69, 0.14, 0.1);
     const est = o.estilo || 0;
     const gh = degrade("h" + o.pele, () => { const g = c.createRadialGradient(-0.07, -1.89, 0.03, 0, -1.82, 0.22);
       g.addColorStop(0, tom(o.pele, 0.15)); g.addColorStop(0.7, o.pele); g.addColorStop(1, peleSombra); return g; });
+    const cabeca = () => { c.save(); c.translate(0, -1.64); c.scale(1.28, 1.28); c.translate(0, 1.64); };
+    if (!o.frente) {
+      // gola redonda, de costas
+      c.strokeStyle = o.escuro; c.lineWidth = 0.05;
+      c.beginPath(); c.arc(0, -1.66, 0.11, Math.PI * 0.05, Math.PI * 0.95); c.stroke();
+    }
+    cabeca();
+    c.fillStyle = gh;
+    c.beginPath(); c.arc(-0.2, -1.81, 0.045, 0, Math.PI * 2); c.arc(0.2, -1.81, 0.045, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(0, -1.82, 0.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = o.cabelo;
     if (o.frente) {
-      c.fillStyle = gh;
-      c.beginPath(); c.arc(-0.2, -1.81, 0.045, 0, Math.PI * 2); c.arc(0.2, -1.81, 0.045, 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.arc(0, -1.82, 0.2, 0, Math.PI * 2); c.fill();
-      c.fillStyle = o.cabelo;
       if (est === 1) {
         c.beginPath(); c.arc(0, -1.9, 0.22, Math.PI * 0.95, Math.PI * 2.05); c.fill();
         for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(-0.18 + i * 0.09, -2.0 - Math.sin(i / 4 * Math.PI) * 0.06, 0.07, 0, Math.PI * 2); c.fill(); }
-      } else if (est === 2) {
-        c.globalAlpha = 0.75; c.beginPath(); c.arc(0, -1.84, 0.2, Math.PI * 1.05, Math.PI * 1.95); c.fill(); c.globalAlpha = 1;
       } else {
-        c.beginPath(); c.arc(0, -1.85, 0.205, Math.PI * 1.02, Math.PI * 1.98); c.fill();
-        if (est === 3) { c.beginPath(); c.arc(0, -2.06, 0.08, 0, Math.PI * 2); c.fill(); }
+        c.beginPath(); c.arc(0, -1.85, est === 2 ? 0.2 : 0.21, Math.PI * 1.02, Math.PI * 1.98); c.fill();
+        // franja: três mechinhas caindo na testa
+        if (est !== 2) for (let i = -1; i <= 1; i++) { c.beginPath(); c.ellipse(i * 0.08, -1.93, 0.07, 0.045, i * 0.3, 0, Math.PI * 2); c.fill(); }
+        if (est === 3) { c.beginPath(); c.moveTo(-0.12, -1.98); c.lineTo(-0.07, -2.13); c.lineTo(-0.02, -2.0); c.lineTo(0.03, -2.15); c.lineTo(0.07, -2.0); c.lineTo(0.12, -2.11); c.lineTo(0.15, -1.96); c.fill(); } // topete arrepiado
       }
-      // rosto: olhos, sobrancelhas e sorriso (o.olhar desloca o rosto para o lado)
+      // rosto (o.olhar desloca o rosto para o lado)
       const ol = o.olhar || 0;
       if (ol) c.translate(ol, 0);
+      c.fillStyle = "rgba(240,110,90,.2)";
+      c.beginPath(); c.arc(-0.125, -1.755, 0.04, 0, Math.PI * 2); c.arc(0.125, -1.755, 0.04, 0, Math.PI * 2); c.fill();
       c.fillStyle = "#fff";
-      c.beginPath(); c.ellipse(-0.07, -1.82, 0.04, 0.035, 0, 0, Math.PI * 2); c.ellipse(0.07, -1.82, 0.04, 0.035, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = "#222";
-      c.beginPath(); c.arc(-0.065, -1.82, 0.022, 0, Math.PI * 2); c.arc(0.075, -1.82, 0.022, 0, Math.PI * 2); c.fill();
-      c.strokeStyle = o.cabelo; c.lineWidth = 0.022;
-      c.beginPath(); c.moveTo(-0.11, -1.88); c.lineTo(-0.035, -1.875); c.moveTo(0.035, -1.875); c.lineTo(0.11, -1.88); c.stroke();
-      c.strokeStyle = "#5a2a1a";
-      c.beginPath(); c.arc(0, -1.77, 0.065, 0.2 * Math.PI, 0.8 * Math.PI); c.stroke();
+      c.beginPath(); c.ellipse(-0.075, -1.815, 0.05, 0.058, 0, 0, Math.PI * 2); c.ellipse(0.075, -1.815, 0.05, 0.058, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#2a1a12";
+      c.beginPath(); c.arc(-0.07, -1.81, 0.035, 0, Math.PI * 2); c.arc(0.08, -1.81, 0.035, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#fff";
+      c.beginPath(); c.arc(-0.058, -1.825, 0.012, 0, Math.PI * 2); c.arc(0.092, -1.825, 0.012, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = o.cabelo; c.lineWidth = 0.018;
+      c.beginPath(); c.arc(-0.075, -1.86, 0.045, Math.PI * 1.2, Math.PI * 1.8); c.moveTo(0.11, -1.888); c.arc(0.075, -1.86, 0.045, Math.PI * 1.2, Math.PI * 1.8); c.stroke();
+      c.strokeStyle = "#7a2e1e"; c.lineWidth = 0.022;
+      c.beginPath(); c.arc(0, -1.765, 0.06, 0.18 * Math.PI, 0.82 * Math.PI); c.stroke();
       if (ol) c.translate(-ol, 0);
+      c.restore();
       // gola em V
       c.fillStyle = o.escuro; c.beginPath(); c.moveTo(-0.12, -1.61); c.lineTo(0, -1.49); c.lineTo(0.12, -1.61); c.fill();
       c.fillStyle = peleSombra; c.beginPath(); c.moveTo(-0.07, -1.61); c.lineTo(0, -1.53); c.lineTo(0.07, -1.61); c.fill();
     } else {
-      // gola redonda, de costas
-      c.strokeStyle = o.escuro; c.lineWidth = 0.05;
-      c.beginPath(); c.arc(0, -1.66, 0.11, Math.PI * 0.05, Math.PI * 0.95); c.stroke();
-      c.fillStyle = gh;
-      c.beginPath(); c.arc(-0.2, -1.81, 0.045, 0, Math.PI * 2); c.arc(0.2, -1.81, 0.045, 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.arc(0, -1.82, 0.2, 0, Math.PI * 2); c.fill();
-      c.fillStyle = o.cabelo;
       if (est === 1) { c.beginPath(); c.arc(0, -1.88, 0.235, 0, Math.PI * 2); c.fill(); }
-      else if (est === 2) { c.globalAlpha = 0.7; c.beginPath(); c.arc(0, -1.85, 0.19, Math.PI * 0.9, Math.PI * 2.1); c.fill(); c.globalAlpha = 1; }
       else {
-        c.beginPath(); c.arc(0, -1.84, 0.195, 0, Math.PI * 2); c.fill();
-        if (est === 3) { c.beginPath(); c.arc(0, -2.02, 0.085, 0, Math.PI * 2); c.fill(); }
+        c.beginPath(); c.arc(0, -1.84, est === 2 ? 0.19 : 0.195, 0, Math.PI * 2); c.fill();
+        if (est === 3) { c.beginPath(); c.moveTo(-0.12, -1.98); c.lineTo(-0.07, -2.12); c.lineTo(-0.02, -2.0); c.lineTo(0.03, -2.14); c.lineTo(0.07, -2.0); c.lineTo(0.12, -2.1); c.lineTo(0.15, -1.96); c.fill(); }
       }
       c.fillStyle = "rgba(255,255,255,.14)";
       c.beginPath(); c.ellipse(-0.06, -1.94, 0.09, 0.05, -0.4, 0, Math.PI * 2); c.fill();
+      c.restore();
     }
   }
 
@@ -431,35 +467,41 @@
     const nx = o.espelho ? -11 : 11;
     c.strokeText(o.numero, nx, -96); c.fillStyle = o.textoCor; c.fillText(o.numero, nx, -96);
     c.restore();
-    // pescoço e cabeça de perfil: nariz e olho na frente, orelha no meio, cabelo atrás
+    // pescoço e cabeça de perfil (o mesmo jeito de criança da frente): olho grande, narizinho,
+    // bochecha rosada, orelha no meio e cabelo cheio atrás e em cima, com franja
     c.fillStyle = peleSombra; c.fillRect(-0.05, -1.7, 0.13, 0.11);
     const est = o.estilo || 0, hx = 0.03, hy = -1.82;
+    c.save(); c.translate(0.02, -1.64); c.scale(1.28, 1.28); c.translate(-0.02, 1.64);
     c.fillStyle = degrade("ph" + o.pele, () => { const g = c.createRadialGradient(0.1, -1.89, 0.03, hx, hy, 0.22);
       g.addColorStop(0, tom(o.pele, 0.15)); g.addColorStop(0.7, o.pele); g.addColorStop(1, peleSombra); return g; });
     c.beginPath(); c.arc(hx, hy, 0.2, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.arc(hx + 0.2, hy + 0.02, 0.035, 0, Math.PI * 2); c.fill(); // nariz
+    c.beginPath(); c.arc(hx + 0.195, hy + 0.025, 0.026, 0, Math.PI * 2); c.fill(); // narizinho
     c.fillStyle = o.cabelo;
-    const nuca = (r, a1) => { c.beginPath(); c.moveTo(hx, hy); c.arc(hx, hy - 0.02, r, a1, Math.PI * 0.72, true); c.closePath(); c.fill(); };
+    const nuca = (r, a1) => { c.beginPath(); c.moveTo(hx + 0.02, hy + 0.01); c.arc(hx, hy - 0.02, r, a1, Math.PI * 0.75, true); c.closePath(); c.fill(); };
     if (est === 1) {
       nuca(0.235, Math.PI * 1.85);
       for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(hx - 0.15 + i * 0.08, hy - 0.18 - Math.sin(i / 3 * Math.PI) * 0.05, 0.075, 0, Math.PI * 2); c.fill(); }
-    } else if (est === 2) {
-      c.globalAlpha = 0.75; nuca(0.2, Math.PI * 1.8); c.globalAlpha = 1;
     } else {
-      nuca(0.21, Math.PI * 1.8);
-      c.beginPath(); c.moveTo(hx + 0.05, hy - 0.2); c.quadraticCurveTo(hx + 0.2, hy - 0.17, hx + 0.19, hy - 0.08); c.lineTo(hx + 0.08, hy - 0.12); c.fill(); // franja
-      if (est === 3) { c.beginPath(); c.arc(hx - 0.17, hy - 0.15, 0.08, 0, Math.PI * 2); c.fill(); }
+      nuca(est === 2 ? 0.205 : 0.215, Math.PI * 1.82);
+      if (est !== 2) { c.beginPath(); c.moveTo(hx + 0.02, hy - 0.21); c.quadraticCurveTo(hx + 0.22, hy - 0.2, hx + 0.2, hy - 0.07); c.quadraticCurveTo(hx + 0.13, hy - 0.13, hx + 0.06, hy - 0.11); c.fill(); } // franja
+      if (est === 3) { c.beginPath(); c.moveTo(hx - 0.14, hy - 0.16); c.lineTo(hx - 0.12, hy - 0.31); c.lineTo(hx - 0.04, hy - 0.2); c.lineTo(hx + 0.02, hy - 0.33); c.lineTo(hx + 0.07, hy - 0.2); c.lineTo(hx + 0.15, hy - 0.28); c.lineTo(hx + 0.14, hy - 0.14); c.fill(); }
     }
     c.fillStyle = peleSombra;
-    c.beginPath(); c.ellipse(hx - 0.02, hy + 0.01, 0.045, 0.06, 0, 0, Math.PI * 2); c.fill(); // orelha
+    c.beginPath(); c.ellipse(hx - 0.02, hy + 0.02, 0.045, 0.058, 0, 0, Math.PI * 2); c.fill(); // orelha
+    c.fillStyle = "rgba(240,110,90,.2)";
+    c.beginPath(); c.arc(hx + 0.1, hy + 0.065, 0.04, 0, Math.PI * 2); c.fill();
     c.fillStyle = "#fff";
-    c.beginPath(); c.ellipse(hx + 0.12, hy - 0.01, 0.035, 0.035, 0, 0, Math.PI * 2); c.fill();
-    c.fillStyle = "#222";
-    c.beginPath(); c.arc(hx + 0.135, hy - 0.01, 0.02, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = o.cabelo; c.lineWidth = 0.022;
-    c.beginPath(); c.moveTo(hx + 0.08, hy - 0.07); c.lineTo(hx + 0.16, hy - 0.065); c.stroke();
-    c.strokeStyle = "#5a2a1a";
-    c.beginPath(); c.moveTo(hx + 0.11, hy + 0.08); c.quadraticCurveTo(hx + 0.15, hy + 0.1, hx + 0.18, hy + 0.07); c.stroke();
+    c.beginPath(); c.ellipse(hx + 0.12, hy - 0.005, 0.038, 0.055, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#2a1a12";
+    c.beginPath(); c.arc(hx + 0.137, hy, 0.03, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#fff";
+    c.beginPath(); c.arc(hx + 0.147, hy - 0.015, 0.011, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = o.cabelo; c.lineWidth = 0.018;
+    c.beginPath(); c.arc(hx + 0.12, hy - 0.04, 0.04, Math.PI * 1.25, Math.PI * 1.8); c.stroke();
+    // sorrisinho curto na beira do rosto (uma linha comprida embaixo do nariz parecia bigode)
+    c.strokeStyle = "#b5524a"; c.lineWidth = 0.016;
+    c.beginPath(); c.moveTo(hx + 0.155, hy + 0.1); c.quadraticCurveTo(hx + 0.175, hy + 0.115, hx + 0.193, hy + 0.092); c.stroke();
+    c.restore();
     // gola
     c.strokeStyle = o.escuro; c.lineWidth = 0.05;
     c.beginPath(); c.moveTo(-0.06, -1.63); c.quadraticCurveTo(0.04, -1.6, 0.11, -1.63); c.stroke();
@@ -495,13 +537,15 @@
 
     const J = {
       op, fx: (faixa && faixa.id) || "8-10", nivel: NIVEL[op.nivel], humanos: op.jogadores,
-      times: [{ ...CORES[op.cor1], id: op.cor1 }, { ...CORES[op.cor2], id: op.cor2 }],
+      times: [1, 2].map(t => ({ ...CORES[op["cor" + t]], id: op["cor" + t], nome: op["nome" + t] || CORES[op["cor" + t]].nome, proprio: !!op["nome" + t] })),
       ctx: canvas.getContext("2d"), canvas, palco, camada, W: 300, H: 300, dpr: 1, pausado: false, acabou: false,
       // Botões de toque: celular/tablet (dedo é o ponteiro principal); no computador com tela de
       // toque eles aparecem no primeiro toque.
       toque: !!window.matchMedia && (matchMedia("(pointer: coarse)").matches || ((navigator.maxTouchPoints || 0) > 0 && !matchMedia("(pointer: fine)").matches)),
     };
-    J.nomeTime = i => `Time ${J.times[i].nome}`;
+    // nome para o placar (sem HTML: o nome vem do teclado, mas pode ter sido guardado de outro jeito)
+    J.nomeCurto = i => J.times[i].nome.slice(0, 12).replace(/[<>&"]/g, "");
+    J.nomeTime = i => (J.times[i].proprio ? J.times[i].nome : `Time ${J.times[i].nome}`); // nome escolhido ou "Time Azul"
     let infoAnt = "";
     J.setInfo = html => { if (html !== infoAnt) { infoAnt = html; info.innerHTML = html; } };
 
@@ -1827,7 +1871,7 @@
       const seg = Math.ceil(tempo);
       infoTempo = seg;
       const mm = Math.floor(seg / 60), ss = String(seg % 60).padStart(2, "0");
-      J.setInfo(`<span class="fut-placar"><i style="background:${J.times[0].c}"></i><b>${placar[0]}</b>x<b>${placar[1]}</b><i style="background:${J.times[1].c}"></i></span><span class="fut-relogio${seg <= 10 ? " acabando" : ""}">⏱️ ${mm}:${ss}</span>`);
+      J.setInfo(`<span class="fut-placar"><i style="background:${J.times[0].c}"></i><em>${J.nomeCurto(0)}</em><b>${placar[0]}</b>x<b>${placar[1]}</b><em>${J.nomeCurto(1)}</em><i style="background:${J.times[1].c}"></i></span><span class="fut-relogio${seg <= 10 ? " acabando" : ""}">⏱️ ${mm}:${ss}</span>`);
     }
     function apito(n = 1) {
       for (let i = 0; i < n; i++) Motor.nota(2700, { dur: i === n - 1 ? 0.45 : 0.16, tipo: "square", vol: 0.045, inicio: i * 0.22 });

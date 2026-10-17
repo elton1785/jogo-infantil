@@ -162,7 +162,7 @@
         opcoes: [
           { chave: "tam", titulo: "Quantas peças?", valores: tamanhos.map(([c, r]) => [`${c}x${r}`, `${c * r} peças (${c}×${r})`]) },
           { chave: "estilo", titulo: "Tipo de peça", valores: [["quadrado", "⬜ Quadradas"], ["encaixe", "🧩 De encaixe, como as de verdade"]] },
-          { chave: "guia", titulo: "Figura clarinha no tabuleiro", valores: [["sim", "💡 Sim"], ["nao", "🙈 Não"]] },
+          { chave: "guia", regra: true, titulo: "Figura clarinha no tabuleiro", valores: [["sim", "💡 Sim"], ["nao", "🙈 Não"]] },
         ],
         aoJogar: op => comecar({ tam: op.tam.split("x").map(Number), simples: false, estilo: op.estilo, guia: op.guia === "sim" }),
       });

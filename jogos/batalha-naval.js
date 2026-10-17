@@ -20,9 +20,9 @@
   const NIVEIS = { facil: "😊 Fácil", esperto: "🧠 Esperto" };
   const OPCOES = [
     { chave: "modo", titulo: "Jogar contra", valores: [["robo", "🤖 Computador"], ["dois", "👥 2 jogadores"]] },
-    { chave: "nivel", titulo: "Computador", valores: [["facil", NIVEIS.facil], ["esperto", NIVEIS.esperto]] },
+    { chave: "nivel", quando: op => op.modo !== "dois", titulo: "Computador", valores: [["facil", NIVEIS.facil], ["esperto", NIVEIS.esperto]] },
     { chave: "tamanho", titulo: "Tamanho do mar", valores: [["10", "🌊 10×10 · 5 navios"], ["8", "🏝️ 8×8 · 4 navios"]] },
-    { chave: "extra", titulo: "Acertou um navio", valores: [["sim", "🎯 Atira de novo"], ["nao", "🔄 Passa a vez"]] },
+    { chave: "extra", regra: true, titulo: "Acertou um navio", valores: [["sim", "🎯 Atira de novo"], ["nao", "🔄 Passa a vez"]] },
   ];
   const PADRAO = {
     "6-8": { modo: "robo", nivel: "facil", tamanho: "8", extra: "sim" },

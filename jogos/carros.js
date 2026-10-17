@@ -93,104 +93,31 @@
     iniciar(area, faixa) { escolhas(area, faixa); },
   });
 
-  // ---------- Escolhas, uma tela de cada vez, com figuras grandes ----------
-  // modo → jogadores → nome do piloto → carro (de cada jogador) → pista → jeito de dirigir.
-  // Cada tela é uma ".modos": o voltar do app refaz o caminho passo a passo. Fica guardado o
-  // que foi escolhido da última vez (o cartão aparece marcado).
+  // ---------- Escolhas, uma tela de cada vez, com figuras (Motor.telaOpcoes) ----------
+  // modo → jogadores → nome do piloto (teclado da tela) → carro de cada jogador → pista → jeito de dirigir.
   const NOMES_PILOTOS = ["Tico", "Bia", "Léo", "Duda", "Juca", "Nina", "Caio", "Lara", "Zeca", "Malu", "Davi", "Iara", "Rafa", "Teca", "Gabi", "Beto", "Lulu", "Theo", "Mel", "Dudu"];
   const NOMES_COR = { vermelho: "Vermelho", azul: "Azul", amarelo: "Amarelo", verde: "Verde", rosa: "Rosa", laranja: "Laranja" };
   const NOMES_PISTA = { campo: "Campo", praia: "Praia", noite: "Cidade à noite", neve: "Neve" };
   function escolhas(area, faixa) {
-    const fid = (faixa && faixa.id) || "6-8", chave = `carros-${fid}`;
+    const fid = (faixa && faixa.id) || "6-8";
     const perfil = typeof Album !== "undefined" ? Album.perfilAtual().nome : "";
-    let op = { modo: "corrida", jogadores: "1", cor: "vermelho", cor2: "azul", pista: "campo", nivel: fid === "5-6" ? "facil" : "normal", nome1: perfil === "Visitante" ? "" : perfil, nome2: "" };
-    try { op = { ...op, ...(JSON.parse(localStorage.getItem(chave)) || {}) }; } catch (e) { /* sem armazenamento */ }
-    const dois = () => op.modo === "corrida" && op.jogadores === "2";
-    const comecar = () => {
-      try { localStorage.setItem(chave, JSON.stringify(op)); } catch (e) { /* ok */ }
-      (op.modo === "cidade" ? cidade : corrida)(area, { ...op, fid });
-    };
-    // Tela de um passo: título + cartões { valor, rotulo, figura (canvas ou emoji), fala }
-    const passo = (titulo, fala, campo, cartoes, depois) => {
-      area.innerHTML = "";
-      const caixa = document.createElement("div");
-      caixa.className = "modos carros-passo";
-      const t = document.createElement("div");
-      t.className = "carros-passo-titulo";
-      t.textContent = titulo;
-      caixa.appendChild(t);
-      cartoes.forEach(k => {
-        const b = document.createElement("button");
-        b.className = "modo" + (op[campo] === k.valor ? " ativo" : "");
-        b.innerHTML = `<span class="icone"></span><span class="rotulo"></span>`;
-        if (typeof k.figura === "string") b.querySelector(".icone").textContent = k.figura;
-        else b.querySelector(".icone").appendChild(k.figura);
-        b.querySelector(".rotulo").textContent = k.rotulo;
-        b.addEventListener("click", () => {
-          op[campo] = k.valor;
-          Motor.falar(k.fala || k.rotulo);
-          area.innerHTML = "";
-          depois();
-        });
-        caixa.appendChild(b);
-      });
-      area.appendChild(caixa);
-      Motor.falar(fala);
-    };
-    const cores = (exceto) => Object.keys(CORES).filter(k => k !== exceto).map(k => ({ valor: k, rotulo: NOMES_COR[k], figura: figuraCarro(k), fala: `Carro ${NOMES_COR[k].toLowerCase()}!` }));
-    const nivel = () => passo("Jeito de dirigir", "Como você quer dirigir?", "nivel", [
-      { valor: "facil", rotulo: "Fácil", figura: "🐢", fala: "Fácil! O carro acelera sozinho." },
-      { valor: "normal", rotulo: "Normal", figura: "🐇", fala: "Normal!" },
-      { valor: "dificil", rotulo: "Rápido", figura: "🚀", fala: "Rápido!" },
-    ], comecar);
-    const pista = () => passo("Escolha a pista", "Escolha a pista da corrida!", "pista",
-      Object.keys(TEMAS).map(k => ({ valor: k, rotulo: NOMES_PISTA[k], figura: figuraCena(k, []) })), nivel);
-    const cor2 = () => passo("Carro do jogador 2", `${op.nome2 || "Jogador 2"}, escolha o seu carro!`, "cor2", cores(op.cor), pista);
-    const cor = () => passo(dois() ? "Carro do jogador 1" : "Escolha o seu carro", dois() ? `${op.nome1 || "Jogador 1"}, escolha o seu carro!` : "Escolha o seu carro!", "cor", cores(),
-      () => { if (op.cor2 === op.cor) op.cor2 = Object.keys(CORES).find(k => k !== op.cor); op.modo === "cidade" ? nivel() : dois() ? cor2() : pista(); });
-    const nomes = () => telaNomes(area, op, dois(), cor);
-    const jogadores = () => passo("Quantos jogadores?", "Quantos jogadores?", "jogadores", [
-      { valor: "1", rotulo: "1 jogador", figura: figuraCena("campo", [CORES[op.cor]]), fala: "Um jogador, contra os outros carros!" },
-      { valor: "2", rotulo: "2 jogadores", figura: figuraCena("campo", [CORES.vermelho, CORES.azul], true), fala: "Dois jogadores! A tela se divide." },
-    ], nomes);
-    passo("O que vamos fazer?", "O que vamos fazer? Corrida ou passear na cidade?", "modo", [
-      { valor: "corrida", rotulo: "Corrida", figura: figuraCena("campo", [CORES[op.cor]]), fala: "Corrida!" },
-      { valor: "cidade", rotulo: "Passear na cidade", figura: figuraCidade(op.cor), fala: "Passear na cidade!" },
-    ], () => (op.modo === "cidade" ? cor() : jogadores()));
-  }
-  // Nome do piloto (ou dos dois): aparece na classificação e nas falas
-  function telaNomes(area, op, dois, depois) {
-    area.innerHTML = "";
-    const caixa = document.createElement("div");
-    caixa.className = "modos carros-passo carros-nomes";
-    const t = document.createElement("div");
-    t.className = "carros-passo-titulo";
-    t.textContent = dois ? "Qual é o nome dos pilotos?" : "Qual é o nome do piloto?";
-    caixa.appendChild(t);
-    const campos = (dois ? [1, 2] : [1]).map(n => {
-      const r = document.createElement("label");
-      r.className = "carros-nome";
-      r.innerHTML = `<span class="capacete">🏎️</span><input maxlength="12" autocomplete="off" spellcheck="false">`;
-      const inp = r.querySelector("input");
-      inp.value = op["nome" + n] || "";
-      inp.placeholder = dois ? `Jogador ${n}` : "Seu nome";
-      inp.setAttribute("aria-label", dois ? `Nome do jogador ${n}` : "Nome do piloto");
-      caixa.appendChild(r);
-      return [n, inp];
+    const corrida_ = op => op.modo === "corrida", dois = op => op.modo === "corrida" && op.jogadores === "2";
+    const cores = exceto => Object.keys(CORES).filter(k => k !== exceto).map(k => [k, NOMES_COR[k], () => figuraCarro(k)]);
+    Motor.telaOpcoes(area, {
+      chave: `carros-${fid}`,
+      padrao: { modo: "corrida", jogadores: "1", cor: "vermelho", cor2: "azul", pista: "campo", nivel: fid === "5-6" ? "facil" : "normal", nome1: perfil === "Visitante" ? "" : perfil, nome2: "" },
+      opcoes: [
+        { chave: "modo", titulo: "O que vamos fazer?", valores: [["corrida", "Corrida", op => figuraCena("campo", [CORES[op.cor]])], ["cidade", "Passear na cidade", op => figuraCidade(op.cor)]] },
+        { chave: "jogadores", titulo: "Quantos jogadores?", quando: corrida_, valores: [["1", "1 jogador", op => figuraCena("campo", [CORES[op.cor]])], ["2", "2 jogadores", () => figuraCena("campo", [CORES.vermelho, CORES.azul], true)]] },
+        { chave: "nome1", tipo: "texto", quando: corrida_, titulo: op => (dois(op) ? "Nome do jogador 1" : "Qual é o nome do piloto?"), dica: op => (dois(op) ? "Jogador 1" : "Você") },
+        { chave: "nome2", tipo: "texto", quando: dois, titulo: "Nome do jogador 2", dica: "Jogador 2" },
+        { chave: "cor", titulo: op => (dois(op) ? "Carro do jogador 1" : "Escolha o seu carro"), valores: () => cores() },
+        { chave: "cor2", titulo: "Carro do jogador 2", quando: dois, valores: op => cores(op.cor) },
+        { chave: "pista", titulo: "Escolha a pista", quando: corrida_, valores: () => Object.keys(TEMAS).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [])]) },
+        { chave: "nivel", titulo: "Jeito de dirigir", valores: [["facil", "🐢 Fácil"], ["normal", "🐇 Normal"], ["dificil", "🚀 Rápido"]] },
+      ],
+      aoJogar: op => (op.modo === "cidade" ? cidade : corrida)(area, { ...op, fid }),
     });
-    const ok = document.createElement("button");
-    ok.className = "chip jogar";
-    ok.textContent = "▶️ Pronto";
-    ok.addEventListener("click", () => {
-      campos.forEach(([n, inp]) => { op["nome" + n] = inp.value.trim().slice(0, 12); });
-      const n1 = op.nome1;
-      Motor.falar(dois ? "Muito bem, pilotos!" : n1 ? `Muito bem, piloto ${n1}!` : "Muito bem, piloto!");
-      area.innerHTML = "";
-      depois();
-    });
-    caixa.appendChild(ok);
-    area.appendChild(caixa);
-    Motor.falar(dois ? "Escrevam o nome dos pilotos e toquem em pronto." : "Escreva o nome do piloto e toque em pronto.");
   }
   // Figuras dos cartões: o carro de verdade, a pista com a paisagem e a cidade vista de cima
   function figuraCarro(cor) {
