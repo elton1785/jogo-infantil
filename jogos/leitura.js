@@ -150,7 +150,7 @@
   // ---------- Rimas ----------
   const RIMAS = [
     [["gato", "🐱"], ["pato", "🦆"], ["rato", "🐭"], ["sapato", "👟"]],
-    [["mão", "✋"], ["pão", "🍞"], ["avião", "✈️"], ["balão", "🎈"], ["limão", "🍋"], ["leão", "🦁"]],
+    [["mão", "✋"], ["pão", "🍞"], ["avião", "✈️"], ["balão", "🎈"], ["limão", "🍋"], ["leão", "🦁"], ["cão", "🐕"], ["melão", "🍈"], ["feijão", "🫘"]],
     [["foca", "🦭"], ["boca", "👄"], ["pipoca", "🍿"], ["minhoca", "🪱"]],
     [["estrela", "⭐"], ["janela", "🪟"], ["panela", "🍳"], ["vela", "🕯️"]],
     [["anel", "💍"], ["papel", "📄"], ["pastel", "🥟"], ["mel", "🍯"]],
@@ -158,6 +158,14 @@
     [["queijo", "🧀"], ["beijo", "💋"]],
     [["coelho", "🐰"], ["espelho", "🪞"], ["joelho", "🦵"]],
     [["flor", "🌸"], ["trator", "🚜"]],
+    [["chapéu", "🎩"], ["céu", "🌤️"], ["troféu", "🏆"]],
+    [["sorvete", "🍦"], ["foguete", "🚀"], ["sete", "7️⃣"]],
+    [["caracol", "🐌"], ["sol", "☀️"], ["futebol", "⚽"], ["anzol", "🪝"]],
+    [["girafa", "🦒"], ["garrafa", "🍾"]],
+    [["cenoura", "🥕"], ["tesoura", "✂️"]],
+    [["sino", "🔔"], ["menino", "👦"], ["pepino", "🥒"]],
+    [["dente", "🦷"], ["presente", "🎁"], ["serpente", "🐍"]],
+    [["porta", "🚪"], ["torta", "🥧"]],
   ];
 
   function rimas(area) {

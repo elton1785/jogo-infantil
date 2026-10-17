@@ -154,7 +154,7 @@ const Progresso = (() => {
   }
 
   // ---------- Terminou (dá estrelas) ----------
-  function concluir(jogo, faixa, n) {
+  function concluir(jogo, faixa, n, caixa) {
     if (!jogo || !faixa) return;
     const p = perfil(), d = dados(), fx = faixa.id, chave = k(jogo, fx), tipo = tipoDe(jogo);
     const antes = d.estrelas[chave] || 0;
@@ -163,16 +163,13 @@ const Progresso = (() => {
     d.estrelas[chave] = Math.max(antes, n);
     d.feitos[chave] = hoje();
     // Moedas: só as 2 primeiras vezes de cada jogo no dia
-    let moedas = 0;
+    let moedas = 0, semMoedaHoje = false;
     if (tipo === "licao" || tipo === "desafio") {
       if (d.ganhos.dia !== hoje()) d.ganhos = { dia: hoje(), por: {} };
       const vezes = d.ganhos.por[jogo.id] || 0;
-      if (vezes < 2) { moedas = n; d.ganhos.por[jogo.id] = vezes + 1; }
+      if (vezes < 2) { moedas = n; d.ganhos.por[jogo.id] = vezes + 1; } else semMoedaHoje = true;
     }
     d.moedas += moedas;
-    const partes = [`${"⭐".repeat(n)} ${tipo === "livre" ? "Que legal!" : n === 3 ? "Perfeito!" : "Muito bem!"}`];
-    if (moedas) partes.push(`+${moedas} 🪙`);
-    if (n > antes && antes) partes.push("Novo recorde!");
     // Missão do dia
     let cumpriu = false, ganhouTempo = false;
     const m = guiado(p) && fx === p.faixa ? missao(d) : null;
@@ -188,16 +185,72 @@ const Progresso = (() => {
       d.parque.extra += EXTRA_POR_LICAO; d.parque.seg += EXTRA_POR_LICAO * 60; ganhouTempo = true;
     }
     salvar(d);
-    if (tipo !== "parque") avisar(partes.join("  "));
     const abriu = fechados.filter(j => situacao(j, faixa, d).aberto);
-    abriu.slice(0, 2).forEach(j => avisar(`🔓 Abriu: ${j.icone.startsWith("<svg") ? "" : j.icone + " "}${j.nome}!`, { fala: `Abriu ${j.nome}!` }));
-    if (m && !cumpriu && m.ids.includes(jogo.id) && !m.completa) {
-      const falta = m.ids.length - m.feitos.length;
-      avisar(`🎯 Missão: ${m.feitos.length} de ${m.ids.length}`, { fala: `Falta${falta > 1 ? "m" : ""} ${falta} na missão do dia!` });
-    }
-    if (cumpriu) avisar("🎉 Missão do dia cumprida! +5 🪙" + (temParque(fx) ? "  🎡 O Parque abriu!" : ""), { grande: true, fala: "Parabéns! Você cumpriu a missão do dia!" + (temParque(fx) ? " O Parque de diversões abriu!" : "") });
-    if (ganhouTempo) avisar(`⏱️ +${EXTRA_POR_LICAO} minutos de Parque!`);
+    const naMissao = m && m.ids.includes(jogo.id);
+    mostrarRecompensa({ tipo, n, antes, moedas, semMoedaHoje, total: d.moedas, abriu, cumpriu, ganhouTempo,
+      missao: naMissao ? { feitos: m.feitos.length, total: m.ids.length } : null, parque: temParque(fx) }, caixa);
     mudou();
+  }
+
+  // ---------- 🎁 Recompensa: o que a criança ganhou ao terminar ----------
+  // Na tela de troféu (Motor.telaFim) vai dentro dela; nos outros jogos, um cartão por cima que
+  // some sozinho (ou com um toque), sem atrapalhar a partida.
+  function mostrarRecompensa(r, caixa) {
+    const box = el("div", "recompensa" + (caixa ? "" : " flutuante"));
+    const titulo = r.tipo === "livre" ? "Que legal!" : r.n === 3 ? "Perfeito!" : r.n === 2 ? "Muito bem!" : "Conseguiu!";
+    box.appendChild(el("div", "rec-titulo", `🎁 ${titulo}`));
+    const est = el("div", "rec-estrelas");
+    est.innerHTML = [0, 1, 2].map(i => `<i class="${i < r.n ? "on" : ""}" style="animation-delay:${i * 0.18}s">★</i>`).join("");
+    box.appendChild(est);
+    const linhas = [];
+    if (r.n > r.antes && r.antes) linhas.push(["rec-recorde", "🏅 Novo recorde de estrelas!"]);
+    if (r.moedas) linhas.push(["rec-moedas", `+${r.moedas} 🪙  ·  agora você tem ${r.total} 🪙`]);
+    else if (r.semMoedaHoje) linhas.push(["rec-obs", "🪙 As moedas deste jogo já saíram hoje. Jogue outro para ganhar mais!"]);
+    if (r.cumpriu) linhas.push(["rec-missao cumpriu", `🎉 Missão do dia cumprida! +5 🪙${r.parque ? "  ·  🎡 O Parque abriu!" : ""}`]);
+    else if (r.missao) linhas.push(["rec-missao", `🎯 Missão do dia: ${r.missao.feitos} de ${r.missao.total}`]);
+    if (r.ganhouTempo) linhas.push(["rec-obs", `⏱️ +${EXTRA_POR_LICAO} minutos de Parque!`]);
+    r.abriu.slice(0, 3).forEach(j => linhas.push(["rec-abriu", `🔓 Abriu: ${j.icone.startsWith("<svg") ? "" : j.icone + " "}${j.nome}`]));
+    linhas.forEach(([c, t]) => box.appendChild(el("div", c, t)));
+    // Voz: estrelas, moedas e o mais importante (missão ou o que abriu)
+    const falas = [`Você ganhou ${r.n} ${r.n === 1 ? "estrela" : "estrelas"}${r.moedas ? ` e ${r.moedas} ${r.moedas === 1 ? "moeda" : "moedas"}` : ""}!`];
+    if (r.cumpriu) falas.push("Você cumpriu a missão do dia!" + (r.parque ? " O Parque de diversões abriu!" : ""));
+    else if (r.missao) { const f = r.missao.total - r.missao.feitos; falas.push(`Falta${f > 1 ? "m" : ""} ${f} na missão do dia.`); }
+    if (r.abriu.length) falas.push(`Abriu ${r.abriu[0].nome}!`);
+    if (r.tipo === "livre") {
+      // Brincadeira livre: só um aviso discreto (não precisa de quadro)
+      avisar(`⭐ Que legal!${r.missao ? `  🎯 Missão: ${r.missao.feitos} de ${r.missao.total}` : ""}${r.cumpriu ? "  🎉 Missão cumprida!" : ""}`, { grande: r.cumpriu, fala: r.cumpriu || r.missao ? falas.slice(1).join(" ") || null : null });
+      return;
+    }
+    if (caixa) {
+      const antesDe = caixa.querySelector(".modo");
+      caixa.insertBefore(box, antesDe);
+      Motor.depois(() => Motor.falar(falas.join(" "), { naFila: true }), 400);
+    } else {
+      document.body.appendChild(box);
+      requestAnimationFrame(() => box.classList.add("visivel"));
+      const tirar = () => { box.classList.remove("visivel"); setTimeout(() => box.remove(), 400); };
+      box.addEventListener("click", tirar);
+      setTimeout(tirar, 6000);
+      Motor.falar(falas.join(" "), { naFila: true });
+    }
+    if (r.moedas) moedasVoando(box, r.moedas);
+  }
+  // Moedinhas que pulam do quadro
+  function moedasVoando(box, n) {
+    setTimeout(() => {
+      const rr = box.getBoundingClientRect();
+      for (let i = 0; i < Math.min(8, n * 2 + 2); i++) {
+        const mo = el("div", "moeda-voa", "🪙");
+        mo.style.left = rr.left + rr.width / 2 - 16 + "px";
+        mo.style.top = rr.top + 20 + "px";
+        mo.style.setProperty("--dx", (Math.random() * 260 - 130) + "px");
+        mo.style.setProperty("--dy", (-60 - Math.random() * 140) + "px");
+        mo.style.animationDelay = i * 0.06 + "s";
+        document.body.appendChild(mo);
+        setTimeout(() => mo.remove(), 1600);
+      }
+      Motor.tim();
+    }, 500);
   }
   // Tempo do Parque acabou (depois do minuto para terminar): volta para o início
   function fimDoParque() {
@@ -252,15 +305,20 @@ const Progresso = (() => {
   function erro() { if (atual) atual.erros++; }
   // Motor.telaFim: fim de rodada com acertos de primeira. Menos da metade de primeira (chute) não
   // ganha estrela: a próxima lição continua fechada e a voz pede para tentar de novo.
-  function fimDeRodada(acertos, total) {
+  function fimDeRodada(acertos, total, caixa) {
     if (!atual) return;
     const r = total ? acertos / total : 1;
     if (r < 0.5) {
-      if (tipoDe(atual.jogo) === "licao") avisar("💪 Quase! Acerte mais de primeira para ganhar estrela.", { fala: "Quase! Tente de novo, com calma, para ganhar estrela!" });
+      if (tipoDe(atual.jogo) === "licao") {
+        const q = el("div", "recompensa quase");
+        q.append(el("div", "rec-titulo", "💪 Quase!"), el("div", "rec-obs", `Para ganhar estrela, acerte de primeira pelo menos ${Math.ceil(total / 2)} de ${total}. Tente de novo, com calma!`));
+        if (caixa) caixa.insertBefore(q, caixa.querySelector(".modo"));
+        Motor.depois(() => Motor.falar("Quase! Tente de novo, com calma, para ganhar estrela!", { naFila: true }), 400);
+      }
       return;
     }
     atual.deu = true;
-    concluir(atual.jogo, atual.faixa, r >= 0.9 ? 3 : r >= 0.7 ? 2 : 1);
+    concluir(atual.jogo, atual.faixa, r >= 0.9 ? 3 : r >= 0.7 ? 2 : 1, caixa);
   }
   // Placar.resultado: fim de partida contra o computador
   function partida(venceu, empate) {

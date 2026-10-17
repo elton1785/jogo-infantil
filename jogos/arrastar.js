@@ -17,7 +17,7 @@
   // ---------- Comida dos bichos ----------
   const COMIDAS = [
     { alvo: { emoji: "🐒", nome: "macaco",   artigo: "o" }, itens: [{ emoji: "🍌", nome: "banana" }] },
-    { alvo: { emoji: "🐰", nome: "coelho",   artigo: "o" }, itens: [{ emoji: "🥕", nome: "cenoura" }] },
+    { alvo: { emoji: "🐰", nome: "coelho",   artigo: "o" }, itens: [{ emoji: "🥕", nome: "cenoura" }, { emoji: "🥬", nome: "alface" }] },
     { alvo: { emoji: "🐶", nome: "cachorro", artigo: "o" }, itens: [{ emoji: "🦴", nome: "osso" }] },
     { alvo: { emoji: "🐱", nome: "gato",     artigo: "o" }, itens: [{ emoji: "🐟", nome: "peixe" }] },
     { alvo: { emoji: "🐭", nome: "rato",     artigo: "o" }, itens: [{ emoji: "🧀", nome: "queijo" }] },
@@ -25,6 +25,12 @@
     { alvo: { emoji: "🐼", nome: "panda",    artigo: "o" }, itens: [{ emoji: "🎋", nome: "bambu" }] },
     { alvo: { emoji: "🐝", nome: "abelha",   artigo: "a" }, itens: [{ emoji: "🌻", nome: "flor" }] },
     { alvo: { emoji: "🐻", nome: "urso",     artigo: "o" }, itens: [{ emoji: "🍯", nome: "mel" }] },
+    { alvo: { emoji: "🐔", nome: "galinha",  artigo: "a" }, itens: [{ emoji: "🌽", nome: "milho" }] },
+    { alvo: { emoji: "🐿️", nome: "esquilo",  artigo: "o" }, itens: [{ emoji: "🌰", nome: "castanha" }] },
+    { alvo: { emoji: "🐴", nome: "cavalo",   artigo: "o" }, itens: [{ emoji: "🍎", nome: "maçã" }] },
+    { alvo: { emoji: "🐸", nome: "sapo",     artigo: "o" }, itens: [{ emoji: "🪰", nome: "mosquinha" }] },
+    { alvo: { emoji: "🐛", nome: "lagarta",  artigo: "a" }, itens: [{ emoji: "🍃", nome: "folha" }] },
+    { alvo: { emoji: "🐧", nome: "pinguim",  artigo: "o" }, itens: [{ emoji: "🦐", nome: "camarão" }] },
   ];
 
   JOGOS.push({
@@ -76,13 +82,16 @@
   const HABITATS = [
     { alvo: { emoji: "🌳", nome: "terra", fala: "na terra" }, itens: [
       { emoji: "🐶", nome: "cachorro" }, { emoji: "🐘", nome: "elefante" }, { emoji: "🐆", nome: "onça" },
-      { emoji: "🦒", nome: "girafa" }, { emoji: "🐴", nome: "cavalo" }, { emoji: "🐍", nome: "cobra" }] },
+      { emoji: "🦒", nome: "girafa" }, { emoji: "🐴", nome: "cavalo" }, { emoji: "🐍", nome: "cobra" },
+      { emoji: "🦓", nome: "zebra" }, { emoji: "🐑", nome: "ovelha" }, { emoji: "🦁", nome: "leão" }, { emoji: "🐒", nome: "macaco" }] },
     { alvo: { emoji: "🌊", nome: "água", fala: "na água" }, itens: [
       { emoji: "🐟", nome: "peixe" }, { emoji: "🐬", nome: "golfinho" }, { emoji: "🐙", nome: "polvo" },
-      { emoji: "🦈", nome: "tubarão" }, { emoji: "🐳", nome: "baleia" }] },
+      { emoji: "🦈", nome: "tubarão" }, { emoji: "🐳", nome: "baleia" },
+      { emoji: "🦀", nome: "caranguejo" }, { emoji: "🐡", nome: "baiacu" }, { emoji: "🦑", nome: "lula" }, { emoji: "🪼", nome: "água-viva" }] },
     { alvo: { emoji: "☁️", nome: "ar", fala: "voando no céu" }, itens: [
       { emoji: "🦅", nome: "águia" }, { emoji: "🦜", nome: "arara" }, { emoji: "🦋", nome: "borboleta" },
-      { emoji: "🐝", nome: "abelha" }, { emoji: "🦉", nome: "coruja" }] },
+      { emoji: "🐝", nome: "abelha" }, { emoji: "🦉", nome: "coruja" },
+      { emoji: "🐦", nome: "passarinho" }, { emoji: "🦇", nome: "morcego" }, { emoji: "🕊️", nome: "pomba" }, { emoji: "🦩", nome: "flamingo" }] },
   ];
 
   JOGOS.push({
@@ -101,14 +110,29 @@
   });
 
   // ---------- Arrumar a casa ----------
+  // 6 cômodos; cada rodada sorteia 3 (e o motor evita repetir os objetos das últimas rodadas).
+  // Só objetos que têm um lugar certo, sem dúvida (nada de bola que pode ser do quarto ou do quintal).
   const COMODOS = [
     { alvo: { emoji: "🛁", nome: "banheiro", artigo: "o" }, itens: [
-      { emoji: "🪥", nome: "escova de dentes" }, { emoji: "🧼", nome: "sabonete" }, { emoji: "🧻", nome: "papel higiênico" }] },
+      { emoji: "🪥", nome: "escova de dentes" }, { emoji: "🧼", nome: "sabonete" }, { emoji: "🧻", nome: "papel higiênico" },
+      { emoji: "🧴", nome: "xampu" }, { emoji: "🧽", nome: "esponja de banho" }, { emoji: "🦆", nome: "patinho de borracha" }] },
     { alvo: { emoji: "🍳", nome: "cozinha", artigo: "a" }, itens: [
-      { emoji: "🥄", nome: "colher" }, { emoji: "🍽️", nome: "prato" }, { emoji: "☕", nome: "xícara" }] },
+      { emoji: "🥄", nome: "colher" }, { emoji: "🍽️", nome: "prato" }, { emoji: "☕", nome: "xícara" }, { emoji: "🍲", nome: "panela" },
+      { emoji: "🍴", nome: "garfo e faca" }, { emoji: "🫖", nome: "bule" }, { emoji: "🥛", nome: "copo de leite" }, { emoji: "🧂", nome: "saleiro" }] },
     { alvo: { emoji: "🛏️", nome: "quarto", artigo: "o" }, itens: [
-      { emoji: "🧸", nome: "ursinho" }, { emoji: "⏰", nome: "despertador" }, { emoji: "🧦", nome: "meias" }] },
+      { emoji: "🧸", nome: "ursinho" }, { emoji: "⏰", nome: "despertador" }, { emoji: "🧦", nome: "meias" },
+      { emoji: "👕", nome: "camiseta" }, { emoji: "👗", nome: "vestido" }, { emoji: "🎒", nome: "mochila" }] },
+    { alvo: { emoji: "🛋️", nome: "sala", artigo: "a" }, itens: [
+      { emoji: "📺", nome: "televisão" }, { emoji: "🪴", nome: "vaso de planta" }, { emoji: "🖼️", nome: "quadro" },
+      { emoji: "🕰️", nome: "relógio da sala" }, { emoji: "🎹", nome: "piano" }] },
+    { alvo: { emoji: "🌳", nome: "quintal", artigo: "o" }, itens: [
+      { emoji: "🪣", nome: "balde" }, { emoji: "⚽", nome: "bola" }, { emoji: "🌻", nome: "girassol" },
+      { emoji: "🌱", nome: "plantinha" }, { emoji: "🚲", nome: "bicicleta" }, { emoji: "🪁", nome: "pipa" }] },
+    { alvo: { emoji: "🚗", nome: "garagem", artigo: "a" }, itens: [
+      { emoji: "🔧", nome: "chave inglesa" }, { emoji: "🔨", nome: "martelo" }, { emoji: "🪛", nome: "chave de fenda" },
+      { emoji: "🧰", nome: "caixa de ferramentas" }, { emoji: "⛽", nome: "galão de gasolina" }, { emoji: "🛢️", nome: "lata de óleo" }] },
   ];
+  const listaFalada = nomes => nomes.length > 1 ? `${nomes.slice(0, -1).join(", ")} ou ${nomes[nomes.length - 1]}` : nomes[0];
 
   JOGOS.push({
     id: "casa", nome: "Arrumar a Casa", icone: "🏠", faixas: ["3-4", "4-5"],
@@ -116,12 +140,15 @@
       const qtd = faixa && faixa.id === "4-5" ? 2 : 1;
       Motor.modoArrastar({
         area,
-        gerar: () => ({
-          ...sortearGrupos(COMODOS, 3, qtd),
-          anuncio: "Vamos arrumar a casa! Leve cada coisa para o lugar certo: banheiro, cozinha ou quarto.",
-          aoAcertar: (p, a) => `${maiuscula(p.nome)} fica n${oa(a)}.`,
-          aoErrar: (p, a) => `${maiuscula(p.nome)} não fica n${oa(a)}.`,
-        }),
+        gerar: () => {
+          const r = sortearGrupos(COMODOS, 3, qtd);
+          return {
+            ...r,
+            anuncio: `Vamos arrumar a casa! Leve cada coisa para o lugar certo: ${listaFalada(r.alvos.map(a => oa(a)))}.`,
+            aoAcertar: (p, a) => `${maiuscula(p.nome)} fica n${oa(a)}.`,
+            aoErrar: (p, a) => `${maiuscula(p.nome)} não fica n${oa(a)}.`,
+          };
+        },
       });
     },
   });

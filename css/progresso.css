@@ -175,3 +175,23 @@
 .prog-copia-aviso:empty { display: none; }
 .prog-copia-aviso { font-weight: 600; }
 .prog-copia-aviso .chip { margin-left: 6px; }
+
+/* Quadro de recompensa (fim de fase) */
+.recompensa { background: #fff; border-radius: 24px; padding: 12px 20px 14px; box-shadow: 0 6px 0 #f4b400, 0 10px 24px rgba(0,0,0,.15); display: flex; flex-direction: column; align-items: center; gap: 6px; color: #34495e; max-width: min(92vw, 520px); text-align: center; }
+.rec-titulo { font-size: clamp(22px, 5vw, 28px); font-weight: 700; color: #6b2c91; }
+.rec-estrelas { font-family: Arial, sans-serif; font-size: 46px; line-height: 1; letter-spacing: 4px; }
+.rec-estrelas i { font-style: normal; color: #dfe3e8; display: inline-block; }
+.rec-estrelas i.on { color: #f4b400; text-shadow: 0 3px 0 #b98500; animation: estrela-pop .5s cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes estrela-pop { from { transform: scale(0) rotate(-90deg); } to { transform: scale(1); } }
+.rec-moedas { font-size: 20px; font-weight: 700; background: linear-gradient(180deg, #ffe066, #ffc300); color: #6b4500; border-radius: 999px; padding: 4px 16px; box-shadow: 0 3px 0 #d49b00; }
+.rec-missao { font-size: 17px; font-weight: 700; color: #c2410c; }
+.rec-missao.cumpriu { background: #fff3c4; border-radius: 14px; padding: 4px 12px; }
+.rec-abriu { font-size: 17px; font-weight: 700; color: #178a4c; }
+.rec-recorde { font-size: 16px; font-weight: 700; color: #b98500; }
+.rec-obs { font-size: 15px; color: #5f6b72; }
+.recompensa.quase { box-shadow: 0 6px 0 #74c0fc, 0 10px 24px rgba(0,0,0,.12); }
+/* Fora da tela de troféu: cartão por cima, embaixo da tela, some sozinho */
+.recompensa.flutuante { position: fixed; z-index: 45; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 140%); transition: transform .45s cubic-bezier(.3,1.4,.5,1); cursor: pointer; width: max-content; }
+.recompensa.flutuante.visivel { transform: translate(-50%, 0); }
+.moeda-voa { position: fixed; z-index: 46; font-size: 32px; pointer-events: none; animation: moeda-voa 1.3s ease-out both; }
+@keyframes moeda-voa { 0% { transform: translate(0, 0) scale(.4); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(1.2) rotate(360deg); opacity: 0; } }

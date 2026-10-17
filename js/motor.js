@@ -161,16 +161,39 @@ const Motor = (() => {
   const tim = () => [523, 659, 784].forEach((f, i) => nota(f, { dur: 0.25, tipo: "triangle", vol: 0.2, inicio: i * 0.09 }));
 
   // ---------- Utilidades ----------
+  // Variedade: cada lista fixa de conteúdo (bichos, objetos, palavras...) lembra o que saiu há
+  // pouco, e o sorteio seguinte prefere o que não saiu. Sem isso, listas pequenas repetem quase
+  // tudo de uma rodada para a outra. Listas de números e listas novas (montadas na hora) não lembram.
+  const recentes = new WeakMap();
+  const lembra = lista => Array.isArray(lista) && lista.length >= 3 && typeof lista[0] !== "number";
+  const memoriaDe = lista => Math.min(6, Math.floor(lista.length / 2));
+  function lembrarSaida(lista, itens) {
+    const r = (recentes.get(lista) || []).filter(x => !itens.includes(x));
+    r.push(...itens);
+    recentes.set(lista, r.slice(-memoriaDe(lista)));
+  }
   function embaralhar(lista) {
-    const l = [...lista];
+    let l = [...lista];
     for (let i = l.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [l[i], l[j]] = [l[j], l[i]];
     }
+    if (!lembra(lista)) return l;
+    // O que saiu há pouco vai para o fim (quem usa .slice(0, n) pega primeiro o que não saiu)
+    const r = recentes.get(lista) || [];
+    if (r.length) l = [...l.filter(x => !r.includes(x)), ...r.filter(x => l.includes(x))];
+    lembrarSaida(lista, l.slice(0, Math.max(1, Math.min(memoriaDe(lista), Math.ceil(lista.length / 4)))));
     return l;
   }
 
-  function sortear(lista) { return lista[Math.floor(Math.random() * lista.length)]; }
+  function sortear(lista) {
+    if (!lembra(lista)) return lista[Math.floor(Math.random() * lista.length)];
+    const r = recentes.get(lista) || [];
+    const livres = lista.filter(x => !r.includes(x));
+    const item = (livres.length ? livres : lista)[Math.floor(Math.random() * (livres.length || lista.length))];
+    lembrarSaida(lista, [item]);
+    return item;
+  }
   const aleatorio = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
   const maiuscula = t => t[0].toUpperCase() + t.slice(1);
 
@@ -633,8 +656,8 @@ const Motor = (() => {
     area.innerHTML = "";
     const caixa = document.createElement("div");
     caixa.className = "fim";
-    caixa.innerHTML = `<div class="trofeu">🏆</div><div class="estrelas"></div><div class="resumo"></div>`;
-    caixa.querySelector(".estrelas").textContent = "⭐".repeat(Math.max(1, Math.round((acertos / total) * 5)));
+    // As estrelas (1 a 3) aparecem no quadro de recompensa (js/progresso.js), logo abaixo
+    caixa.innerHTML = `<div class="trofeu">🏆</div><div class="resumo"></div>`;
     caixa.querySelector(".resumo").textContent = `Acertou ${acertos} de ${total} de primeira!`;
     const denovo = document.createElement("button");
     denovo.className = "modo";
@@ -644,7 +667,7 @@ const Motor = (() => {
     area.appendChild(caixa);
     comemorar(caixa.querySelector(".trofeu"), false); // o ponto do álbum vem logo abaixo
     if (typeof Album !== "undefined") Album.ponto();
-    if (typeof Progresso !== "undefined") Progresso.fimDeRodada(acertos, total);
+    if (typeof Progresso !== "undefined") Progresso.fimDeRodada(acertos, total, caixa); // quadro de recompensa
     tim();
     falar(`Parabéns! Você acertou ${acertos} de ${total} de primeira!`);
   }
@@ -729,12 +752,14 @@ const Motor = (() => {
 
   // Cadê?: a voz pede um item da lista, a criança escolhe entre `opcoes` cartões.
   function modoCade({ itens, opcoes = 2, pergunta, ...resto }) {
-    let ultimo = null;
+    const ultimos = []; // não repete os últimos pedidos (metade da lista, até 6)
     modoQuiz({
       ...resto,
       gerar() {
-        const alvo = sortear(itens.filter(i => i !== ultimo));
-        ultimo = alvo;
+        const fora = ultimos.slice(-Math.min(6, Math.floor(itens.length / 2)));
+        const livres = itens.filter(i => !fora.includes(i));
+        const alvo = livres[Math.floor(Math.random() * livres.length)] || sortear(itens);
+        ultimos.push(alvo);
         const outros = embaralhar(itens.filter(i => i !== alvo)).slice(0, opcoes - 1);
         return { pergunta: pergunta(alvo), opcoes: [alvo, ...outros], certa: alvo };
       },

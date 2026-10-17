@@ -10,11 +10,15 @@
   }
 
   function jogar(area, tabela) {
+    // Sem repetir conta na rodada: os multiplicadores de 1 a 10 saem embaralhados, um de cada vez
+    let fila = [], ultimaConta = "";
     Motor.modoQuiz({
       area, rodada: 10, desenhar: Motor.desenharTexto("numero"),
       gerar() {
-        const a = tabela || aleatorio(2, 10);
-        const b = aleatorio(1, 10);
+        if (!fila.length) fila = Motor.embaralhar([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        let a = tabela || aleatorio(2, 10), b = fila.pop();
+        if (!tabela && `${a}x${b}` === ultimaConta) a = a === 10 ? 2 : a + 1;
+        ultimaConta = `${a}x${b}`;
         const certa = { nome: String(a * b) };
         const outras = distracoes(a, b, a * b).map(n => ({ nome: String(n) }));
         return {
