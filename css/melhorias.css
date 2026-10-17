@@ -49,3 +49,22 @@
 .carros-classif li small { font-size: 15px; opacity: .85; font-variant-numeric: tabular-nums; }
 .carros-classif li.correndo small { font-style: italic; opacity: .55; }
 .carros-classif li em { width: 22px; font-style: normal; }
+
+/* ---------- Palco de tela inteira (js/palco.js): boliche, sinuca, pingue-pongue, pescaria... ---------- */
+.palco-tela { position: absolute; inset: 0; overflow: hidden; background: #10131c; touch-action: none; -webkit-user-select: none; user-select: none; }
+.palco-canvas { position: absolute; left: 0; top: 0; display: block; touch-action: none; }
+.palco-topo { position: absolute; z-index: 3; top: max(6px, env(safe-area-inset-top, 0px)); right: calc(6px + env(safe-area-inset-right, 0px)); display: flex; gap: 6px; }
+.palco-topo .chip { min-width: 48px; min-height: 48px; font-size: 22px; padding: 2px 8px; background: rgba(255,255,255,.75); }
+.palco-controles { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.palco-controles > * { pointer-events: auto; }
+.palco-botao { position: absolute; border: none; border-radius: 22px; background: rgba(255,255,255,.85); box-shadow: 0 5px 0 rgba(0,0,0,.28); font: inherit; font-weight: bold; font-size: 30px; min-width: 76px; min-height: 76px; padding: 6px 14px; cursor: pointer; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; color: #1d3557; }
+.palco-botao small { font-size: 14px; }
+.palco-botao.apertado, .palco-botao:active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,.28); }
+.palco-botao.principal { background: #2a9d55; color: #fff; }
+.palco-botao[hidden] { display: none; }
+#jogo.ativa:has(.palco-tela) ~ #btn-voltar { top: max(6px, env(safe-area-inset-top, 0px)); left: calc(6px + env(safe-area-inset-left, 0px)); width: 56px; height: 56px; }
+.palco-fim { max-height: calc(100% - 24px); overflow-y: auto; }
+@media (min-width: 1000px) and (min-height: 600px) {
+  .palco-topo .chip { min-width: 58px; min-height: 58px; font-size: 26px; }
+  .palco-botao { min-width: 92px; min-height: 92px; font-size: 36px; }
+}
