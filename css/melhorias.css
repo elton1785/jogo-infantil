@@ -87,3 +87,8 @@
 .mercado-fim { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .mf-troco { font-size: 20px; text-align: center; }
 .cupom { background: #fffef7; color: #222; font: 13px/1.35 "Courier New", monospace; padding: 10px 12px; margin: 0; border: 1px dashed #bbb; box-shadow: 0 3px 8px rgba(0,0,0,.12); max-width: 100%; overflow-x: auto; text-align: left; }
+/* Pescaria: ficha do peixe */
+.pesca-ficha canvas { width: min(320px, 80vw); height: auto; border-radius: 14px; }
+.pesca-ficha .pf-tam { font-size: 20px; font-weight: bold; }
+.pesca-ficha .pf-info { max-width: 420px; margin: 0; font-size: 16px; line-height: 1.35; }
+.pesca-ficha .pf-caderno { font-size: 15px; color: #5b6b80; font-weight: bold; }
