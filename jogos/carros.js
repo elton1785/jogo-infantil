@@ -80,10 +80,11 @@
     icone: ICONE,
     faixas: ["5-6", "6-8", "8-10"],
     ajuda: [
-      { figura: "🏁🏙️", texto: "Escolha: corrida contra outros carros, ou passear pela cidade fazendo entregas." },
+      { figura: "🏁🏎️🏙️", texto: "Escolha: corrida contra outros carros, Grande Prêmio com carros de fórmula nos autódromos, ou passear pela cidade fazendo entregas." },
       { figura: "⬅️➡️", texto: "Os botões da esquerda viram o carro. No controle de videogame, use o direcional." },
       { figura: "⛽🛑", texto: "Os botões da direita aceleram e freiam (segurando o freio, dá ré). No modo fácil o carro acelera sozinho." },
-      { figura: "🥇", texto: "Na corrida são 3 voltas: passe os outros carros e não saia da pista, que na grama o carro fica lento." },
+      { figura: "🥇", texto: "Você escolhe quantas voltas! Passe os outros carros e não saia da pista, que na grama o carro fica lento. Cada pista tem o seu traçado." },
+      { figura: "🏎️🏟️", texto: "No Grande Prêmio, os carros são de fórmula e as pistas são autódromos: Interlagos (com morros), Mônaco (ruas estreitas) e Monza (a mais rápida)." },
       { figura: "🚦🔴", texto: "Na largada, as 5 luzes vermelhas acendem uma por uma. Quando ficam verdes, é JÁ!" },
       { figura: "⚡", texto: "Passe por cima das setas amarelas na pista para ganhar turbo e correr mais que todo mundo!" },
       { figura: "👥🎮🎮", texto: "Corrida a dois: a tela se divide e cada um tem a sua estrada e os seus botões. Jogador 1 usa o 1º controle (ou as setas e Enter); jogador 2 usa o 2º controle (ou W A S D e F)." },
@@ -97,35 +98,39 @@
   // modo → jogadores → nome do piloto (teclado da tela) → carro de cada jogador → pista → jeito de dirigir.
   const NOMES_PILOTOS = ["Tico", "Bia", "Léo", "Duda", "Juca", "Nina", "Caio", "Lara", "Zeca", "Malu", "Davi", "Iara", "Rafa", "Teca", "Gabi", "Beto", "Lulu", "Theo", "Mel", "Dudu"];
   const NOMES_COR = { vermelho: "Vermelho", azul: "Azul", amarelo: "Amarelo", verde: "Verde", rosa: "Rosa", laranja: "Laranja" };
-  const NOMES_PISTA = { campo: "Campo", praia: "Praia", noite: "Cidade à noite", neve: "Neve" };
+  const NOMES_PISTA = { campo: "Campo", praia: "Praia", noite: "Cidade à noite", neve: "Neve",
+    interlagos: "Interlagos (São Paulo)", monaco: "Mônaco (ruas da cidade)", monza: "Monza (a mais rápida)" };
   function escolhas(area, faixa) {
     const fid = (faixa && faixa.id) || "6-8";
     const perfil = typeof Album !== "undefined" ? Album.perfilAtual().nome : "";
-    const corrida_ = op => op.modo === "corrida", dois = op => op.modo === "corrida" && op.jogadores === "2";
-    const cores = exceto => Object.keys(CORES).filter(k => k !== exceto).map(k => [k, NOMES_COR[k], () => figuraCarro(k)]);
+    const corrida_ = op => op.modo === "corrida" || op.modo === "gp", gp = op => op.modo === "gp", comum = op => op.modo === "corrida";
+    const dois = op => corrida_(op) && op.jogadores === "2";
+    const cores = (exceto, formula) => Object.keys(CORES).filter(k => k !== exceto).map(k => [k, NOMES_COR[k], () => figuraCarro(k, formula)]);
     Motor.telaOpcoes(area, {
       chave: `carros-${fid}`,
-      padrao: { modo: "corrida", jogadores: "1", cor: "vermelho", cor2: "azul", pista: "campo", nivel: fid === "5-6" ? "facil" : "normal", nome1: perfil === "Visitante" ? "" : perfil, nome2: "" },
+      padrao: { modo: "corrida", jogadores: "1", cor: "vermelho", cor2: "azul", pista: "campo", circuito: "interlagos", voltas: "3", nivel: fid === "5-6" ? "facil" : "normal", nome1: perfil === "Visitante" ? "" : perfil, nome2: "" },
       opcoes: [
-        { chave: "modo", titulo: "O que vamos fazer?", valores: [["corrida", "Corrida", op => figuraCena("campo", [CORES[op.cor]])], ["cidade", "Passear na cidade", op => figuraCidade(op.cor)]] },
+        { chave: "modo", titulo: "O que vamos fazer?", valores: [["corrida", "Corrida", op => figuraCena("campo", [CORES[op.cor]])], ["gp", "Grande Prêmio", op => figuraCena("interlagos", [CORES[op.cor]], false, true)], ["cidade", "Passear na cidade", op => figuraCidade(op.cor)]] },
         { chave: "jogadores", titulo: "Quantos jogadores?", quando: corrida_, valores: [["1", "1 jogador", op => figuraCena("campo", [CORES[op.cor]])], ["2", "2 jogadores", () => figuraCena("campo", [CORES.vermelho, CORES.azul], true)]] },
         { chave: "nome1", tipo: "texto", quando: corrida_, titulo: op => (dois(op) ? "Nome do jogador 1" : "Qual é o nome do piloto?"), dica: op => (dois(op) ? "Jogador 1" : "Você") },
         { chave: "nome2", tipo: "texto", quando: dois, titulo: "Nome do jogador 2", dica: "Jogador 2" },
-        { chave: "cor", titulo: op => (dois(op) ? "Carro do jogador 1" : "Escolha o seu carro"), valores: () => cores() },
-        { chave: "cor2", titulo: "Carro do jogador 2", quando: dois, valores: op => cores(op.cor) },
-        { chave: "pista", titulo: "Escolha a pista", quando: corrida_, valores: () => Object.keys(TEMAS).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [])]) },
+        { chave: "cor", titulo: op => (dois(op) ? "Carro do jogador 1" : "Escolha o seu carro"), valores: op => cores(undefined, gp(op)) },
+        { chave: "cor2", titulo: "Carro do jogador 2", quando: dois, valores: op => cores(op.cor, gp(op)) },
+        { chave: "pista", titulo: "Escolha a pista", quando: comum, valores: () => Object.keys(TEMAS).filter(k => !TEMAS[k].gp).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [])]) },
+        { chave: "circuito", titulo: "Escolha o autódromo", quando: gp, valores: () => Object.keys(TEMAS).filter(k => TEMAS[k].gp).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [], false, true)]) },
+        { chave: "voltas", titulo: "Quantas voltas?", quando: corrida_, valores: op => (gp(op) ? ["3", "5", "8"] : ["1", "3", "5"]).map(v => [v, `${v} ${v === "1" ? "volta" : "voltas"}`]) },
         { chave: "nivel", titulo: "Jeito de dirigir", valores: [["facil", "🐢 Fácil"], ["normal", "🐇 Normal"], ["dificil", "🚀 Rápido"]] },
       ],
-      aoJogar: op => (op.modo === "cidade" ? cidade : corrida)(area, { ...op, fid }),
+      aoJogar: op => (op.modo === "cidade" ? cidade : corrida)(area, { ...op, fid, pista: op.modo === "gp" ? op.circuito : op.pista }),
     });
   }
   // Figuras dos cartões: o carro de verdade, a pista com a paisagem e a cidade vista de cima
-  function figuraCarro(cor) {
-    const cv = carroDeTras(CORES[cor]);
+  function figuraCarro(cor, formula) {
+    const cv = (formula ? formulaDeTras : carroDeTras)(CORES[cor]);
     cv.className = "fig-carro";
     return cv;
   }
-  function figuraCena(pista, carros, dividida = false) {
+  function figuraCena(pista, carros, dividida = false, formula = false) {
     const W = 240, H = 150, cv = document.createElement("canvas");
     cv.width = W; cv.height = H; cv.className = "fig-cena";
     const c = cv.getContext("2d"), tm = TEMAS[pista];
@@ -147,7 +152,7 @@
         const im = desenharEnfeite(tm.coisas[i % tm.coisas.length]), hh = H * tam, ww = hh * im.width / im.height;
         c.drawImage(im, fx * w - ww / 2, fy * H - hh * 0.6, ww, hh);
       });
-      if (carro) { const im = carroDeTras(carro), cw = Math.min(w * 0.6, 130), ch = cw * im.height / im.width; c.drawImage(im, w / 2 - cw / 2, H - ch - 4, cw, ch); }
+      if (carro) { const im = (formula ? formulaDeTras : carroDeTras)(carro), cw = Math.min(w * 0.6, 130), ch = cw * im.height / im.width; c.drawImage(im, w / 2 - cw / 2, H - ch - 4, cw, ch); }
       c.restore();
     };
     if (dividida) { metade(0, W / 2 - 2, carros[0]); metade(W / 2 + 2, W / 2 - 2, carros[1]); c.fillStyle = "#1d1d2b"; c.fillRect(W / 2 - 2, 0, 4, H); }
@@ -396,12 +401,68 @@
     });
     return cv;
   }
-  // Sprites dos carros da corrida guardados prontos (cor × virando × freio × fase da roda)
+  // Carro de fórmula visto de trás (Grande Prêmio): rodas grandes de fora, asa traseira alta,
+  // capa do motor estreita com a barbatana, o capacete do piloto e o halo, e a luz vermelha no meio
+  function formulaDeTras(cor, curva = 0, freio = false, fase = 0) {
+    const W = 220, H = 130, cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const c = cv.getContext("2d");
+    c.translate(W / 2, H);
+    const sk = curva * 8;
+    const gs = c.createRadialGradient(0, 0, 10, 0, 0, 112);
+    gs.addColorStop(0, "rgba(0,0,0,.5)"); gs.addColorStop(1, "rgba(0,0,0,0)");
+    c.save(); c.translate(0, -6); c.scale(1, 0.13); c.fillStyle = gs; c.beginPath(); c.arc(0, 0, 112, 0, 7); c.fill(); c.restore();
+    // braços da suspensão
+    c.strokeStyle = "#222"; c.lineWidth = 4;
+    [-1, 1].forEach(l => { c.beginPath(); c.moveTo(l * 30, -36); c.lineTo(l * 70, -40); c.moveTo(l * 30, -22); c.lineTo(l * 70, -22); c.stroke(); });
+    // pneus traseiros largos, de fora da carroceria
+    [-1, 1].forEach(l => {
+      const px = l < 0 ? -110 : 66;
+      const gp = c.createLinearGradient(px, 0, px + 44, 0);
+      gp.addColorStop(0, "#0d0d0d"); gp.addColorStop(0.5, "#2e2e2e"); gp.addColorStop(1, "#0d0d0d");
+      c.fillStyle = gp; c.beginPath(); c.roundRect(px, -60, 44, 56, 9); c.fill();
+      c.fillStyle = "rgba(0,0,0,.6)"; for (let y = -56 + fase * 5; y < -8; y += 10) c.fillRect(px + 5, y, 34, 2);
+      c.fillStyle = "rgba(255,255,255,.12)"; c.fillRect(px + 6, -58, 4, 50);
+    });
+    // difusor
+    c.fillStyle = "#1b1b1f"; c.beginPath(); c.moveTo(-52, -8); c.lineTo(52, -8); c.lineTo(42, -28); c.lineTo(-42, -28); c.closePath(); c.fill();
+    c.strokeStyle = "#3a3a40"; c.lineWidth = 2; for (let x = -30; x <= 30; x += 15) { c.beginPath(); c.moveTo(x, -9); c.lineTo(x * 0.85, -27); c.stroke(); }
+    // pontões laterais
+    [-1, 1].forEach(l => { c.fillStyle = clarear(cor, -0.2); c.beginPath(); c.roundRect(l < 0 ? -64 : 36, -46, 28, 22, 8); c.fill(); });
+    // capacete e halo (ficam atrás da capa do motor)
+    c.fillStyle = "#f8f9fa"; c.beginPath(); c.arc(sk, -80, 14, Math.PI, 0); c.lineTo(14 + sk, -70); c.lineTo(-14 + sk, -70); c.fill();
+    c.fillStyle = clarear(cor, -0.35); c.fillRect(-14 + sk, -84, 28, 5);
+    c.strokeStyle = "#1d1d22"; c.lineWidth = 5; c.beginPath(); c.moveTo(-18 + sk, -68); c.quadraticCurveTo(sk, -98, 18 + sk, -68); c.stroke();
+    // capa do motor estreita com degradê
+    const corpo = () => { c.beginPath(); c.moveTo(-36, -24); c.quadraticCurveTo(-40, -50, -20 + sk, -70); c.lineTo(20 + sk, -70); c.quadraticCurveTo(40, -50, 36, -24); c.closePath(); };
+    const g = c.createLinearGradient(0, -72, 0, -24);
+    g.addColorStop(0, clarear(cor, 0.35)); g.addColorStop(0.5, cor); g.addColorStop(1, clarear(cor, -0.4));
+    c.fillStyle = g; corpo(); c.fill();
+    c.strokeStyle = "rgba(0,0,0,.4)"; c.lineWidth = 2; corpo(); c.stroke();
+    // entrada de ar e barbatana
+    c.fillStyle = clarear(cor, -0.25); c.beginPath(); c.roundRect(-8 + sk, -98, 16, 30, 6); c.fill();
+    c.fillStyle = "#111"; c.beginPath(); c.roundRect(-5 + sk, -95, 10, 7, 3); c.fill();
+    c.fillStyle = clarear(cor, 0.1); c.beginPath(); c.moveTo(-2 + sk, -100); c.lineTo(2 + sk, -100); c.lineTo(2, -62); c.lineTo(-2, -62); c.fill();
+    // asa traseira: suportes, dois planos e as placas dos lados
+    c.fillStyle = "#222"; c.fillRect(-7, -112, 4, 46); c.fillRect(3, -112, 4, 46);
+    const ga = c.createLinearGradient(0, -122, 0, -108);
+    ga.addColorStop(0, clarear(cor, 0.15)); ga.addColorStop(1, clarear(cor, -0.55));
+    c.fillStyle = ga; c.beginPath(); c.roundRect(-84, -122, 168, 12, 3); c.fill();
+    c.fillStyle = "#1d1d22"; c.beginPath(); c.roundRect(-82, -108, 164, 6, 2); c.fill();
+    c.fillStyle = clarear(cor, -0.5); c.fillRect(-88, -126, 7, 30); c.fillRect(81, -126, 7, 30);
+    // luz vermelha do meio (forte ao frear)
+    c.fillStyle = freio ? "#ff2a2a" : "#7a1010"; c.fillRect(-7, -34, 14, 7);
+    if (freio) { const gl = c.createRadialGradient(0, -30, 2, 0, -30, 30); gl.addColorStop(0, "rgba(255,60,60,.7)"); gl.addColorStop(1, "rgba(255,60,60,0)"); c.fillStyle = gl; c.fillRect(-30, -60, 60, 60); }
+    return cv;
+  }
+
+  // Sprites dos carros da corrida guardados prontos (cor × virando × freio × fase da roda × fórmula)
   const spritesCarro = new Map();
+  let formulaNaPista = false; // a corrida aberta é Grande Prêmio
   const spriteCarro = (cor, vira, freio, fase) => {
-    const k = cor + vira + (freio ? 1 : 0) + fase;
+    const k = (formulaNaPista ? "f" : "") + cor + vira + (freio ? 1 : 0) + fase;
     let s = spritesCarro.get(k);
-    if (!s) { s = carroDeTras(cor, vira === "esq" ? -1 : vira === "dir" ? 1 : 0, freio, fase); spritesCarro.set(k, s); }
+    if (!s) { s = (formulaNaPista ? formulaDeTras : carroDeTras)(cor, vira === "esq" ? -1 : vira === "dir" ? 1 : 0, freio, fase); spritesCarro.set(k, s); }
     return s;
   };
   // Carro visto de cima (cidade): x para a frente
@@ -469,6 +530,10 @@
     campo: { ceu: ["#3d8fe0", "#bfe6ff"], grama: ["#5fb34a", "#56a843"], zebra: ["#e63946", "#fff"], pista: ["#6b6b6b", "#666666"], faixa: "#fff", acost: "#a39a80", nevoa: "#bfe6ff", morros: ["#7cc36a", "#5aa84a"], coisas: ["arvore", "arvore", "pinheiro", "placa", "flores"] },
     praia: { ceu: ["#1fa2ff", "#d9f6ff"], grama: ["#f2d58c", "#ebcd80"], zebra: ["#ff8a00", "#fff"], pista: ["#707070", "#6a6a6a"], faixa: "#fff", acost: "#d8bd78", nevoa: "#d9f6ff", morros: ["#4fc3f7", "#29a3d8"], coisas: ["coqueiro", "coqueiro", "guarda-sol", "placa"] },
     noite: { ceu: ["#0b1030", "#2b2d6e"], grama: ["#2b3a2b", "#263426"], zebra: ["#ffd60a", "#333"], pista: ["#3b3b44", "#36363f"], faixa: "#ffd60a", acost: "#25252c", nevoa: "#20224d", morros: ["#1b1d45", "#14163a"], coisas: ["predio", "predio", "poste", "predio"], noite: true },
+    // Autódromos do Grande Prêmio (carros de fórmula): zebras vermelho e branco, arquibancadas, pneus
+    interlagos: { ceu: ["#4a90d9", "#d4e9fb"], grama: ["#4f9d3a", "#47923a"], zebra: ["#e63946", "#fff"], pista: ["#505056", "#4b4b51"], faixa: "#fff", acost: "#8a8f96", nevoa: "#d4e9fb", morros: ["#8fb07a", "#6f9a5a"], coisas: ["arquibancada", "arquibancada", "pneus", "faixa-gp", "bandeira", "arvore"], gp: true },
+    monaco: { ceu: ["#2f8fe8", "#d6efff"], grama: ["#a3a8ae", "#9a9fa6"], zebra: ["#e63946", "#fff"], pista: ["#46464d", "#424249"], faixa: "#fff", acost: "#c9ccd1", nevoa: "#d6efff", morros: ["#4fc3f7", "#29a3d8"], coisas: ["predio", "predio", "arquibancada", "faixa-gp", "pneus", "coqueiro"], gp: true, largura: 1650 },
+    monza: { ceu: ["#3d8fe0", "#d5ecff"], grama: ["#5fb34a", "#56a843"], zebra: ["#e63946", "#fff"], pista: ["#55555b", "#505056"], faixa: "#fff", acost: "#a39a80", nevoa: "#d5ecff", morros: ["#7cc36a", "#5aa84a"], coisas: ["arvore", "arvore", "arquibancada", "faixa-gp", "pneus", "bandeira"], gp: true },
     neve: { ceu: ["#8fb8d8", "#eef6ff"], grama: ["#f4f8ff", "#e8f0fa"], zebra: ["#2f80ed", "#fff"], pista: ["#7a7f86", "#757a81"], faixa: "#fff", acost: "#b9c3ce", nevoa: "#eef6ff", morros: ["#dfe9f5", "#c9d8ea"], coisas: ["pinheiro-neve", "pinheiro-neve", "boneco", "placa"] },
   };
   // Enfeites da beira da pista: [largura, altura] no mundo e o desenho
@@ -556,6 +621,51 @@
       pronto(120, 60);
       c.fillStyle = "#2f8a3a"; for (let i = 0; i < 9; i++) { c.beginPath(); c.ellipse(10 + i * 12, 44 + (i % 2) * 6, 9, 5, 0, 0, 7); c.fill(); }
       for (let i = 0; i < 9; i++) { const x = 10 + i * 12, y = 30 + (i % 2) * 14; bola(x, y, 7, "#fff", ["#ff70a6", "#ffd60a", "#d8d8ff"][i % 3]); c.fillStyle = "#ffb703"; c.beginPath(); c.arc(x, y, 2, 0, 7); c.fill(); }
+    } else if (tipo === "arquibancada") {
+      // degraus com a torcida colorida, cobertura e bandeirinhas
+      pronto(320, 190);
+      sombra(160, 150, 190);
+      c.fillStyle = "#6c757d"; c.fillRect(24, 34, 6, 150); c.fillRect(290, 34, 6, 150); c.fillRect(157, 34, 6, 150);
+      for (let r = 0; r < 6; r++) {
+        const y = 56 + r * 21, x0 = 26 - r * 3, x1 = 294 + r * 3;
+        c.fillStyle = r % 2 ? "#8a939d" : "#9aa3ad"; c.fillRect(x0, y, x1 - x0, 21);
+        c.fillStyle = "rgba(0,0,0,.18)"; c.fillRect(x0, y + 17, x1 - x0, 4);
+        for (let x = x0 + 7; x < x1 - 4; x += 10) {
+          c.fillStyle = Motor.sortear(["#e63946", "#ffd60a", "#2f80ed", "#2a9d55", "#fff", "#ff70a6", "#f77f00"]);
+          c.fillRect(x - 4, y + 7, 8, 9);
+          c.fillStyle = Motor.sortear(["#f1c27d", "#c68642", "#8d5524", "#ffdbac"]); c.beginPath(); c.arc(x, y + 5, 3.5, 0, 7); c.fill();
+        }
+      }
+      c.fillStyle = "#5c636a"; c.fillRect(18, 186 - 12, 284, 12);
+      const gt = c.createLinearGradient(0, 18, 0, 40); gt.addColorStop(0, "#f1f3f5"); gt.addColorStop(1, "#adb5bd");
+      c.fillStyle = gt; c.beginPath(); c.moveTo(4, 40); c.lineTo(316, 40); c.lineTo(300, 18); c.lineTo(20, 18); c.fill();
+      ["#e63946", "#2f80ed", "#ffd60a", "#2a9d55", "#e63946"].forEach((cor, i) => { const x = 40 + i * 60; c.fillStyle = "#333"; c.fillRect(x, 2, 2, 18); c.fillStyle = cor; c.beginPath(); c.moveTo(x + 2, 3); c.lineTo(x + 18, 8); c.lineTo(x + 2, 13); c.fill(); });
+    } else if (tipo === "pneus") {
+      // barreira de pneus: pilhas pretas com uma faixa vermelha e branca
+      pronto(180, 90);
+      sombra(90, 84, 90);
+      for (let col = 0; col < 5; col++) for (let lin = 0; lin < 3; lin++) {
+        const x = 20 + col * 35, y = 76 - lin * 22;
+        c.fillStyle = "#1b1b1f"; c.beginPath(); c.ellipse(x, y, 17, 11, 0, 0, 7); c.fill();
+        c.fillStyle = lin === 2 ? (col % 2 ? "#e63946" : "#fff") : "#2d2d33"; c.beginPath(); c.ellipse(x, y - 2, 17, 8, 0, 0, 7); c.fill();
+        c.fillStyle = "#111"; c.beginPath(); c.ellipse(x, y - 3, 7, 4, 0, 0, 7); c.fill();
+      }
+    } else if (tipo === "faixa-gp") {
+      // faixa do autódromo (sem marcas), em vermelho e branco
+      pronto(260, 140);
+      sombra(130, 110, 140);
+      c.fillStyle = "#666"; c.fillRect(30, 70, 9, 70); c.fillRect(221, 70, 9, 70);
+      c.fillStyle = "#e63946"; c.beginPath(); c.roundRect(2, 6, 256, 70, 10); c.fill();
+      c.fillStyle = "#fff"; c.beginPath(); c.roundRect(10, 14, 240, 54, 6); c.fill();
+      for (let k = 0; k < 6; k++) { c.fillStyle = k % 2 ? "#111" : "#fff"; c.fillRect(12 + k * 6, 16, 6, 25); c.fillStyle = k % 2 ? "#fff" : "#111"; c.fillRect(12 + k * 6, 41, 6, 25); }
+      c.fillStyle = "#c1121f"; c.font = "bold 30px sans-serif"; c.textAlign = "center";
+      c.fillText(Motor.sortear(["GRANDE PRÊMIO", "VELOCIDADE", "PÓDIO 🏆", "VAI! 🏁", "ÚLTIMA VOLTA?"]), 140, 52, 190);
+    } else if (tipo === "bandeira") {
+      // mastro com a bandeira quadriculada
+      pronto(90, 210);
+      sombra(20, 14, 210);
+      c.fillStyle = "#adb5bd"; c.fillRect(16, 10, 6, 198);
+      for (let i = 0; i < 6; i++) for (let j = 0; j < 4; j++) { c.fillStyle = (i + j) % 2 ? "#111" : "#fff"; c.fillRect(22 + i * 11, 12 + j * 11 + Math.sin(i * 0.9) * 3, 11, 11); }
     } else if (tipo === "boneco") {
       pronto(100, 150);
       sombra(50, 40, 150);
@@ -567,10 +677,11 @@
     }
     return cv;
   }
-  const TAM_ENFEITE = { arvore: 1300, pinheiro: 900, "pinheiro-neve": 900, coqueiro: 1300, "guarda-sol": 900, predio: 1800, poste: 500, placa: 1100, flores: 700, boneco: 650 };
+  const TAM_ENFEITE = { arquibancada: 2400, pneus: 650, "faixa-gp": 1200, bandeira: 1000, arvore: 1300, pinheiro: 900, "pinheiro-neve": 900, coqueiro: 1300, "guarda-sol": 900, predio: 1800, poste: 500, placa: 1100, flores: 700, boneco: 650 };
 
   function corrida(area, op) {
     const tema = TEMAS[op.pista] || TEMAS.campo;
+    formulaNaPista = !!tema.gp;
     const NIVEL = { facil: { max: 0.82, rivais: 0.7, auto: true }, normal: { max: 1, rivais: 0.86, auto: false }, dificil: { max: 1.12, rivais: 0.97, auto: false } }[op.nivel] || { max: 1, rivais: 0.86 };
     const sessao = Motor.sessaoAtual();
     let pausado = false;
@@ -579,7 +690,7 @@
     const vivo = () => sessao === Motor.sessaoAtual() && document.contains(T.tela);
 
     // ----- Pista: segmentos com curva e altura -----
-    const SEG = 200, LARGURA = 2000, FAIXAS = 3, ZEBRA = 3, VISTA = 180, ALT_CAMERA = 1000, FOV = 100;
+    const SEG = 200, LARGURA = tema.largura || 2000, FAIXAS = 3, ZEBRA = 3, VISTA = 180, ALT_CAMERA = 1000, FOV = 100;
     const PROF = 1 / Math.tan((FOV / 2) * Math.PI / 180);
     const segs = [];
     const ultimaY = () => (segs.length ? segs[segs.length - 1].p2.y : 0);
@@ -591,16 +702,23 @@
       for (let n = 0; n < fica; n++) add(curva, suave(y0, y1, (entra + n + 1) / total));
       for (let n = 0; n < sai; n++) add(curva * (1 - n / sai) ** 2, suave(y0, y1, (entra + fica + n + 1) / total));
     };
-    trecho(15, 30, 15, 0, 0);
-    trecho(25, 40, 25, 2, 20);
-    trecho(20, 20, 20, 0, -20);
-    trecho(25, 30, 25, -3, 0);
-    trecho(15, 25, 15, 0, 40);
-    trecho(25, 35, 25, 4, -20);
-    trecho(20, 15, 20, -2, -20);
-    trecho(15, 20, 15, 2, 20);
-    trecho(25, 40, 25, -4, 0);
-    trecho(20, 30, 20, 0, -40);
+    // Cada pista tem o seu traçado: [entrada, meio, saída da curva, curva (+ direita), subida]
+    const TRACADOS = {
+      campo: [[15, 30, 15, 0, 0], [25, 40, 25, 2, 20], [20, 20, 20, 0, -20], [25, 30, 25, -3, 0], [15, 25, 15, 0, 40], [25, 35, 25, 4, -20], [20, 15, 20, -2, -20], [15, 20, 15, 2, 20], [25, 40, 25, -4, 0], [20, 30, 20, 0, -40]],
+      // praia: plana, curvas longas à beira-mar
+      praia: [[20, 40, 20, 0, 0], [40, 60, 40, 2, 0], [20, 40, 20, 0, 5], [40, 70, 40, -2.5, 0], [20, 30, 20, 0, -5], [30, 50, 30, 3, 0], [30, 40, 30, -1.5, 0], [20, 30, 20, 0, 0]],
+      // cidade à noite: quarteirões, curvas fechadas de esquina
+      noite: [[15, 25, 15, 0, 0], [8, 10, 8, 5, 0], [15, 30, 15, 0, 0], [8, 10, 8, -5, 0], [10, 20, 10, 0, 0], [8, 12, 8, 5, 0], [8, 12, 8, 5, 0], [15, 25, 15, 0, 0], [8, 10, 8, -5, 0], [12, 20, 12, 0, 0], [8, 10, 8, -5, 0]],
+      // neve: montanha, sobe e desce
+      neve: [[15, 25, 15, 0, 30], [20, 30, 20, 3, -30], [15, 20, 15, 0, 40], [25, 30, 25, -3, -40], [15, 25, 15, 2, 30], [20, 25, 20, -2, -30], [20, 30, 20, 0, 20]],
+      // Interlagos: largada em descida, o "S" logo depois, curva longa, reta oposta, miolo e a subida até a reta
+      interlagos: [[15, 30, 15, 0, -10], [8, 10, 8, -5, -10], [8, 10, 8, 5, -5], [25, 40, 25, -2.5, 0], [20, 60, 20, 0, -5], [12, 15, 12, -4, -10], [10, 15, 10, 4, 10], [10, 15, 10, -3, 0], [10, 12, 10, 4, 5], [12, 20, 12, -3, 10], [30, 40, 30, -1.5, 30]],
+      // Mônaco: ruas estreitas, curvas lentas, o grampo e o túnel (reta)
+      monaco: [[12, 20, 12, 0, 0], [6, 8, 6, 5, 5], [10, 15, 10, 0, 10], [6, 8, 6, -4, 0], [8, 10, 8, 6, -5], [6, 8, 6, -6, -5], [12, 25, 12, 0, -5], [6, 8, 6, -5, 0], [6, 8, 6, 5, 0], [10, 15, 10, 0, 0], [6, 8, 6, -5, 0], [8, 15, 8, 0, 0]],
+      // Monza: retas enormes e chicanes (a pista mais rápida)
+      monza: [[20, 80, 20, 0, 0], [6, 6, 6, -5, 0], [6, 6, 6, 5, 0], [25, 40, 25, 2, 0], [20, 60, 20, 0, 0], [25, 35, 25, 2.5, 0], [20, 70, 20, 0, 0], [6, 6, 6, -4, 0], [6, 6, 6, 4, 0], [30, 50, 30, 2, 0], [20, 60, 20, 0, 0]],
+    };
+    (TRACADOS[op.pista] || TRACADOS.campo).forEach(t => trecho(...t));
     trecho(30, 30, 40, 0, ultimaY() / -SEG); // volta à altura do começo
     const N = segs.length, VOLTA = N * SEG;
     // Largada e chegada (quadriculado)
@@ -616,7 +734,8 @@
     const img = tipo => (imagens[tipo] = imagens[tipo] || desenharEnfeite(tipo));
     for (let n = 20; n < N - 10; n += 3 + Math.floor(Math.random() * 4)) {
       const lado = Math.random() < 0.5 ? -1 : 1, tipo = Motor.sortear(tema.coisas);
-      segs[n].enfeites.push({ tipo, x: lado * (1.35 + Math.random() * 1.4) });
+      // a arquibancada é grande: fica mais longe da pista
+      segs[n].enfeites.push({ tipo, x: lado * (tipo === "arquibancada" ? 2.3 + Math.random() * 0.8 : 1.35 + Math.random() * 1.4) });
       if (Math.random() < 0.35) segs[n].enfeites.push({ tipo: Motor.sortear(tema.coisas), x: -lado * (1.4 + Math.random() * 1.6) });
     }
 
@@ -651,7 +770,7 @@
     let tempo = 0, fase = "largada", contagem = 3.6, chegada = 0, primeiraChegada = 0;
     // relógio da prova: continua depois que você chega, para cada carro ter o seu tempo de chegada
     let relogioProva = 0;
-    const TOTAL_VOLTAS = 3;
+    const TOTAL_VOLTAS = Math.max(1, Math.min(10, parseInt(op.voltas, 10) || 3)); // escolhido nas opções
     const segDe = z => segs[Math.floor(((z % VOLTA) + VOLTA) % VOLTA / SEG) % N];
     const progresso = (v, z) => v * VOLTA + z;
     const posicao = j => {
@@ -798,7 +917,7 @@
       fase = "fim";
       const lugar = jog[0].chegou;
       const t = relogio();
-      const chave = `carros-recorde-${op.pista}`;
+      const chave = `carros-recorde-${op.pista}` + (TOTAL_VOLTAS === 3 ? "" : `-${TOTAL_VOLTAS}v`); // recorde por pista e número de voltas
       let rec = 0; try { rec = +localStorage.getItem(chave) || 0; } catch (e) { /* ok */ }
       const novo = !rec || tempo < rec;
       if (novo) { try { localStorage.setItem(chave, tempo); } catch (e) { /* ok */ } }
@@ -925,8 +1044,24 @@
         [1, camada(c => { const y = serra(c, ["#f6f9ff", "#e8f0fa"], 14, 10, [4, 11]); bosque(c, y, "#3f6474", true); })],
       ],
     };
+    // Autódromos: Interlagos com a cidade grande ao fundo, Mônaco com o mar e os prédios, Monza no parque
+    CAMADAS.interlagos = () => [
+      [0.25, camada(c => skyline(c, "#9fb3cc", 120, "rgba(255,255,255,.35)"))],
+      [0.5, camada(c => { const y = serra(c, ["#8fb07a", "#6f9a5a"], 40, 24, [3, 7]); bosque(c, y, "#4c7a3a"); })],
+      [1, camada(c => serra(c, ["#55a040", "#47923a"], 14, 10, [4, 9]))],
+    ];
+    CAMADAS.monaco = () => [
+      [0.25, camada(c => serra(c, ["#6f9fbf", "#9cc4dc"], 120, 40, [3, 6, 11]))],
+      [0.5, camada(c => skyline(c, "#c9b8a6", 80, "rgba(255,255,255,.45)"))],
+      [1, camada(c => {
+        const g = c.createLinearGradient(0, TH - PE - 60, 0, TH); g.addColorStop(0, "#1785c4"); g.addColorStop(1, "#4fc3f7");
+        c.fillStyle = g; c.fillRect(0, TH - PE - 60, TW, PE + 60);
+        c.fillStyle = "rgba(255,255,255,.75)"; for (let k = 0; k < 120; k++) c.fillRect(Math.random() * TW, TH - PE - 56 + Math.random() * 80, 6 + Math.random() * 12, 1.5);
+      })],
+    ];
+    CAMADAS.monza = CAMADAS.campo;
     const camadas = (CAMADAS[op.pista] || CAMADAS.campo)();
-    const corChao = { campo: "#55a645", praia: "#ebcd80", noite: "#263426", neve: "#e8f0fa" }[op.pista] || "#55a645";
+    const corChao = { campo: "#55a645", praia: "#ebcd80", noite: "#263426", neve: "#e8f0fa", interlagos: "#47923a", monaco: "#9a9fa6", monza: "#56a843" }[op.pista] || "#55a645";
     // Névoa do horizonte: faixa de 1 pixel de largura, esticada
     const nevoaHoriz = (() => {
       const cv = document.createElement("canvas"); cv.width = 1; cv.height = 64;
@@ -1277,7 +1412,8 @@
     }
     requestAnimationFrame(laco);
     if (DOIS) Motor.falar(`Corrida a dois! ${jog[0].nome} usa o primeiro controle ou as setas. ${jog[1].nome} usa o segundo controle ou as letras W A S D. Passe nas setas amarelas para ganhar turbo!`);
-    else Motor.falar((NIVEL.auto ? "Corrida! O carro acelera sozinho: use as setas para virar." : "Corrida! Acelere, faça as curvas e passe os outros carros!") + " Passe nas setas amarelas para ganhar turbo!");
+    else Motor.falar((tema.gp ? `Grande Prêmio de ${NOMES_PISTA[op.pista].split(" (")[0]}! ${TOTAL_VOLTAS} voltas. ` : `Corrida de ${TOTAL_VOLTAS} ${TOTAL_VOLTAS === 1 ? "volta" : "voltas"}! `) +
+      (NIVEL.auto ? "O carro acelera sozinho: use as setas para virar." : "Acelere, faça as curvas e passe os outros carros!") + " Passe nas setas amarelas para ganhar turbo!");
   }
 
   // =====================================================================
