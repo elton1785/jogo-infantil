@@ -25,6 +25,7 @@ const Placar = (() => {
       } else d.sequencia = 0;
     }
     salvar(jogo, d);
+    if (typeof Progresso !== "undefined") Progresso.partida(!!vencedor && vencedor.id === "voce", !vencedor);
     return { sequencia: d.sequencia, novaMelhorSequencia };
   }
 

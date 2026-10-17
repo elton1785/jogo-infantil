@@ -18,6 +18,9 @@ const App = (() => {
   const subMenu = document.getElementById("sub-menu");
   const atalhos = document.getElementById("atalhos");
   const selos = document.getElementById("selos");
+  const painel = document.getElementById("painel-crianca");
+  const tituloIdades = document.getElementById("titulo-idades");
+  const rodapeInicio = document.getElementById("rodape-inicio");
   const cabecalho = document.getElementById("cabecalho-jogo");
   const areaJogo = document.getElementById("area-jogo");
   const btnVoltar = document.getElementById("btn-voltar");
@@ -102,7 +105,7 @@ const App = (() => {
     telas.forEach(t => t.classList.toggle("ativa", t.id === id));
     btnVoltar.style.display = id === "idades" ? "none" : "flex";
     mostrarBotaoTelaCheia();
-    if (id !== "jogo") { Ajuda.fechar(); btnAjuda.hidden = true; cabecalho.hidden = true; }
+    if (id !== "jogo") { Ajuda.fechar(); btnAjuda.hidden = true; cabecalho.hidden = true; Progresso.sair(); }
   }
 
   function criarOpcao(icone, rotulo, aoClicar, vazia) {
@@ -135,6 +138,44 @@ const App = (() => {
     b.setAttribute("aria-label", jogo.nome);
     b.addEventListener("click", aoClicar);
     return b;
+  }
+
+  // ---------- Progresso no cartão (js/progresso.js): estrelas, passo da trilha, nível, cadeado ----------
+  function decorar(card, jogo, faixa) {
+    const s = Progresso.situacao(jogo, faixa);
+    if (s.estrelas || s.tipo === "licao" || s.tipo === "desafio") {
+      const e = document.createElement("span");
+      e.className = "estrelas-card";
+      e.innerHTML = [0, 1, 2].map(i => `<i class="${i < s.estrelas ? "on" : ""}">★</i>`).join("");
+      e.setAttribute("aria-label", `${s.estrelas} de 3 estrelas`);
+      card.querySelector(".textos").appendChild(e);
+    }
+    const selo = s.passo || (s.nivel && NOMES_NIVEL[s.nivel]);
+    if (selo) {
+      const b = document.createElement("span");
+      b.className = "selo-card" + (s.nivel ? " nivel-" + s.nivel : "");
+      b.textContent = selo;
+      card.appendChild(b);
+    }
+    if (!s.aberto) {
+      card.classList.add("trancado");
+      const c = document.createElement("span");
+      c.className = "cadeado";
+      c.textContent = "🔒";
+      card.appendChild(c);
+    }
+    return card;
+  }
+  // Abre o jogo se ele estiver aberto; trancado, o cartão balança e a voz diz o que falta
+  function tentarAbrir(jogo, faixa, card, abrir) {
+    const s = Progresso.situacao(jogo, faixa);
+    if (!s.aberto) {
+      if (card) Motor.animar(card, "balanca");
+      Motor.falar(s.motivo);
+      return false;
+    }
+    abrir();
+    return true;
   }
 
   // ---------- Favoritos: lista de "idDoJogo|idDaFaixa" ----------
@@ -172,26 +213,51 @@ const App = (() => {
     return card;
   }
 
-  // Tela de início: selos do app, atalhos (continuar o último jogo, favoritos) e as idades
+  // Tela de início: selos do app, a criança que está jogando, atalhos e as idades.
+  // Criança no modo Guiado: missão do dia e Parque no lugar da lista de idades (a idade é a do perfil).
+  const novo = (tag, classe, texto) => { const e = document.createElement(tag); if (classe) e.className = classe; if (texto != null) e.textContent = texto; return e; };
   function abrirIdades() {
     Motor.novaSessao();
     guardarOnde({ t: "idades" });
     selos.innerHTML = "";
     [["🎮", `${JOGOS.length} jogos`], ["🔊", "Com voz"], ["📴", "Sem internet"], ["🚫", "Sem anúncios"], ["🕹️", "Controle na TV"]].forEach(([i, t]) => {
-      const el = document.createElement("span");
-      el.className = "selo";
-      el.textContent = `${i} ${t}`;
-      selos.appendChild(el);
+      selos.appendChild(novo("span", "selo", `${i} ${t}`));
     });
+    const p = Album.perfilAtual(), guiado = Progresso.guiado(p), faixaP = guiado ? FAIXAS.find(f => f.id === p.faixa) : null;
     atalhos.innerHTML = "";
+    painel.innerHTML = "";
+    // Quem está jogando (tocar troca a criança), moedas e estrelas
+    const quem = novo("button", "painel-crianca");
+    quem.innerHTML = `<span class="av"></span><span class="textos"><b></b><small></small></span><span class="prog-moedas"></span>`;
+    quem.querySelector(".av").textContent = p.avatar;
+    quem.querySelector(".av").style.background = p.cor;
+    quem.querySelector("b").textContent = p.id === "visitante" ? "Quem está jogando?" : `Oi, ${p.nome}!`;
+    quem.querySelector("small").textContent = p.id === "visitante" ? "Toque para escolher ou criar" : `${guiado ? "🧭 " + faixaP.nome : "🌟 Livre"} · ⭐ ${Progresso.totalEstrelas()}`;
+    quem.querySelector(".prog-moedas").textContent = `🪙 ${Progresso.moedas()}`;
+    quem.addEventListener("click", () => { telaCheia(); Album.telaPerfis(); });
+    painel.appendChild(quem);
+    if (guiado) painel.appendChild(blocoMissao(faixaP));
+
     const [uid, ufx] = (lembrado("ultimo") || "").split("|");
     const ultJogo = JOGOS.find(j => j.id === uid), ultFaixa = FAIXAS.find(f => f.id === ufx);
     if (ultJogo && ultFaixa) {
-      const c = cartaoJogo(ultJogo, () => { telaCheia(); faixaAtual = ultFaixa; noFavoritos = false; abrirMenu(ultFaixa); abrirJogo(ultJogo); }, `▶️ Continuar · ${ultFaixa.nome}`);
+      const c = cartaoJogo(ultJogo, () => { telaCheia(); tentarAbrir(ultJogo, ultFaixa, c, () => { faixaAtual = ultFaixa; noFavoritos = false; abrirMenu(ultFaixa); abrirJogo(ultJogo); }); }, `▶️ Continuar · ${ultFaixa.nome}`);
       c.classList.add("continuar");
       atalhos.appendChild(c);
     }
+    if (guiado) {
+      const todos = novo("button", "atalho-fav atalho-trilhas");
+      todos.innerHTML = `<span class="icone">🗺️</span><span class="textos"><span class="rotulo">Meus jogos</span><span class="desc"></span></span>`;
+      todos.querySelector(".desc").textContent = `Trilhas, desafios e brincadeiras de ${faixaP.nome}`;
+      todos.addEventListener("click", () => { telaCheia(); abrirMenu(faixaP); });
+      atalhos.appendChild(todos);
+    }
     atalhos.appendChild(Album.cartaoInicio());
+    const loja = novo("button", "atalho-fav atalho-loja");
+    loja.innerHTML = `<span class="icone">🛍️</span><span class="textos"><span class="rotulo">Loja</span><span class="desc"></span></span>`;
+    loja.querySelector(".desc").textContent = `🪙 ${Progresso.moedas()} moedas · figurinhas e enfeites`;
+    loja.addEventListener("click", () => { telaCheia(); Progresso.loja(); });
+    atalhos.appendChild(loja);
     const nFav = favoritos().length;
     const fav = document.createElement("button");
     fav.className = "atalho-fav";
@@ -201,7 +267,8 @@ const App = (() => {
     atalhos.appendChild(fav);
 
     listaIdades.innerHTML = "";
-    [LIVRE, ...FAIXAS].forEach(f => {
+    tituloIdades.hidden = guiado;
+    if (!guiado) [LIVRE, ...FAIXAS].forEach(f => {
       const n = jogosDa(f).length, info = IDADES[f.id] || {};
       const b = document.createElement("button");
       b.className = "cartao-idade" + (n ? "" : " vazia") + (f === LIVRE ? " livre" : "");
@@ -214,32 +281,87 @@ const App = (() => {
       b.addEventListener("click", () => { telaCheia(); abrirMenu(f); });
       listaIdades.appendChild(b);
     });
+    rodapeInicio.innerHTML = "";
+    rodapeInicio.appendChild(Progresso.botaoPais());
     mostrar("idades");
   }
 
-  // Lista de jogos separada por categoria (cada uma com a sua cor)
-  function porCategoria(jogos, cartao) {
+  // 🎯 Missão do dia (3 cartões) e o 🎡 Parque, que abre quando ela termina
+  function blocoMissao(faixa) {
+    const m = Progresso.missao();
+    const box = novo("section", "missao" + (m && m.completa ? " completa" : ""));
+    if (!m || !m.ids.length) return box;
+    const cab = novo("div", "missao-cab");
+    cab.append(novo("h2", "missao-titulo", m.completa ? "🎉 Missão de hoje cumprida!" : "🎯 Missão de hoje"), novo("span", "missao-conta", `${m.feitos.length} de ${m.ids.length}`));
+    const grade = novo("div", "missao-grade");
+    m.ids.forEach(id => {
+      const jogo = JOGOS.find(j => j.id === id);
+      if (!jogo) return;
+      const tp = TIPOS_ATIVIDADE[tipoDe(jogo)];
+      const c = cartaoJogo(jogo, () => { telaCheia(); tentarAbrir(jogo, faixa, c, () => { abrirMenu(faixa); faixaAtual = faixa; abrirJogo(jogo); }); }, `${tp.icone} ${tp.nome}`);
+      decorar(c, jogo, faixa);
+      if (m.feitos.includes(id)) { c.classList.add("feito"); c.appendChild(novo("span", "feito-marca", "✅")); }
+      grade.appendChild(c);
+    });
+    box.append(cab, grade);
+    const info = Progresso.infoParque(faixa.id);
+    if (info) {
+      const pq = novo("button", "parque-cartao" + (info.aberto ? " aberto" : ""));
+      pq.innerHTML = `<span class="icone">🎡</span><span class="textos"><b>Parque de diversões</b><small></small></span><span class="estado"></span>`;
+      pq.querySelector("small").textContent = info.aberto ? "Corridas, futebol, sinuca, pescaria…" : info.acabou ? info.texto : "Abre quando você cumprir a missão!";
+      pq.querySelector(".estado").textContent = info.aberto ? info.texto : info.acabou ? "🌙" : `🔒 ${info.texto}`;
+      pq.addEventListener("click", () => {
+        telaCheia();
+        if (!info.aberto) { Motor.animar(pq, "balanca"); Motor.falar(info.acabou ? "O tempo do Parque de hoje acabou. Amanhã tem mais!" : "Cumpra a missão do dia para abrir o Parque!"); return; }
+        abrirMenu(faixa, "parque");
+      });
+      box.appendChild(pq);
+    }
+    return box;
+  }
+
+  // Lista de jogos separada por tipo de atividade: 📚 Aprender (uma trilha por matéria, na ordem de
+  // ensino), 🧠 Desafios (do fácil ao difícil), 🎨 Brincar à vontade e 🎡 Parque de diversões.
+  // `faixaDe(jogo)`: a idade em que o jogo abre (no Livre, cada jogo tem a sua).
+  function porTipo(jogos, cartao, faixaDe) {
     listaJogos.innerHTML = "";
-    ORDEM_CATEGORIAS.forEach(c => {
-      const daqui = jogos.filter(j => (CATALOGO[j.id] || ["descobrir"])[0] === c);
+    const grade = lista => { const g = novo("div", "grade-jogos"); lista.forEach(j => g.appendChild(cartao(j))); return g; };
+    ORDEM_TIPOS.forEach(t => {
+      const daqui = jogos.filter(j => tipoDe(j) === t);
       if (!daqui.length) return;
-      const cat = CATEGORIAS[c];
-      const secao = document.createElement("section");
-      secao.className = "secao-cat";
-      secao.style.setProperty("--cor", cat.cor);
-      const h = document.createElement("h2");
-      h.className = "secao-titulo";
-      h.textContent = `${cat.icone} ${cat.nome}`;
-      const grade = document.createElement("div");
-      grade.className = "grade-jogos";
-      daqui.forEach(j => grade.appendChild(cartao(j)));
-      secao.append(h, grade);
+      const tp = TIPOS_ATIVIDADE[t];
+      const secao = novo("section", "secao-cat secao-tipo");
+      secao.id = "secao-" + t;
+      secao.style.setProperty("--cor", tp.cor);
+      secao.appendChild(novo("h2", "secao-titulo", `${tp.icone} ${tp.nome}`));
+      if (t === "parque") {
+        const info = Progresso.infoParque(faixaDe(daqui[0]).id);
+        if (info) secao.appendChild(novo("p", "secao-frase", info.aberto ? `🔓 ${info.texto}` : info.acabou ? `🌙 ${info.texto}` : `🔒 Abre depois da missão do dia (${info.texto})`));
+      }
+      if (t === "licao") {
+        // Uma trilha por matéria; o que não estiver em trilha nenhuma vai no fim
+        const usados = new Set();
+        TRILHAS.forEach(tr => {
+          const lista = tr.jogos.map(id => daqui.find(j => j.id === id)).filter(Boolean);
+          if (!lista.length) return;
+          lista.forEach(j => usados.add(j));
+          const sub = novo("div", "sub-trilha");
+          sub.style.setProperty("--cor", tr.cor);
+          const feitas = lista.filter(j => Progresso.estrelasDe(j, faixaDe(j))).length;
+          sub.append(novo("h3", "sub-trilha-titulo", `${tr.icone} ${tr.nome}`), novo("span", "sub-trilha-conta", `✅ ${feitas} de ${lista.length}`));
+          secao.append(sub, grade(lista));
+        });
+        const resto = daqui.filter(j => !usados.has(j));
+        if (resto.length) secao.appendChild(grade(resto));
+      } else if (t === "desafio") {
+        secao.appendChild(grade(daqui.slice().sort((a, b) => (NIVEL_DESAFIO[a.id] || 1) - (NIVEL_DESAFIO[b.id] || 1))));
+      } else secao.appendChild(grade(daqui));
       listaJogos.appendChild(secao);
     });
   }
 
   // Cada tela aberta entra no histórico, para o "voltar" do celular voltar uma tela
-  function abrirMenu(faixa) {
+  function abrirMenu(faixa, rolarPara) {
     if (telaAtual === "idades") history.pushState({ tela: "menu" }, "");
     Motor.novaSessao();
     faixaAtual = faixa;
@@ -251,18 +373,26 @@ const App = (() => {
     const jogos = jogosDa(faixa);
     subMenu.textContent = jogos.length ? `${jogos.length} jogos · ${(IDADES[faixa.id] || {}).texto || ""}` : "";
     document.getElementById("menu").style.setProperty("--cor-idade", (IDADES[faixa.id] || {}).cor || "#4895ef");
-    porCategoria(jogos, j => {
-      const fx = faixa === LIVRE ? faixaDoJogo(j) : faixa;
-      return comEstrela(cartaoJogo(j, () => { faixaAtual = fx; abrirJogo(j); }), j, fx);
-    });
+    const faixaDe = j => (faixa === LIVRE ? faixaDoJogo(j) : faixa);
+    porTipo(jogos, j => {
+      const fx = faixaDe(j);
+      const c = cartaoJogo(j, () => tentarAbrir(j, fx, c, () => { faixaAtual = fx; abrirJogo(j); }));
+      return comEstrela(decorar(c, j, fx), j, fx);
+    }, faixaDe);
     if (jogos.length === 0) {
       const aviso = document.createElement("div");
       aviso.className = "aviso";
       aviso.textContent = "🚧 Jogos desta idade em breve!";
       listaJogos.appendChild(aviso);
     }
-    listaJogos.scrollTop = 0;
+    document.getElementById("rolagem-menu").scrollTop = 0;
     mostrar("menu");
+    const alvo = rolarPara && document.getElementById("secao-" + rolarPara);
+    // Depois do destaque automático do controle da TV (que rola até o primeiro cartão)
+    if (alvo) setTimeout(() => {
+      const rol = document.getElementById("rolagem-menu");
+      rol.scrollTop += alvo.getBoundingClientRect().top - rol.getBoundingClientRect().top - 90;
+    }, 200);
   }
 
   function abrirFavoritos() {
@@ -290,7 +420,7 @@ const App = (() => {
     grade.className = "grade-jogos";
     listaJogos.appendChild(grade);
     itens.forEach(({ jogo, faixa }) => {
-      const card = cartaoJogo(jogo, () => { faixaAtual = faixa; abrirJogo(jogo); }, `${faixa.icone} ${faixa.nome}`);
+      const card = decorar(cartaoJogo(jogo, () => tentarAbrir(jogo, faixa, card, () => { faixaAtual = faixa; abrirJogo(jogo); }), `${faixa.icone} ${faixa.nome}`), jogo, faixa);
       // Desmarcou aqui: o card sai da lista
       grade.appendChild(comEstrela(card, jogo, faixa, on => { if (!on) abrirFavoritos(); }));
     });
@@ -308,6 +438,7 @@ const App = (() => {
     areaJogo.innerHTML = "";
     mostrar("jogo");
     Motor.falar(jogo.nome);
+    Progresso.entrar(jogo, faixaAtual);
     jogo.iniciar(areaJogo, faixaAtual);
     prepararAjuda(jogo, faixaAtual);
   }
@@ -398,9 +529,10 @@ const App = (() => {
 
   // O cartão do álbum mostra os pacotinhos novos: redesenha o início quando o álbum muda
   Album.aoMudar(() => { if (telaAtual === "idades") abrirIdades(); });
+  Progresso.aoMudar(() => { if (telaAtual === "idades") abrirIdades(); });
 
   // Abertura: recarregou a página (F5)? Volta para a mesma tela (e o mesmo jogo). Abriu o app de
-  // novo? Vai para o último menu de idade usado.
+  // novo? Vai para o último menu de idade usado (criança no modo Guiado: fica no início).
   const abrirMenuDe = id => {
     const f = FAIXAS.find(x => x.id === id);
     if (id === "favoritos") abrirFavoritos();
@@ -413,8 +545,8 @@ const App = (() => {
   if (onde) {
     if (onde.t !== "idades") abrirMenuDe(onde.f);
     const j = onde.t === "jogo" && JOGOS.find(x => x.id === onde.j), fx = FAIXAS.find(x => x.id === onde.fx);
-    if (j && fx && telaAtual === "menu") { faixaAtual = fx; abrirJogo(j); }
-  } else abrirMenuDe(lembrado("faixa"));
+    if (j && fx && telaAtual === "menu" && Progresso.situacao(j, fx).aberto) { faixaAtual = fx; abrirJogo(j); }
+  } else if (!Progresso.guiado()) abrirMenuDe(lembrado("faixa")); // no Guiado, abre no início (missão do dia)
 })();
 
 // Puxar a tela para baixo (no início e nos menus): procura versão nova e já instala.

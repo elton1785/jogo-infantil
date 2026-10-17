@@ -199,6 +199,7 @@ const Motor = (() => {
   // a não ser com `contar = false`.
   function comemorar(el, contar = true) {
     if (contar && typeof Album !== "undefined") Album.ponto();
+    if (contar && typeof Progresso !== "undefined") Progresso.acerto();
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     for (let i = 0; i < 12; i++) {
@@ -640,7 +641,9 @@ const Motor = (() => {
     denovo.addEventListener("click", () => { area.innerHTML = ""; jogarDeNovo(); });
     caixa.appendChild(denovo);
     area.appendChild(caixa);
-    comemorar(caixa.querySelector(".trofeu"));
+    comemorar(caixa.querySelector(".trofeu"), false); // o ponto do álbum vem logo abaixo
+    if (typeof Album !== "undefined") Album.ponto();
+    if (typeof Progresso !== "undefined") Progresso.fimDeRodada(acertos, total);
     tim();
     falar(`Parabéns! Você acertou ${acertos} de ${total} de primeira!`);
   }

@@ -224,7 +224,7 @@ const Album = (() => {
   }
   function criarPerfil() {
     const c = novaCamada("perfis");
-    let nome = "", avatar = AVATARES[0], cor = CORES[0];
+    let nome = "", avatar = AVATARES[0], cor = CORES[0], faixa = null;
     const t = Object.assign(document.createElement("div"), { className: "album-titulo-pagina", textContent: "✨ Nova criança" });
     const previa = document.createElement("div");
     previa.className = "album-previa";
@@ -242,17 +242,27 @@ const Album = (() => {
       b.addEventListener("click", () => { nome = l === "⌫" ? nome.slice(0, -1) : (nome.length < 14 ? nome + (nome ? l.toLowerCase() : l) : nome); desenharPrevia(); });
       teclado.appendChild(b);
     });
+    // Idade: decide os jogos da trilha e da missão do dia (os pais mudam no menu dos pais)
+    const idades = document.createElement("div"); idades.className = "album-escolhas idades";
+    FAIXAS.forEach(f => {
+      const b = Object.assign(document.createElement("button"), { className: "album-escolha idade" });
+      b.innerHTML = `<span></span><small></small>`;
+      b.querySelector("span").textContent = f.icone; b.querySelector("small").textContent = f.nome;
+      b.addEventListener("click", () => { faixa = f.id; idades.querySelectorAll(".idade").forEach(x => x.classList.toggle("ativa", x === b)); Motor.ploc(); Motor.falar(f.nome); });
+      idades.appendChild(b);
+    });
     const ok = Object.assign(document.createElement("button"), { className: "chip jogar", textContent: "✅ Pronto" });
     ok.addEventListener("click", () => {
       if (!nome) { Motor.falar("Escreva o nome primeiro!"); return; }
-      const p = { id: "p" + Date.now(), nome, avatar, cor };
+      if (!faixa) { Motor.falar("Quantos anos você tem? Toque na sua idade!"); return; }
+      const p = { id: "p" + Date.now(), nome, avatar, cor, faixa, modo: "livre" };
       gravar("perfis", [...perfis(), p]);
       gravar("perfil-atual", p.id);
       Motor.tim(); Motor.falar(`Oi, ${nome}! Este é o seu álbum!`);
       abrir();
     });
-    c.append(t, previa, rotulo("Escolha um bichinho"), avs, rotulo("Escolha uma cor"), cores, rotulo("Escreva o nome"), teclado, ok);
-    Motor.falar("Escolha um bichinho, uma cor e escreva o seu nome!");
+    c.append(t, previa, rotulo("Escolha um bichinho"), avs, rotulo("Escolha uma cor"), cores, rotulo("Escreva o nome"), teclado, rotulo("Quantos anos?"), idades, ok);
+    Motor.falar("Escolha um bichinho, uma cor, escreva o seu nome e a sua idade!");
   }
 
   // Cartão do início: perfil, figurinhas coladas e pacotinhos para abrir
@@ -267,5 +277,12 @@ const Album = (() => {
     return b;
   }
 
-  return { ponto, abrir, cartaoInicio, perfilAtual, telaPerfis, aoMudar: fn => { aoMudar = fn; }, aberto: () => !!camada, fechar };
+  // ---------- Para a loja e o menu dos pais (js/progresso.js) ----------
+  function salvarPerfil(p) { gravar("perfis", perfis().map(x => x.id === p.id ? p : x)); }
+  function darPacotes(n) { const d = dados(); d.pacotes = (d.pacotes || 0) + n; salvar(d); if (aoMudar) aoMudar(); }
+  const faltando = () => { const d = dados(); return FIGS.filter(f => !d.figs[f.id]); };
+  function darFigurinha(id) { const d = dados(); d.figs[id] = (d.figs[id] || 0) + 1; salvar(d); }
+
+  return { ponto, abrir, abrirPacote, cartaoInicio, perfis, perfilAtual, salvarPerfil, telaPerfis, criarPerfil, darPacotes, faltando, darFigurinha, PAGINAS,
+    aoMudar: fn => { aoMudar = fn; }, aberto: () => !!camada, fechar };
 })();

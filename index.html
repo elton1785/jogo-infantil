@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="css/piano-bichinho.css">
 <link rel="stylesheet" href="css/melhorias.css">
 <link rel="stylesheet" href="css/album.css">
+<link rel="stylesheet" href="css/progresso.css">
 </head>
 <body>
 
@@ -33,9 +34,12 @@
       <p class="inicio-sub">Jogos educativos com voz para crianças de 1 a 10 anos</p>
       <div class="selos" id="selos"></div>
     </header>
+    <!-- Quem está jogando; no modo Guiado, a missão do dia e o Parque (js/progresso.js) -->
+    <div class="painel" id="painel-crianca"></div>
     <div class="atalhos" id="atalhos"></div>
-    <h2 class="secao-titulo destaque">Qual é a idade?</h2>
+    <h2 class="secao-titulo destaque" id="titulo-idades">Qual é a idade?</h2>
     <div class="lista-idades" id="lista-idades"></div>
+    <div class="rodape-inicio" id="rodape-inicio"></div>
   </div>
 </section>
 
@@ -80,6 +84,7 @@
 <script src="js/ajuda.js"></script>
 <script src="js/controle.js"></script>
 <script src="js/album.js"></script>
+<script src="js/progresso.js"></script>
 <script src="js/palco.js"></script>
 <!-- Jogos: cada arquivo registra um jogo em JOGOS (a ordem aqui é a ordem no menu) -->
 <!-- Pequenos -->

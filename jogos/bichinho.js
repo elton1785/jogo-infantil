@@ -58,6 +58,9 @@
     const cabeca = dino
       ? `<ellipse cx="100" cy="80" rx="56" ry="48" fill="${C}"/>`
       : `<circle cx="100" cy="80" r="50" fill="${C}"/>`;
+    // Enfeite comprado na Loja (js/progresso.js), em cima da cabeça
+    const enf = typeof Progresso !== "undefined" && Progresso.enfeite();
+    const chapeu = enf ? `<text x="100" y="45" font-size="44" text-anchor="middle">${enf}</text>` : "";
     const brilhoOlho = panda ? `<circle cx="82" cy="80" r="9.5" fill="#fff"/><circle cx="118" cy="80" r="9.5" fill="#fff"/>` : "";
     return `<svg class="bv-svg" viewBox="0 0 200 210" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
 <ellipse cx="100" cy="203" rx="64" ry="7" fill="rgba(0,0,0,.14)"/>
@@ -89,6 +92,7 @@ ${focinho}
 <g class="boca boca-dentes"><rect x="80" y="101" width="40" height="22" rx="10" fill="#7a2e3a"/><rect x="84" y="102.5" width="32" height="7" rx="3" fill="#fff"/><rect x="85" y="115" width="30" height="6.5" rx="3" fill="#fff"/>
 <g class="manchas" fill="#c9b458"><circle class="mancha" cx="88" cy="106" r="2.6"/><circle class="mancha" cx="100" cy="105" r="2.6"/><circle class="mancha" cx="111" cy="106.5" r="2.6"/><circle class="mancha" cx="90" cy="118" r="2.6"/><circle class="mancha" cx="101" cy="118.5" r="2.6"/><circle class="mancha" cx="110" cy="118" r="2.6"/></g></g>
 <g class="doente-extra"><g transform="rotate(-25 124 46)"><rect x="110" y="40" width="30" height="11" rx="5" fill="#f6c89f" stroke="#d9a066"/><circle cx="121" cy="45.5" r="1.3" fill="#c98f5a"/><circle cx="129" cy="45.5" r="1.3" fill="#c98f5a"/></g></g>
+${chapeu}
 </g>
 <g class="bv-sujeira" fill="#8d6e4f"><ellipse cx="66" cy="62" rx="9" ry="6"/><circle cx="74" cy="56" r="3"/><ellipse cx="134" cy="96" rx="7" ry="5"/><ellipse cx="80" cy="150" rx="10" ry="7"/><circle cx="90" cy="145" r="3.5"/><ellipse cx="128" cy="172" rx="9" ry="6"/><ellipse cx="62" cy="178" rx="7" ry="5"/></g>
 </g>

@@ -93,3 +93,40 @@ const IDADES = {
   "6-8": { cor: "#7b61ff", texto: "Leitura, contas e desafios" },
   "8-10": { cor: "#e05780", texto: "Lógica, cubo, frações e mais" },
 };
+
+// ---------- Tipo de atividade (modo Guiado, js/progresso.js) ----------
+// 📚 licao: em sequência (trilha), a próxima abre quando a anterior termina
+// 🧠 desafio: raciocínio e jogos de mesa, abrem por nível (fácil → difícil)
+// 🎨 livre: brincar à vontade, sempre aberto
+// 🎡 parque: diversão, abre depois da missão do dia
+const TIPOS_ATIVIDADE = {
+  licao:   { nome: "Aprender",            icone: "📚", cor: "#7b2cbf", frase: "Lições em sequência" },
+  desafio: { nome: "Desafios e lógica",   icone: "🧠", cor: "#178a4c", frase: "Do fácil ao difícil" },
+  livre:   { nome: "Brincar à vontade",   icone: "🎨", cor: "#d6457f", frase: "Sempre aberto" },
+  parque:  { nome: "Parque de diversões", icone: "🎡", cor: "#e85d04", frase: "Abre depois da missão do dia" },
+};
+const ORDEM_TIPOS = ["licao", "desafio", "livre", "parque"];
+// Padrão pela categoria; abaixo, as exceções
+const TIPO_DA_CATEGORIA = { leitura: "licao", numeros: "licao", raciocinio: "desafio", mesa: "desafio", arte: "livre", descobrir: "livre", acao: "parque" };
+const TIPO_DO_JOGO = {
+  amazonia: "licao", ciencias: "licao", brasil: "licao",
+  forca: "desafio", "caca-palavras": "desafio", 2048: "desafio", blocos: "desafio",
+  mundo: "parque", sinuca: "parque", aviao: "parque", pescaria: "parque",
+};
+const tipoDe = jogo => TIPO_DO_JOGO[jogo.id] || TIPO_DA_CATEGORIA[(CATALOGO[jogo.id] || ["descobrir"])[0]] || "livre";
+
+// Trilhas de lições: a ordem de ensino de cada matéria (cada idade usa as que tem)
+const TRILHAS = [
+  { id: "leitura", nome: "Ler e escrever", icone: "📖", cor: "#7b2cbf",
+    jogos: ["pintar-letras", "vogais", "maiuscula", "letras", "palmas", "rimas", "familias", "juntar-letras", "palavra-figura", "silabas", "ler-juntinho", "ler", "ditado", "frases", "ortografia", "historias", "ingles"] },
+  { id: "numeros", nome: "Números e contas", icone: "🔢", cor: "#1d6fb8",
+    jogos: ["contar", "numero-quantidade", "sequencias", "ordenar", "contas", "horas", "mercado", "dinheiro", "tabuada", "fracoes"] },
+  { id: "mundo", nome: "Conhecer o mundo", icone: "🌍", cor: "#e07a00",
+    jogos: ["amazonia", "ciencias", "brasil"] },
+];
+// Nível dos desafios (1 fácil, 2 médio, 3 difícil); sem nível = 1
+const NIVEL_DESAFIO = {
+  domino: 2, lig4: 2, hanoi: 2, robo: 2, 2048: 2, damas: 2, trilha: 2, "batalha-naval": 2, forca: 2, blocos: 2,
+  minado: 3, sudoku: 3, xadrez: 3, cubo: 3,
+};
+const NOMES_NIVEL = { 1: "Fácil", 2: "Médio", 3: "Difícil" };
