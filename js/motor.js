@@ -190,6 +190,7 @@ const Motor = (() => {
   const ehPequeno = faixa => !faixa || ["1-2", "2-3"].includes(faixa.id);
 
   function animar(el, classe) {
+    if (classe === "balanca" && typeof Progresso !== "undefined") Progresso.erro(); // resposta errada
     el.classList.remove(classe);
     void el.offsetWidth; // reinicia a animação
     el.classList.add(classe);

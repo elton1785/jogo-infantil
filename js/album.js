@@ -214,7 +214,18 @@ const Album = (() => {
       b.querySelector(".nm").textContent = p.nome;
       const dd = ler(`album-${p.id}`, { figs: {} });
       b.querySelector("small").textContent = `📒 ${FIGS.filter(f => dd.figs[f.id] > 0).length}/${FIGS.length}`;
-      b.addEventListener("click", () => { gravar("perfil-atual", p.id); Motor.falar(`Oi, ${p.nome}!`); depoisDeEscolher(); });
+      b.addEventListener("click", () => {
+        const escolher = () => { gravar("perfil-atual", p.id); Motor.falar(`Oi, ${p.nome}!`); depoisDeEscolher(); };
+        // Sair de uma criança no modo Guiado para outra: só com a senha (senão vira brecha para o Livre)
+        if (p.id !== perfilAtual().id && typeof Progresso !== "undefined" && Progresso.guiado()) {
+          const voltar = paraInicio;
+          if (camada) { camada.remove(); camada = null; }
+          const senha = () => Progresso.comSenha(() => { Progresso.fechar(); gravar("perfil-atual", p.id); Motor.falar(`Oi, ${p.nome}!`); if (!voltar) setTimeout(() => abrir(), 50); });
+          if (history.state && history.state.tela === "album") { window.addEventListener("popstate", senha, { once: true }); history.back(); } else senha();
+          return;
+        }
+        escolher();
+      });
       lista.appendChild(b);
     });
     const novo = document.createElement("button");

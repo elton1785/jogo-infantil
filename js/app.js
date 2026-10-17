@@ -544,6 +544,8 @@ const App = (() => {
   // Abertura: recarregou a página (F5)? Volta para a mesma tela (e o mesmo jogo). Abriu o app de
   // novo? Vai para o último menu de idade usado (criança no modo Guiado: fica no início).
   const abrirMenuDe = id => {
+    const pg = Album.perfilAtual();
+    if (Progresso.guiado(pg) && id !== "favoritos" && id !== pg.faixa) id = pg.faixa; // Guiado: só a idade dela
     const f = FAIXAS.find(x => x.id === id);
     if (id === "favoritos") abrirFavoritos();
     else if (id === "livre") abrirMenu(LIVRE);
@@ -558,6 +560,9 @@ const App = (() => {
     if (j && fx && onde.f === "inicio" && Progresso.situacao(j, fx).aberto) abrirDoInicio(j, fx);
     else if (j && fx && telaAtual === "menu" && Progresso.situacao(j, fx).aberto) { faixaAtual = fx; abrirJogo(j); }
   } else if (!Progresso.guiado()) abrirMenuDe(lembrado("faixa")); // no Guiado, abre no início (missão do dia)
+
+  // Para o Progresso: o tempo do Parque acabou, sai do jogo para o início
+  return { irParaInicio() { Ajuda.fechar(); abrirIdades(); } };
 })();
 
 // Puxar a tela para baixo (no início e nos menus): procura versão nova e já instala.

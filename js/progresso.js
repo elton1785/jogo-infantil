@@ -19,8 +19,22 @@ const Progresso = (() => {
   const MINUTOS_PARQUE = 15, EXTRA_POR_LICAO = 5, EXTRA_MAX = 15;
   const pequeno = faixaId => ["1-2", "2-3"].includes(faixaId);
   const faixaObj = id => FAIXAS.find(f => f.id === id);
-  const hoje = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const diaDe = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  // Hoje, sem voltar no tempo: se a data do aparelho for atrasada (para ganhar missão e Parque de
+  // novo), continua valendo o maior dia já visto. Adiantar a data só "gasta" os dias seguintes.
+  function hoje() {
+    const real = diaDe(new Date());
+    let maior = null;
+    try { maior = localStorage.getItem("dia-maior"); } catch (e) { /* ok */ }
+    if (maior && real < maior) return maior;
+    if (real !== maior) try { localStorage.setItem("dia-maior", real); } catch (e) { /* ok */ }
+    return real;
+  }
   const numeroDoDia = () => Math.floor(new Date(hoje() + "T12:00:00").getTime() / 86400000);
+  // Toque, clique ou tecla nos últimos 20 s: a criança está mexendo (jogo aberto parado não conta)
+  let ultimoGesto = 0;
+  ["pointerdown", "keydown"].forEach(t => window.addEventListener(t, () => { ultimoGesto = Date.now(); }, true));
+  const mexendo = () => Date.now() - ultimoGesto < 20000;
   // Sorteio que não muda no mesmo dia (a missão é a mesma ao abrir o app de novo)
   function semente(txt) {
     let h = 2166136261;
@@ -185,51 +199,73 @@ const Progresso = (() => {
     if (ganhouTempo) avisar(`⏱️ +${EXTRA_POR_LICAO} minutos de Parque!`);
     mudou();
   }
+  // Tempo do Parque acabou (depois do minuto para terminar): volta para o início
+  function fimDoParque() {
+    if (typeof App !== "undefined" && App && App.irParaInicio) App.irParaInicio();
+    avisar("🌙 Hora de descansar do Parque! Amanhã tem mais.", { grande: true, fala: "Hora de descansar do Parque! Amanhã tem mais." });
+  }
   const temParque = faixaId => JOGOS.some(j => j.faixas.includes(faixaId) && tipoDe(j) === "parque");
 
   // ---------- O jogo aberto agora (o App avisa ao entrar e sair) ----------
   let atual = null, relogio = null;
   function entrar(jogo, faixa) {
     sair();
-    atual = { jogo, faixa, tipo: tipoDe(jogo), acertos: 0, seg: 0, deu: false };
+    atual = { jogo, faixa, tipo: tipoDe(jogo), acertos: 0, erros: 0, seg: 0, ativo: 0, deu: false, saida: 0 };
     relogio = setInterval(segundo, 1000);
   }
   function sair() { clearInterval(relogio); relogio = null; atual = null; }
   function segundo() {
     if (!atual || document.visibilityState !== "visible") return;
     atual.seg++;
-    if (atual.tipo === "livre" && atual.seg === 90 && !atual.deu) { atual.deu = true; concluir(atual.jogo, atual.faixa, 1); }
-    if (atual.tipo === "desafio" && atual.seg === 240 && !atual.deu) { atual.deu = true; concluir(atual.jogo, atual.faixa, 1); }
+    if (mexendo()) atual.ativo++;
+    // Livre e desafio sem fim de partida: contam pelo tempo MEXENDO (deixar aberto parado não vale)
+    if (atual.tipo === "livre" && atual.ativo === 90 && !atual.deu) { atual.deu = true; concluir(atual.jogo, atual.faixa, 1); }
+    if (atual.tipo === "desafio" && atual.ativo === 240 && !atual.deu) { atual.deu = true; concluir(atual.jogo, atual.faixa, 1); }
     // Tempo do Parque: só conta com o jogo do Parque aberto
     const p = perfil();
     if (atual.tipo === "parque" && guiado(p) && minutosParque(p)) {
       const d = dados();
-      if (liberadoHoje(d) || d.parque.dia !== hoje() || d.parque.seg <= 0) return;
+      if (liberadoHoje(d)) return;
+      if (d.parque.dia !== hoje() || d.parque.seg <= 0) {
+        // Acabou: 1 minuto para terminar a partida, depois volta para o início
+        atual.saida++;
+        if (atual.saida === 1) avisar("🌙 O tempo do Parque acabou! Você tem 1 minuto para terminar.", { grande: true, fala: "O tempo do Parque acabou! Você tem um minuto para terminar. Amanhã tem mais!" });
+        if (atual.saida >= 60) { sair(); fimDoParque(); }
+        return;
+      }
       d.parque.seg--;
       salvar(d);
       if (d.parque.seg === 60) avisar("⏱️ Falta 1 minuto de Parque!", { fala: "Falta um minuto de Parque!" });
-      if (d.parque.seg === 0) avisar("🌙 O tempo do Parque acabou! Termine esta partida.", { grande: true, fala: "O tempo do Parque acabou! Pode terminar esta partida. Amanhã tem mais!" });
     }
   }
   // Motor.comemorar (cada acerto ou vitória)
   function acerto() {
     if (!atual || atual.deu) return;
     atual.acertos++;
-    if ((atual.tipo === "licao" && atual.acertos >= 8) || (atual.tipo === "desafio" && atual.acertos >= 3)) {
+    const boaMira = atual.erros * 2 <= atual.acertos; // chutando, erra tanto quanto acerta
+    if ((atual.tipo === "licao" && atual.acertos >= 8 && boaMira) || (atual.tipo === "desafio" && atual.acertos >= 3)) {
       atual.deu = true;
       concluir(atual.jogo, atual.faixa, 1);
     }
   }
-  // Motor.telaFim: fim de rodada com acertos de primeira
+  // Resposta errada (Motor.animar "balanca", em qualquer jogo)
+  function erro() { if (atual) atual.erros++; }
+  // Motor.telaFim: fim de rodada com acertos de primeira. Menos da metade de primeira (chute) não
+  // ganha estrela: a próxima lição continua fechada e a voz pede para tentar de novo.
   function fimDeRodada(acertos, total) {
     if (!atual) return;
     const r = total ? acertos / total : 1;
+    if (r < 0.5) {
+      if (tipoDe(atual.jogo) === "licao") avisar("💪 Quase! Acerte mais de primeira para ganhar estrela.", { fala: "Quase! Tente de novo, com calma, para ganhar estrela!" });
+      return;
+    }
     atual.deu = true;
-    concluir(atual.jogo, atual.faixa, r >= 0.9 ? 3 : r >= 0.6 ? 2 : 1);
+    concluir(atual.jogo, atual.faixa, r >= 0.9 ? 3 : r >= 0.7 ? 2 : 1);
   }
   // Placar.resultado: fim de partida contra o computador
   function partida(venceu, empate) {
     if (!atual) return;
+    if (!venceu && !empate && atual.ativo < 45) return; // perder de propósito, bem rápido, não vale
     atual.deu = true;
     concluir(atual.jogo, atual.faixa, venceu ? 3 : empate ? 2 : 1);
   }
@@ -426,7 +462,9 @@ const Progresso = (() => {
   // Na 1ª vez o adulto cria a senha; "Esqueci a senha" pede uma conta de adulto para criar outra.
   const lerSenha = () => { try { return localStorage.getItem("pais-senha"); } catch (e) { return null; } };
   const gravarSenha = s => { try { localStorage.setItem("pais-senha", s); } catch (e) { /* ok */ } };
-  function pedirSenha(depois, { titulo = "🔒 Senha dos pais", criar = !lerSenha(), confirmar = null } = {}) {
+  function pedirSenha(depois, { titulo = "🔒 Senha dos pais", criar = !lerSenha(), confirmar = null, adulto = false } = {}) {
+    // Ainda sem senha: antes de criar, a conta de adulto (senão a própria criança cria a senha)
+    if (criar && !confirmar && !adulto && !lerSenha()) { contaDeAdulto(() => pedirSenha(depois, { titulo, criar: true, adulto: true }), "Primeiro, mostre que é um adulto"); return; }
     const c = novaCamada("senha");
     let digitos = "";
     const titulo2 = criar ? (confirmar ? "Digite a senha de novo" : "Crie uma senha de 4 números") : "Digite a senha dos pais";
@@ -437,9 +475,9 @@ const Progresso = (() => {
     pintar();
     const tecl = el("div", "prog-senha-teclado");
     const pronto = () => {
-      if (criar && !confirmar) { pedirSenha(depois, { titulo, criar: true, confirmar: digitos }); return; }
+      if (criar && !confirmar) { pedirSenha(depois, { titulo, criar: true, confirmar: digitos, adulto: true }); return; }
       if (criar) {
-        if (digitos !== confirmar) { Motor.animar(bolinhas, "balanca"); Motor.falar("As senhas não são iguais. Vamos de novo."); setTimeout(() => pedirSenha(depois, { titulo, criar: true }), 900); return; }
+        if (digitos !== confirmar) { Motor.animar(bolinhas, "balanca"); Motor.falar("As senhas não são iguais. Vamos de novo."); setTimeout(() => pedirSenha(depois, { titulo, criar: true, adulto: true }), 900); return; }
         gravarSenha(digitos); Motor.tim(); depois(); return;
       }
       if (digitos === lerSenha()) { depois(); return; }
@@ -460,15 +498,17 @@ const Progresso = (() => {
     c.append(bolinhas, tecl);
     if (!criar) {
       const esqueci = el("button", "chip", "Esqueci a senha");
-      esqueci.addEventListener("click", () => contaDeAdulto(() => pedirSenha(depois, { titulo, criar: true })));
+      esqueci.addEventListener("click", () => contaDeAdulto(() => pedirSenha(depois, { titulo, criar: true, adulto: true })));
       c.appendChild(esqueci);
     }
   }
   // Conta difícil para criança (2 algarismos × 2 algarismos), para trocar a senha esquecida
-  function contaDeAdulto(depois) {
+  function contaDeAdulto(depois, aviso) {
     const a = 12 + Math.floor(Math.random() * 18), b = 13 + Math.floor(Math.random() * 16);
     const c = novaCamada("senha");
-    c.append(el("div", "album-titulo-pagina", "🧮 Só para adultos"), el("p", "prog-dica", `Quanto é ${a} × ${b}?`));
+    c.append(el("div", "album-titulo-pagina", "🧮 Só para adultos"));
+    if (aviso) c.appendChild(el("p", "prog-senha-obs", aviso + " (depois você cria a senha dos pais):"));
+    c.appendChild(el("p", "prog-dica", `Quanto é ${a} × ${b}?`));
     let valor = "";
     const visor = el("div", "prog-senha-visor", "?");
     const tecl = el("div", "prog-senha-teclado");
@@ -508,7 +548,7 @@ const Progresso = (() => {
     lista.forEach(p => c.appendChild(cartaoPais(p, p.id === abrirId)));
     c.appendChild(blocoCopia());
     const trocar = el("button", "chip", "🔑 Trocar a senha");
-    trocar.addEventListener("click", () => pedirSenha(() => pais(), { criar: true }));
+    trocar.addEventListener("click", () => pedirSenha(() => pais(), { criar: true, adulto: true }));
     c.appendChild(trocar);
   }
   function cartaoPais(p, aberto) {
@@ -655,7 +695,7 @@ const Progresso = (() => {
   const enfeite = () => dados().enfeite;
   const avataresExtras = () => dados().compras.avatares;
 
-  return { situacao, missao: () => missao(), trilhasDa, guiado, pequeno, entrar, sair, acerto, fimDeRodada, partida, concluir,
+  return { situacao, missao: () => missao(), trilhasDa, guiado, pequeno, entrar, sair, acerto, erro, fimDeRodada, partida, concluir,
     loja, pais, botaoPais, paginaCrianca, comSenha, temSenha: () => !!lerSenha(), moedas, infoParque, totalEstrelas, enfeite, avataresExtras, fechar, aberto: () => !!camada,
     estrelasDe: (jogo, faixa) => estrelas(dados(), jogo, faixa.id), aoMudar: fn => { aoMudar = fn; } };
 })();
