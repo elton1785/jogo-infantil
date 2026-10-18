@@ -330,6 +330,7 @@
     const DESCIDA = 6500;                   // a descida começa a essa distância da pista
     // estado do avião
     const av = { x: 0, h: 0, z: 0, vel: 0, incl: 0, vh: 0 }, instr = { alt: 0, vel: 0 };
+    let camH = 0;
     let fase = "pista", estrelas = 0, conforto = 3, tempoFase = 0, msg = null, sacode = 0, flash = 0, branco = 0, tentativas = 0;
     let entX = 0, entY = 0, acel = false, confete = [], trem = 1, flap = 0.5, spoiler = 0, tremAlvoAnt = 1;
     const objetos = [];
@@ -411,13 +412,31 @@
       P.controles.appendChild(b);
       return b;
     }) : [];
-    let tamSeta = 0;
+    // espaço ocupado pelos botões embaixo (para a legenda dos avisos não ficar por cima)
+    const blocos = { esq: 0, dir: 0, alt: 0 };
     const posicionar = () => {
-      Object.assign(bAcel.style, { right: "14px", bottom: "14px", minWidth: "150px", minHeight: "100px" });
-      const t = Math.max(58, Math.min(76, Math.min(P.W || 400, P.H || 400) * 0.13)), m = 12;
-      tamSeta = setas.length ? t : 0;
-      const pos = [[m + t, m + t * 2], [m + t, m], [m, m + t], [m + t * 2, m + t]]; // [left, bottom]: cima, baixo, esquerda, direita
-      setas.forEach((b, i) => Object.assign(b.style, { left: pos[i][0] + "px", bottom: `calc(${pos[i][1]}px + env(safe-area-inset-bottom, 0px))`, width: t + "px", height: t + "px", minWidth: "0", minHeight: "0", fontSize: t * 0.5 + "px", padding: "0" }));
+      const deitado = (P.W || 400) > (P.H || 400), m = 12;
+      const sl = "env(safe-area-inset-left, 0px)", sr = "env(safe-area-inset-right, 0px)", sb = "env(safe-area-inset-bottom, 0px)";
+      const px = (v, ins) => `calc(${v}px + ${ins})`;
+      if (setas.length && deitado) {
+        // celular deitado: como num videogame, ⬅️➡️ no polegar esquerdo e ⬆️⬇️ no direito,
+        // longe da borda (entalhe da câmera e gesto de baixo do iPhone)
+        const t = Math.max(64, Math.min(86, (P.H || 400) * 0.21)), g = 10, base = m + 6;
+        const est = { width: t + "px", height: t + "px", minWidth: "0", minHeight: "0", fontSize: t * 0.5 + "px", padding: "0", left: "", right: "" };
+        const [cima, baixo, esq, dir] = setas;
+        Object.assign(esq.style, est, { left: px(m, sl), bottom: px(base, sb) });
+        Object.assign(dir.style, est, { left: px(m + t + g, sl), bottom: px(base, sb) });
+        Object.assign(baixo.style, est, { right: px(m, sr), bottom: px(base, sb) });
+        Object.assign(cima.style, est, { right: px(m, sr), bottom: px(base + t + g, sb) });
+        Object.assign(bAcel.style, { right: px(m + t + 14, sr), bottom: px(base, sb), minWidth: "150px", minHeight: "100px" });
+        Object.assign(blocos, { esq: m + t * 2 + g + 10, dir: m + t + 10, alt: base + t * 2 + g });
+      } else {
+        Object.assign(bAcel.style, { right: px(14, sr), bottom: px(14, sb), minWidth: "150px", minHeight: "100px" });
+        const t = Math.max(58, Math.min(76, Math.min(P.W || 400, P.H || 400) * 0.13));
+        const pos = [[m + t, m + t * 2], [m + t, m], [m, m + t], [m + t * 2, m + t]]; // [left, bottom]: cima, baixo, esquerda, direita
+        setas.forEach((b, i) => Object.assign(b.style, { left: px(pos[i][0], sl), right: "", bottom: px(pos[i][1], sb), width: t + "px", height: t + "px", minWidth: "0", minHeight: "0", fontSize: t * 0.5 + "px", padding: "0" }));
+        Object.assign(blocos, setas.length ? { esq: m + t * 3 + 10, dir: 0, alt: m + t * 3 } : { esq: 0, dir: 0, alt: 0 });
+      }
     };
     posicionar();
     P.teclas((e, d) => {
@@ -451,7 +470,8 @@
         else if (av.vel > VEL * 0.72 && !msg) dizer("Agora puxe para cima! ⬆️");
       } else if (fase === "subindo") {
         av.vel = Math.min(VEL, av.vel + 40 * dt);
-        av.h += (90 + 60 * Math.max(0, entY)) * dt;
+        av.vh = 90 + 60 * Math.max(0, entY);
+        av.h += av.vh * dt;
         if (av.h > 160) {
           fase = "cruzeiro"; tempoFase = 0; cintos = false;
           aviso(`Aqui fala o comandante. Estamos voando para ${nomeChegada}, a dez mil metros de altitude, a oitocentos e cinquenta quilômetros por hora. O aviso de cintos foi desligado. Passe nas argolas douradas!`);
@@ -496,9 +516,12 @@
       flap += (flapAlvo - flap) * Math.min(1, dt * 0.8);
       spoiler += ((fase === "pousado" && av.vel > 20 ? 1 : 0) - spoiler) * Math.min(1, dt * 4);
       // instrumentos: no cruzeiro, uns 10 mil metros e 850 km/h; na descida, vão baixando até a pista
-      const altAlvo = fase === "cruzeiro" && !arremetendo ? 10000 + (av.h - 160) * 6 : av.h * 21;
+      const altAlvo = fase === "cruzeiro" && !arremetendo ? 10000 + (av.h - 160) * 8 : av.h * 21;
       const velAlvo = fase === "pista" || fase === "pousado" ? av.vel * 0.85 : fase === "subindo" ? 280 + av.h * 2 : fase === "cruzeiro" ? 850 + (av.h - 160) * 0.08 : 250 + Math.min(1, av.h / 455) * 560;
-      instr.alt += (altAlvo - instr.alt) * Math.min(1, dt * (fase === "pista" || fase === "pousado" ? 10 : 0.35));
+      instr.alt += (altAlvo - instr.alt) * Math.min(1, dt * (fase === "pista" || fase === "pousado" || Math.abs(altAlvo - instr.alt) < 1500 ? 6 : 0.35));
+      // a câmera acompanha a altura com um pouquinho de atraso: dá para ver o avião subir e descer
+      camH += (av.h - camH) * Math.min(1, dt * 1.6);
+      camH = Math.max(av.h - 35, Math.min(av.h + 35, camH));
       instr.vel += (velAlvo - instr.vel) * Math.min(1, dt * (fase === "pista" || fase === "pousado" ? 10 : 0.5));
       // objetos: passou por eles?
       objetos.forEach(o => {
@@ -562,7 +585,7 @@
     // ----- Projeção e desenho -----
     function vista() {
       const W = P.W, H = P.H, f = Math.min(W, H * 1.4) * 0.9, hz = H * 0.42;
-      const camZ = av.z - 260, camY = av.h + 70, camX = av.x * 0.85;
+      const camZ = av.z - 260, camY = camH + 70, camX = av.x * 0.85;
       const proj = (x, y, z) => { const dz = z - camZ; if (dz < 5) return null; const s = f / dz; return [W / 2 + (x - camX) * s, hz + (camY - y) * s, s]; };
       return { W, H, f, hz, camZ, camY, camX, proj };
     }
@@ -947,11 +970,11 @@
       for (; i < L.frases.length - 1; i++) { acc += L.frases[i].length * 75; if (agora - L.ini < acc) break; }
       const s = P.esc(), W = P.W, H = P.H;
       // fica embaixo, entre as setas (ou os instrumentos) e o botão de acelerar; sem espaço, sobe
-      const esq = toqueNaTela ? 12 + tamSeta * 3 + 10 : 12 + 150 * s + 10;
-      const dir = fase === "pista" ? 180 : 12;
-      const altEsq = toqueNaTela ? 12 + tamSeta * 3 : (fase === "pista" ? 130 : 20) + 70 * s;
+      const esq = toqueNaTela ? blocos.esq : 12 + 150 * s + 10;
+      const dir = Math.max(fase === "pista" ? blocos.dir + 180 : 12, blocos.dir);
+      const altEsq = toqueNaTela ? blocos.alt : (fase === "pista" ? 130 : 20) + 70 * s;
       let x0 = esq, x1 = W - dir, base = H - 16;
-      if (x1 - x0 < Math.min(440, W * 0.55)) { x0 = 12; x1 = W - 12; base = H - Math.max(altEsq, fase === "pista" ? 118 : 0) - 14; }
+      if (x1 - x0 < Math.min(300, W * 0.55)) { x0 = 12; x1 = W - 12; base = H - Math.max(altEsq, fase === "pista" ? 118 : 0) - 14; }
       const larg = Math.min(x1 - x0, 640 * s), cx = (x0 + x1) / 2;
       const tam = Math.max(14, Math.min(19 * s, W / 24));
       ctx.font = `bold ${tam}px Fredoka, sans-serif`;
@@ -977,7 +1000,8 @@
       const ix = 12, iy = toqueNaTela ? 92 : H - (fase === "pista" ? 130 : 20) - 70 * s;
       Palco.caixa(ctx, ix, iy, 150 * s, 66 * s, 12);
       // valores de verdade: decola a uns 250 km/h e voa a uns 850 km/h, a até 11 mil metros
-      Palco.texto(ctx, `⛰️ ${(Math.round(instr.alt / 10) * 10).toLocaleString("pt-BR")} m`, ix + 10 * s, iy + 20 * s, 16 * s, "#fff", { alinhar: "left" });
+      const sobe = av.vh > 15 && fase !== "pousado" ? " ▲" : av.vh < -15 && fase !== "pousado" ? " ▼" : "";
+      Palco.texto(ctx, `⛰️ ${(Math.round(instr.alt / 10) * 10).toLocaleString("pt-BR")} m${sobe}`, ix + 10 * s, iy + 20 * s, 16 * s, "#fff", { alinhar: "left" });
       Palco.texto(ctx, `💨 ${Math.round(instr.vel)} km/h`, ix + 10 * s, iy + 46 * s, 16 * s, "#fff", { alinhar: "left" });
       Palco.texto(ctx, `⭐ ${estrelas}`, estreito ? bx + 176 * s + 40 * s : W / 2, by + hb + 22 * s, 24 * s, "#ffd43b");
       // aviso luminoso de cintos (decolagem, turbulência e pouso)
