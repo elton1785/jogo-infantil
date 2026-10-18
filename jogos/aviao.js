@@ -719,7 +719,7 @@
       painel();
       desenharLegenda();
       Palco.desenharConfete(ctx, confete, dt);
-      if (msg) { Palco.texto(ctx, msg.txt, W / 2, H * 0.2, Math.min(34 * P.esc(), W / 18), "#fff"); msg.t -= dt; if (msg.t <= 0) msg = null; }
+      if (msg) { Palco.texto(ctx, msg.txt, W / 2, Math.max(H * 0.2, legendaBaixo + 24), Math.min(34 * P.esc(), W / 18), "#fff"); msg.t -= dt; if (msg.t <= 0) msg = null; }
       if (pausado) Palco.texto(ctx, "⏸️ Pausa", W / 2, H / 2, 54 * P.esc());
     }
     function faixaChao(v, z, band, xa1, xa2, xb1, xb2, corF) {
@@ -960,15 +960,34 @@
       if (atual) linhasT.push(atual);
       return linhasT;
     }
+    let legendaBaixo = 0, fimTopo = 90; // onde termina a faixa da legenda lá em cima (as mensagens ficam logo abaixo)
     // Legenda do aviso de bordo: quem fala e a frase que a voz está dizendo agora
     function desenharLegenda() {
+      legendaBaixo = 0;
       if (!legenda) return;
       const agora = performance.now(), L = legenda;
       if (agora > L.fim) { legenda = null; return; }
       if (agora < L.ini) return;
       let acc = 0, i = 0;
-      for (; i < L.frases.length - 1; i++) { acc += L.frases[i].length * 75; if (agora - L.ini < acc) break; }
+      for (; i < L.frases.length - 1; i++) { if (agora - L.ini < acc + L.frases[i].length * 75) break; acc += L.frases[i].length * 75; }
       const s = P.esc(), W = P.W, H = P.H;
+      // tela deitada (celular, PC, TV): faixa fininha lá em cima, no céu, entre os instrumentos e o mapa,
+      // para não tampar a pista nem o avião; frase comprida passa em partes de 2 linhas
+      if (W > H) {
+        const mw = W > 380 ? Math.min(150 * s, W * 0.22) + 24 : 12;
+        const x0 = 12 + 150 * s + 8, x1 = W - mw, larg = Math.min(x1 - x0, 760 * s);
+        const tam = Math.max(13, Math.min(16 * s, H / 26));
+        ctx.font = `600 ${tam}px Fredoka, sans-serif`;
+        const ls = quebrar(L.frases[i], larg - 46), pags = Math.ceil(ls.length / 2);
+        const durFrase = L.frases[i].length * 75, pg = Math.min(pags - 1, Math.max(0, Math.floor((agora - L.ini - acc) / (durFrase / pags))));
+        const mostra = ls.slice(pg * 2, pg * 2 + 2);
+        const y0 = fimTopo + 6, alt = 12 + mostra.length * tam * 1.25;
+        Palco.caixa(ctx, x0, y0, larg, alt, 10, "rgba(12,22,44,.66)");
+        Palco.texto(ctx, "📢", x0 + 18, y0 + alt / 2, tam * 1.1, "#ffd43b", { contorno: null });
+        mostra.forEach((l, k) => Palco.texto(ctx, l, x0 + 36, y0 + 6 + k * tam * 1.25 + tam * 0.62, tam, "#fff", { alinhar: "left", contorno: null, peso: "600" }));
+        legendaBaixo = y0 + alt;
+        return;
+      }
       // fica embaixo, entre as setas (ou os instrumentos) e o botão de acelerar; sem espaço, sobe
       const esq = toqueNaTela ? blocos.esq : 12 + 150 * s + 10;
       const dir = Math.max(fase === "pista" ? blocos.dir + 180 : 12, blocos.dir);
@@ -989,10 +1008,12 @@
     function painel() {
       const s = P.esc(), W = P.W, H = P.H;
       const prog = Math.max(0, Math.min(1, av.z / COMP));
-      const bw = Math.min(W - 160, 520 * s), bx = W / 2 - bw / 2, by = 10;
+      // entre a seta de voltar (esquerda) e os botões ⏸️🔊 (direita)
+      const bw = Math.min(W - 68 - 118, 520 * s), bx = Math.min(W / 2 - bw / 2, W - 118 - bw), by = 10;
       const estreito = bw < 430, hb = (estreito ? 64 : 50) * s;
+      fimTopo = by + hb + 30 * s; // abaixo do aviso de cintos e das estrelas
       Palco.caixa(ctx, bx, by, bw, hb, 14);
-      Palco.texto(ctx, `${CIDADES[rota.de].nome} ✈️ ${nomeChegada}`, W / 2, by + 16 * s, Math.min(17 * s, (bw - 20) / 15));
+      Palco.texto(ctx, `${CIDADES[rota.de].nome} ✈️ ${nomeChegada}`, bx + bw / 2, by + 16 * s, Math.min(17 * s, (bw - 20) / 15));
       ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.fillRect(bx + 14, by + 32 * s, bw - 28, 8 * s);
       ctx.fillStyle = "#ffd43b"; ctx.fillRect(bx + 14, by + 32 * s, (bw - 28) * prog, 8 * s);
       // instrumentos
@@ -1003,7 +1024,7 @@
       const sobe = av.vh > 15 && fase !== "pousado" ? " ▲" : av.vh < -15 && fase !== "pousado" ? " ▼" : "";
       Palco.texto(ctx, `⛰️ ${(Math.round(instr.alt / 10) * 10).toLocaleString("pt-BR")} m${sobe}`, ix + 10 * s, iy + 20 * s, 16 * s, "#fff", { alinhar: "left" });
       Palco.texto(ctx, `💨 ${Math.round(instr.vel)} km/h`, ix + 10 * s, iy + 46 * s, 16 * s, "#fff", { alinhar: "left" });
-      Palco.texto(ctx, `⭐ ${estrelas}`, estreito ? bx + 176 * s + 40 * s : W / 2, by + hb + 22 * s, 24 * s, "#ffd43b");
+      Palco.texto(ctx, `⭐ ${estrelas}`, estreito ? bx + 176 * s + 40 * s : bx + bw / 2, by + hb + 22 * s, 24 * s, "#ffd43b");
       // aviso luminoso de cintos (decolagem, turbulência e pouso)
       if (cintos && fase !== "pousado") {
         // logo abaixo da barra da rota, à esquerda (longe da barra de força e da mensagem do meio)
@@ -1014,7 +1035,7 @@
       // quanto falta: km e o tempo de um voo de verdade (como na telinha do avião)
       const falta = Math.round(minReal * (1 - prog)), hhmm = falta >= 60 ? `${Math.floor(falta / 60)}h${String(falta % 60).padStart(2, "0")}` : `${falta} min`;
       const tFalta = `${Math.round(rota.km * (1 - prog))} km · ⏱️ ${hhmm}`;
-      if (estreito) Palco.texto(ctx, tFalta, W / 2, by + 51 * s, 13 * s, "#fff");
+      if (estreito) Palco.texto(ctx, tFalta, bx + bw / 2, by + 51 * s, 13 * s, "#fff");
       else Palco.texto(ctx, tFalta, bx + bw - 14, by + 16 * s, 13 * s, "#fff", { alinhar: "right" });
       // mapa
       if (W > 380) {
@@ -1026,10 +1047,10 @@
       if (fase === "aproximacao" && zPista) {
         const ideal = altitudeIdeal(), dif = av.h - ideal;
         const t = Math.abs(av.x) > 80 ? (av.x > 0 ? "⬅️ Pista para a esquerda" : "Pista para a direita ➡️") : dif > 40 ? "⬇️ Desça mais" : dif < -40 ? "⬆️ Muito baixo, suba um pouco" : "👍 Ótimo, assim!";
-        Palco.texto(ctx, t, W / 2, H * 0.3, Math.min(28 * s, W / 18), "#ffd43b");
+        Palco.texto(ctx, t, W / 2, Math.max(H * 0.3, legendaBaixo + 60), Math.min(28 * s, W / 18), "#ffd43b");
       }
       if (fase === "pista") {
-        const w = Math.min(W * 0.5, 320 * s), x = W / 2 - w / 2, y = H * 0.27;
+        const w = Math.min(W * 0.5, 320 * s), x = W / 2 - w / 2, y = Math.max(H * 0.27, legendaBaixo + 14);
         Palco.caixa(ctx, x - 6, y - 6, w + 12, 30 * s, 10);
         const k = av.vel / VEL;
         ctx.fillStyle = k > 0.72 ? "#69db7c" : "#ffd43b"; ctx.fillRect(x, y, w * k, 18 * s);
