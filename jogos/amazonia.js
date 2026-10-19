@@ -636,7 +636,7 @@
   function passeio(area, faixa) {
     const peq = pequeno(faixa), med = faixa.id === "5-6";
     const CFG = {
-      vel: peq ? 62 : med ? 78 : 92,
+      vel: peq ? 44 : med ? 52 : 58, // devagar, como um barco de passeio de verdade
       nBichos: peq ? 5 : med ? 6 : 8,
       troncos: peq ? 0.45 : med ? 0.75 : 1.05, // por 300 unidades
       perto: peq ? 9999 : med ? 125 : 100,     // distância para "ver" o bicho
@@ -688,7 +688,7 @@
       Object.assign(canvas.style, { width: lw + "px", height: lh + "px" });
       escala = Math.min(lh / 360, lw / 300);
       W = lw / escala; H = lh / escala;
-      BARCO_Y = H - 62;
+      BARCO_Y = H - Math.max(96, H * 0.24); // mais para cima: dá para ver a esteira atrás do barco
       ctx.setTransform(dpr * escala, 0, 0, dpr * escala, 0, 0);
       if (rio) desenhar();
     }
@@ -697,9 +697,9 @@
 
     // ---------- O rio ----------
     // Curva do rio e largura na distância d (as margens ondulam)
-    const centro = d => W / 2 + Math.sin(d / 420) * 18 + Math.sin(d / 157) * 6;
+    const centro = d => W / 2 + Math.sin(d / 520) * 18 + Math.sin(d / 197) * 6;
     const meiaLarg = d => Math.min(118, W / 2 - 34) + Math.sin(d / 97) * 6 + Math.sin(d / 41) * 3;
-    const S = CFG.vel * 8.5; // espaço entre bichos (dá tempo de ouvir a curiosidade)
+    const S = CFG.vel * 15; // espaço entre bichos (e o barco ainda espera a fala terminar)
     let rio = null;
     function montarRio() {
       const objs = [];
@@ -727,7 +727,22 @@
       // Enfeites: vitórias-régias perto das margens
       const enfeites = [];
       for (let e = 150; e < FIM; e += 160 + Math.random() * 160) enfeites.push({ d: e, lado: Math.random() < 0.5 ? -1 : 1, r: 9 + Math.random() * 7 });
-      return { objs, enfeites, E0, E1: E0 + S * 2.2, FIM };
+      // A vida na beira do rio, entre um bicho e outro (o guia conta o que é cada uma)
+      const E1 = E0 + S * 2.2;
+      const tiposCena = Motor.embaralhar(["comunidade", "flutuante", "recreio", "praia", "vitorias", "pescador"]);
+      const bichosD = objs.filter(o => o.tipo === "bicho").map(o => o.d).sort((a, b) => a - b);
+      const cenas = [];
+      for (let i = 0; i < bichosD.length - 1 && cenas.length < tiposCena.length; i++) {
+        const d = (bichosD[i] + bichosD[i + 1]) / 2;
+        if (d > E0 - S * 0.4 && d < E1 + S * 0.3) continue; // o Encontro das Águas já tem a sua fala
+        cenas.push({ tipo: tiposCena[cenas.length], d, lado: Math.random() < 0.5 ? -1 : 1, fase: Math.random() * 6 });
+      }
+      // troncos e frutas não ficam em cima das cenas
+      for (let i = objs.length - 1; i >= 0; i--) if (objs[i].tipo !== "bicho" && cenas.some(c => Math.abs(c.d - objs[i].d) < 90)) objs.splice(i, 1);
+      // Mato flutuante (capim que desce com a correnteza) e folhas
+      const boiando = [];
+      for (let e = 80; e < FIM; e += 60 + Math.random() * 90) boiando.push({ d: e, xr: Math.random() * 1.6 - 0.8, r: 4 + Math.random() * 6, folha: Math.random() < 0.5, ang: Math.random() * 6 });
+      return { objs, enfeites, cenas, boiando, E0, E1, FIM };
     }
 
     // Cor da água: Rio Negro (escuro), Encontro (lado a lado) e depois Amazonas (barrento)
@@ -737,19 +752,35 @@
 
     // ---------- Estado ----------
     let barco, dist, frutas, encontrados, perdidos, avisos, ultimoT, pausado, rodando, tremor, lento, falandoAte, efeitos, esq, dir, alvoX, falouEncontro, falouAmazonas, frutasFaladas, fim;
+    // O guia fala uma coisa de cada vez; enquanto ele fala, o barco vai mais devagar e o próximo bicho espera
+    let narrando = false, narraAte = 0, vAtual = 0, rastro = [], tempo = 0;
+    const ocupadoFala = () => narrando || performance.now() < narraAte;
+    function guia(texto) {
+      narrando = true;
+      return Motor.falar(texto, { importante: true }).then(() => { narrando = false; narraAte = performance.now() + 900; });
+    }
+    const FALA_CENA = {
+      comunidade: ["Olha as casinhas na beira do rio!", "Olha a comunidade ribeirinha! As casas são de palafita, em cima de pernas de madeira, porque na cheia o rio sobe muitos metros. As crianças vão para a escola de barco!"],
+      flutuante: ["Olha a casa que boia!", "Aquela casa boia em cima de troncos: é um flutuante! Quando o rio sobe ou desce, a casa sobe e desce junto."],
+      recreio: ["Lá vem um barco grandão!", "Lá vem um barco recreio! Ele leva gente e carga entre as cidades, numa viagem de vários dias. Os passageiros dormem em redes!"],
+      praia: ["Olha a praia no rio!", "Olha a praia no meio do rio! Na vazante, quando a água baixa, aparecem praias de areia branquinha. É lá que as tartarugas botam os ovos."],
+      vitorias: ["Olha as vitórias-régias!", "Que lindas as vitórias-régias! As folhas redondas são enormes, maiores que uma mesa, e a borda é virada para cima, como uma bandeja."],
+      pescador: ["Olha o pescador na canoa!", "Um pescador na canoa! Na Amazônia, muita gente vive da pesca. O tambaqui e o pirarucu são peixes muito pescados por aqui."],
+    };
     function comecar() {
       rio = montarRio();
       barco = { x: W / 2, vx: 0 };
       dist = 0; frutas = 0; encontrados = []; perdidos = 0; avisos = 0;
       pausado = false; tremor = 0; lento = 0; falandoAte = 0; efeitos = [];
       esq = false; dir = false; alvoX = null; falouEncontro = false; falouAmazonas = false; frutasFaladas = new Set(); fim = false;
+      vAtual = 0; rastro = []; tempo = 0;
       tela.querySelectorAll(".arcade-fim").forEach(e => e.remove());
       atualizarInfo();
       pausa.textContent = "⏸️";
       falandoAte = performance.now() + 9000;
-      Motor.falar(peq
+      guia(peq
         ? "Vamos passear de barco! Toque nos lados para virar o barco. Pegue as frutas e olhe os bichos!"
-        : "Vamos passear de barco pelo Rio Negro, saindo de Manaus! Guie o barco tocando nos lados da tela ou com as setas. Desvie dos troncos, pegue as frutas e chegue perto dos bichos para anotar no diário de bordo.");
+        : "Vamos passear de barco pelo Rio Negro, saindo do porto de Manaus! Guie o barco tocando nos lados da tela ou com as setas. Desvie dos troncos, pegue as frutas e chegue perto dos bichos para anotar no diário de bordo.");
       ultimoT = performance.now();
       if (!rodando) { rodando = true; requestAnimationFrame(quadro); }
     }
@@ -783,11 +814,26 @@
       return Math.max(32, Math.min(W - 32, x)); // celular em pé: o bicho da margem não sai da tela
     }
     function atualizar(dt, t) {
-      // Velocidade e direção
-      const v = CFG.vel * (lento > 0 ? 0.45 : 1);
+      // Velocidade e direção: enquanto o guia fala, o barco vai devagar; se o próximo bicho já vai
+      // aparecer, quase para, para ninguém perder a curiosidade
+      tempo += dt;
+      const prox = rio.objs.find(o => o.tipo === "bicho" && !o.feito);
+      let fator = 1;
+      if (ocupadoFala()) fator = prox && prox.d - dist < BARCO_Y + 140 ? 0.22 : 0.6;
+      const v = CFG.vel * fator * (lento > 0 ? 0.45 : 1);
+      vAtual += (v - vAtual) * Math.min(1, dt * 1.4);
       lento = Math.max(0, lento - dt);
       tremor = Math.max(0, tremor - dt);
-      dist += v * dt;
+      dist += vAtual * dt;
+      if (!rastro.length || dist - rastro[rastro.length - 1].d > 3) { rastro.push({ d: dist, x: barco.x }); if (rastro.length > 140) rastro.shift(); }
+      // Cenas da beira do rio: o guia conta quando elas chegam no meio da tela (se estiver falando, espera)
+      rio.cenas.forEach(c => {
+        if (c.falou) return;
+        if (c.d - dist < BARCO_Y * 0.55 && !ocupadoFala()) { c.falou = true; guia(FALA_CENA[c.tipo][peq ? 0 : 1]); }
+        else if (c.d - dist < -60) c.falou = true; // passou: fica para o próximo passeio
+      });
+      rio.cenas.forEach(c => { if (c.tipo === "recreio") c.mov = (c.mov || 0) + dt * 22; }); // o barco recreio sobe o rio
+      rio.boiando.forEach(b => { b.d += dt * 9; }); // o capim desce com a correnteza
       const LAT = 165;
       let quer = 0;
       if (esq) quer -= 1;
@@ -796,7 +842,14 @@
       barco.vx += (quer * LAT - barco.vx) * Math.min(1, dt * 8);
       barco.x += barco.vx * dt;
       const c = centro(dist), m = meiaLarg(dist) - 16;
-      barco.x = Math.max(c - m, Math.min(c + m, barco.x));
+      let lim0 = c - m, lim1 = c + m;
+      rio.cenas.forEach(ce => {
+        // a praia ocupa um pedaço do rio perto da margem: o barco passa pelo lado
+        if (ce.tipo === "praia" && Math.abs(ce.d - dist) < 70) { if (ce.lado < 0) lim0 = Math.max(lim0, c - meiaLarg(dist) * 0.5); else lim1 = Math.min(lim1, c + meiaLarg(dist) * 0.5); }
+        // o barco recreio vem no sentido contrário: encostou, o barco balança e é empurrado
+        if (ce.tipo === "recreio") { const dd = ce.d - (ce.mov || 0), xr = centro(dd) + ce.lado * meiaLarg(dd) * 0.5; if (Math.abs(dd - dist) < 46 && Math.abs(xr - barco.x) < 30) { barco.vx = (barco.x < xr ? -1 : 1) * 160; tremor = 0.3; } }
+      });
+      barco.x = Math.max(lim0, Math.min(lim1, barco.x));
 
       for (const o of rio.objs) {
         if (o.feito) continue;
@@ -810,7 +863,7 @@
               barco.vx = (barco.x < ox ? -1 : 1) * 140;
               SONS.tronco();
               efeitos.push({ tipo: "splash", x: ox, d: o.d, t0: t });
-              if (t > falandoAte) { Motor.falar(Motor.sortear(["Opa! Um tronco!", "Cuidado com o tronco!", "Bateu no tronco! Desvie!"])); falandoAte = t + 2000; }
+              if (t > falandoAte && !ocupadoFala()) { Motor.falar(Motor.sortear(["Opa! Um tronco!", "Cuidado com o tronco!", "Bateu no tronco! Desvie!"])); falandoAte = t + 2000; }
             }
           }
           if (dy < -40) o.feito = true;
@@ -821,7 +874,7 @@
             frutas++;
             Motor.ploc();
             efeitos.push({ tipo: "mais", x: ox, d: o.d, t0: t, texto: "+1" });
-            if (!frutasFaladas.has(o.item.id) && t > falandoAte) { frutasFaladas.add(o.item.id); Motor.falar(`${Motor.maiuscula(o.item.nome)}!`); falandoAte = t + 1500; }
+            if (!frutasFaladas.has(o.item.id) && t > falandoAte && !ocupadoFala()) { frutasFaladas.add(o.item.id); Motor.falar(`${Motor.maiuscula(o.item.nome)}!`); falandoAte = t + 1500; }
             atualizarInfo();
           }
           if (dy < -40) o.feito = true;
@@ -832,7 +885,7 @@
             if (Math.abs(barco.x - ox) < CFG.perto) encontrou(o, t);
             else {
               perdidos++;
-              if (avisos < 2 && t > falandoAte) { avisos++; Motor.falar(`Passou longe ${o.item.art === "a" ? "da" : "do"} ${o.item.nome}! Chegue mais perto dos bichos para ver.`); falandoAte = t + 3500; }
+              if (avisos < 2 && t > falandoAte && !ocupadoFala()) { avisos++; Motor.falar(`Passou longe ${o.item.art === "a" ? "da" : "do"} ${o.item.nome}! Chegue mais perto dos bichos para ver.`); falandoAte = t + 3500; }
             }
           }
         }
@@ -842,12 +895,12 @@
         falouEncontro = true;
         falandoAte = t + 9000;
         SONS.agua();
-        Motor.falar(peq ? "O Encontro das Águas! A água escura e a água barrenta, uma do lado da outra!"
+        guia(peq ? "O Encontro das Águas! A água escura e a água barrenta, uma do lado da outra!"
           : "Chegamos ao Encontro das Águas! O Rio Negro, de água escura, encontra o Rio Solimões, de água barrenta. Elas correm lado a lado sem se misturar. Daqui para a frente, o rio se chama Amazonas!");
       }
-      if (!falouAmazonas && dist > rio.E1 + 200 && t > falandoAte) {
+      if (!falouAmazonas && dist > rio.E1 + 200 && t > falandoAte && !ocupadoFala()) {
         falouAmazonas = true;
-        if (!peq) { Motor.falar("Agora as águas se misturaram: estamos no Rio Amazonas, o rio com mais água do mundo!"); falandoAte = t + 5000; }
+        if (!peq) { guia("Agora as águas se misturaram: estamos no Rio Amazonas, o rio com mais água do mundo!"); falandoAte = t + 5000; }
       }
       efeitos = efeitos.filter(e => t - e.t0 < 900);
       atualizarInfo();
@@ -859,12 +912,12 @@
       tocarSom(o.item);
       Motor.tim();
       falandoAte = t + 7500;
-      Motor.depois(() => Motor.falar(`Olha ${o.item.art} ${o.item.nome}! ${o.item.curio}`), 500);
+      narrando = true; // já começa a ir devagar
       aviso.innerHTML = `${o.item.desenho}<span></span>`;
       aviso.querySelector("span").textContent = `📒 ${o.item.nome}`;
       Motor.animar(aviso, "amz-aparece");
       clearTimeout(aviso._t);
-      aviso._t = setTimeout(() => aviso.classList.remove("amz-aparece"), 4200);
+      Motor.depois(() => guia(`Olha ${o.item.art} ${o.item.nome}! ${o.item.curio}`).then(() => { if (aviso.querySelector("span") && aviso.querySelector("span").textContent === `📒 ${o.item.nome}`) aviso._t = setTimeout(() => aviso.classList.remove("amz-aparece"), 600); }), 500);
       atualizarInfo();
     }
 
@@ -908,8 +961,8 @@
       for (let y = -PASSO; y < H + PASSO; y += PASSO) {
         const d = dist + (BARCO_Y - y);
         const c = centro(d), m = meiaLarg(d), xl = c - m, xr = c + m;
-        ctx.fillStyle = "#d9b77a"; // areia da margem
-        ctx.fillRect(xl - 5, y, xr - xl + 10, PASSO + 0.6);
+        ctx.fillStyle = "#a9875a"; // barranco de terra e areia da margem
+        ctx.fillRect(xl - 7, y, xr - xl + 14, PASSO + 0.6);
         if (d < rio.E0) {
           ctx.fillStyle = rgb(NEGRO);
           ctx.fillRect(xl, y, xr - xl, PASSO + 0.6);
@@ -925,7 +978,28 @@
           ctx.fillStyle = rgb(claro);
           ctx.fillRect(xm, y, xr - xm, PASSO + 0.6);
         }
+        // água rasa mais clarinha na beira e a sombra das árvores por cima dela
+        ctx.fillStyle = "rgba(255,236,190,.12)"; ctx.fillRect(xl, y, 9, PASSO + 0.6); ctx.fillRect(xr - 9, y, 9, PASSO + 0.6);
+        ctx.fillStyle = "rgba(0,22,0,.26)"; ctx.fillRect(xl, y, 15 + Math.sin(d / 23) * 4, PASSO + 0.6);
+        ctx.fillStyle = "rgba(0,22,0,.16)"; ctx.fillRect(xr - 9 - Math.sin(d / 19) * 3, y, 9 + Math.sin(d / 19) * 3, PASSO + 0.6);
       }
+      // Correnteza: risquinhos compridos que descem com a água, e brilhos do sol piscando
+      const flui = tempo * 9;
+      ctx.strokeStyle = "rgba(255,255,255,.1)"; ctx.lineWidth = 1.2;
+      const c0 = Math.floor((dist - 80 - flui) / 34), c1 = Math.ceil((dist + H - flui) / 34);
+      for (let k = c0; k <= c1; k++) {
+        const d = k * 34 + flui, y = yDe(d), x = centro(d) + (ruido1(k, 7) * 1.7 - 0.85) * meiaLarg(d);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.sin(k) * 2, y + 12 + ruido1(k, 3) * 10); ctx.stroke();
+        if (ruido1(k, Math.floor(tempo * 2.5)) > 0.9) { ctx.fillStyle = "rgba(255,255,240,.8)"; ctx.fillRect(x + 6, y + 4, 2, 2); }
+      }
+      // Capim e folhas boiando
+      rio.boiando.forEach(b => {
+        const y = yDe(b.d);
+        if (y < -20 || y > H + 20) return;
+        const x = centro(b.d) + b.xr * meiaLarg(b.d);
+        if (b.folha) { ctx.save(); ctx.translate(x, y); ctx.rotate(b.ang + tempo * 0.2); ctx.fillStyle = "#7c8a3a"; ctx.beginPath(); ctx.ellipse(0, 0, b.r * 0.9, b.r * 0.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+        else { ctx.fillStyle = "#4f8a3a"; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(x + Math.cos(i * 1.7) * b.r, y + Math.sin(i * 2.3) * b.r * 0.6, b.r * 0.7, 0, Math.PI * 2); ctx.fill(); } ctx.fillStyle = "#7fbf5a"; ctx.beginPath(); ctx.arc(x, y, b.r * 0.5, 0, Math.PI * 2); ctx.fill(); }
+      });
       // Ondinhas
       ctx.strokeStyle = "rgba(255,255,255,.22)";
       ctx.lineWidth = 1.6;
@@ -945,13 +1019,26 @@
           for (let j = 0; j < 8; j++) {
             const x = c + lado * (m + 16 + j * 26 + ruido1(k, j + lado * 9) * 12);
             if (x < -30 || x > W + 30) break;
-            const r = 13 + ruido1(k, j * 3 + lado) * 9;
-            ctx.fillStyle = "rgba(0,0,0,.18)";
+            const sorte = ruido1(k * 3, j + lado * 4);
+            let r = 13 + ruido1(k, j * 3 + lado) * 9, cor = VERDES[Math.floor(ruido1(k, j + 5 * lado) * VERDES.length)];
+            if (sorte > 0.86) {
+              // açaizeiro e outras palmeiras: vistas de cima parecem uma estrela
+              ctx.strokeStyle = "rgba(0,0,0,.2)"; ctx.lineWidth = 3.5;
+              for (let f = 0; f < 7; f++) { const a = f * 0.9 + k; ctx.beginPath(); ctx.moveTo(x + 2, y + 3); ctx.lineTo(x + 2 + Math.cos(a) * r, y + 3 + Math.sin(a) * r); ctx.stroke(); }
+              ctx.strokeStyle = "#3d8f3a"; ctx.lineWidth = 3;
+              for (let f = 0; f < 7; f++) { const a = f * 0.9 + k; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + Math.cos(a + 0.3) * r * 0.6, y + Math.sin(a + 0.3) * r * 0.6, x + Math.cos(a) * r, y + Math.sin(a) * r); ctx.stroke(); }
+              continue;
+            }
+            if (sorte < 0.02) cor = ruido1(k, j) < 0.5 ? "#d65a9e" : "#f2c230"; // ipê florido
+            else if (sorte < 0.09) { r *= 1.6; cor = "#5cb85c"; }            // árvore gigante (samaúma, castanheira)
+            ctx.fillStyle = "rgba(0,0,0,.2)";
             ctx.beginPath(); ctx.arc(x + 3, y + 4, r, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = VERDES[Math.floor(ruido1(k, j + 5 * lado) * VERDES.length)];
+            ctx.fillStyle = cor;
             ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = "rgba(255,255,255,.12)";
-            ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.45, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "rgba(0,0,0,.12)";
+            ctx.beginPath(); ctx.arc(x + r * 0.35, y + r * 0.3, r * 0.55, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "rgba(255,255,255,.14)";
+            ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.42, 0, Math.PI * 2); ctx.fill();
           }
         });
       }
@@ -963,11 +1050,16 @@
         const tam = Math.max(56, Math.min(84, xl - 4)), xt = Math.max(2, xl - tam - 2);
         if (img.complete) ctx.drawImage(img, xt, y - 50, tam, tam);
         texto("Manaus", xt + tam / 2, y - 50 + tam + 10, 13);
-        [60, 250].forEach(dd => {
-          const yy = yDe(dd), xx = centro(dd) - meiaLarg(dd) + 6;
-          ctx.fillStyle = "#e9c46a"; ctx.fillRect(xx, yy - 9, 22, 18);
-          ctx.fillStyle = "#e63946"; ctx.fillRect(xx - 2, yy - 11, 26, 6);
-        });
+        // cais do porto (concreto), barcos regionais atracados e o Mercado Municipal de ferro
+        const ya = yDe(380), yb = yDe(-60), xc = centro(160) - meiaLarg(160);
+        ctx.fillStyle = "#9aa0a6"; ctx.fillRect(xc - 40, ya, 46, yb - ya);
+        ctx.fillStyle = "#c3c8cd"; ctx.fillRect(xc - 2, ya, 6, yb - ya);
+        [20, 95, 300].forEach(dd => barcoRegional(centro(dd) - meiaLarg(dd) + 22, yDe(dd), 0, "#2f80ed", t));
+        const ym = yDe(260), xm = centro(260) - meiaLarg(260) - 4;
+        ctx.fillStyle = "#c9ced3"; ctx.fillRect(xm - 40, ym - 30, 38, 60);
+        ctx.strokeStyle = "#8a9299"; ctx.lineWidth = 1.5;
+        for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.moveTo(xm - 40, ym - 30 + i * 10 + 5); ctx.lineTo(xm - 2, ym - 30 + i * 10 + 5); ctx.stroke(); }
+        texto("Porto", xc - 16, yDe(330), 11);
       }
       // Vitórias-régias
       rio.enfeites.forEach(e => {
@@ -979,6 +1071,8 @@
         ctx.fillStyle = "#66bb6a";
         ctx.beginPath(); ctx.arc(x, y, e.r * 0.7, 0.3, Math.PI * 2 - 0.05); ctx.lineTo(x, y); ctx.fill();
       });
+      // A vida na beira do rio
+      rio.cenas.forEach(c => desenharCena(c, t));
       // Placas do Encontro das Águas
       if (Math.abs(yDe(rio.E0 + 60) - H / 2) < H) {
         const d = rio.E0 + 70, y = yDe(d), c = centro(d), m = meiaLarg(d);
@@ -1008,6 +1102,18 @@
         } else if (o.tipo === "bicho") desenharBicho(o, y, t);
       }
       desenharBarco(t);
+      // sombra das nuvens passando por cima de tudo
+      for (let i = 0; i < 3; i++) {
+        const d = ((i * 977 + tempo * 6) % 1400) + dist - 500, y = yDe(d), x = (ruido1(i, 3) * 1.2 - 0.1) * W;
+        if (y > -120 && y < H + 120) { ctx.fillStyle = "rgba(0,20,40,.08)"; ctx.beginPath(); ctx.ellipse(x, y, 120, 70, 0.3, 0, Math.PI * 2); ctx.fill(); }
+      }
+      // bando de garças cruzando o rio de vez em quando
+      const fg = (tempo % 28) / 9;
+      if (fg < 1) {
+        const gx = -60 + fg * (W + 120), gy = H * 0.25 + Math.sin(fg * 3) * 20, bate = Math.sin(tempo * 9) * 4;
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.4;
+        for (let i = 0; i < 5; i++) { const bx = gx - Math.abs(i - 2) * 14, by = gy + (i - 2) * 12; ctx.beginPath(); ctx.moveTo(bx - 7, by - bate); ctx.lineTo(bx, by); ctx.lineTo(bx + 7, by - bate); ctx.stroke(); }
+      }
       efeitos.forEach(e => {
         const p = (t - e.t0) / 900, y = yDe(e.d);
         if (e.tipo === "mais") texto(e.texto, e.x, y - 18 - p * 30, 18, `rgba(255,214,10,${1 - p})`);
@@ -1077,31 +1183,137 @@
       ctx.restore();
       if (o.visto) texto("✓", x + tam * 0.4, y - tam * 0.4, 18, "#7CFC9A");
     }
+    // Barco regional visto de cima (o do porto e o recreio): casco comprido, dois andares, redes coloridas
+    function barcoRegional(x, y, ang, cor, t) {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+      ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(3, 4, 14, 44, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#f8f9fa"; ctx.strokeStyle = "#495057"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(0, -46); ctx.quadraticCurveTo(14, -32, 13, -10); ctx.lineTo(13, 40); ctx.lineTo(-13, 40); ctx.lineTo(-13, -10); ctx.quadraticCurveTo(-14, -32, 0, -46); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = cor; retangulo(-11, -20, 22, 56, 3); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(-1, -18, 2, 52);
+      ["#e63946", "#ffd60a", "#2a9d55", "#ff70a6", "#f77f00"].forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(-13, -14 + i * 10, 3, 7); ctx.fillRect(10, -10 + i * 10, 3, 7); }); // redes
+      ctx.restore();
+    }
+    function desenharCena(c, t) {
+      const dd = c.tipo === "recreio" ? c.d - (c.mov || 0) : c.d, y = yDe(dd);
+      if (y < -140 || y > H + 140) return;
+      const borda = centro(dd) + c.lado * meiaLarg(dd), l = c.lado;
+      if (c.tipo === "comunidade") {
+        // casas de palafita na beira, a passarela de madeira, a igrejinha e o campinho de futebol
+        const cores = ["#e76f51", "#2a9d8f", "#e9c46a", "#f4a261", "#8ab17d"];
+        for (let i = 0; i < 4; i++) {
+          const yy = y - 60 + i * 38, xx = borda - l * 6;
+          ctx.strokeStyle = "#5a3d1e"; ctx.lineWidth = 1.5;
+          for (let k = -1; k <= 1; k += 2) { ctx.beginPath(); ctx.moveTo(xx + k * 9, yy + 10); ctx.lineTo(xx + k * 9, yy + 15); ctx.stroke(); }
+          ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(xx - 11 + 3, yy - 9 + 4, 22, 20);
+          ctx.fillStyle = cores[i % cores.length]; ctx.fillRect(xx - 11, yy - 9, 22, 20);
+          ctx.strokeStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.moveTo(xx - 11, yy + 1); ctx.lineTo(xx + 11, yy + 1); ctx.stroke(); // cumeeira do telhado
+        }
+        ctx.fillStyle = "#8b5a2b"; ctx.fillRect(Math.min(borda, borda - l * 40), y + 2, 40, 5); // trapiche
+        barcoCanoa(borda - l * 46, y + 14, 0.2 * l, false, t);
+        const xi = borda + l * 18;
+        ctx.fillStyle = "#f8f9fa"; ctx.fillRect(xi - 8, y - 100, 16, 24); ctx.fillStyle = "#c0392b"; ctx.fillRect(xi - 9, y - 102, 18, 6);
+        ctx.fillStyle = "#333"; ctx.fillRect(xi - 1, y - 112, 2, 10); ctx.fillRect(xi - 4, y - 109, 8, 2);
+        ctx.fillStyle = "#6abf4b"; ctx.fillRect(xi - 14 + l * 14, y + 40, 28, 40); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.strokeRect(xi - 12 + l * 14, y + 42, 24, 36); ctx.beginPath(); ctx.moveTo(xi - 12 + l * 14, y + 60); ctx.lineTo(xi + 12 + l * 14, y + 60); ctx.stroke();
+      } else if (c.tipo === "flutuante") {
+        // casa em cima de troncos boiando, presa na margem
+        const xx = borda - l * 34;
+        ctx.fillStyle = "#6b4423"; for (let i = 0; i < 4; i++) ctx.fillRect(xx - 20, y - 22 + i * 12, 40, 8);
+        ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(xx - 13, y - 14, 30, 30);
+        ctx.fillStyle = "#4d8fac"; ctx.fillRect(xx - 16, y - 18, 30, 30);
+        ctx.fillStyle = "rgba(255,255,255,.3)"; ctx.fillRect(xx - 16, y - 4, 30, 2);
+        ctx.strokeStyle = "#5a3d1e"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(xx + l * 20, y); ctx.lineTo(borda, y - 6); ctx.stroke(); // corda
+        ctx.fillStyle = "#e63946"; ctx.beginPath(); ctx.arc(xx - l * 22, y + 16, 3, 0, Math.PI * 2); ctx.fill(); // vasinho de planta
+      } else if (c.tipo === "recreio") {
+        const xr = centro(dd) + l * meiaLarg(dd) * 0.5;
+        ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(xr - 10, y + 40); ctx.lineTo(xr - 26, y + 90); ctx.moveTo(xr + 10, y + 40); ctx.lineTo(xr + 26, y + 90); ctx.stroke();
+        barcoRegional(xr, y, Math.PI, "#1d6fb8", t);
+      } else if (c.tipo === "praia") {
+        // banco de areia que aparece na vazante, com garças pousadas
+        const xp = borda - l * meiaLarg(dd) * 0.26;
+        ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.beginPath(); ctx.ellipse(xp, y, meiaLarg(dd) * 0.3, 78, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#f1e1b5"; ctx.beginPath(); ctx.ellipse(xp, y, meiaLarg(dd) * 0.26, 72, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(160,120,60,.25)"; ctx.beginPath(); ctx.ellipse(xp + l * 6, y + 10, meiaLarg(dd) * 0.14, 40, 0, 0, Math.PI * 2); ctx.fill();
+        [[-6, -30], [8, -10], [-2, 20]].forEach(([dx, dy]) => { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(xp + dx, y + dy, 3, 6, 0.4, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#ffd60a"; ctx.fillRect(xp + dx - 1, y + dy - 8, 2, 3); });
+      } else if (c.tipo === "vitorias") {
+        // folhas gigantes com a borda virada e as flores brancas e rosadas
+        for (let i = 0; i < 9; i++) {
+          const xx = borda - l * (16 + ruido1(i, 2) * 44), yy = y - 60 + i * 15 + ruido1(i, 5) * 8, r = 9 + ruido1(i, 9) * 6;
+          ctx.fillStyle = "#3e8e41"; ctx.beginPath(); ctx.arc(xx, yy, r, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = "#a33a2e"; ctx.lineWidth = 2; ctx.stroke();
+          ctx.strokeStyle = "rgba(0,0,0,.15)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx + r, yy); ctx.stroke();
+          if (i % 3 === 1) { ctx.fillStyle = i % 2 ? "#ffd1dc" : "#fff"; ctx.beginPath(); ctx.arc(xx + r * 0.3, yy - r * 0.2, 4, 0, Math.PI * 2); ctx.fill(); }
+        }
+      } else if (c.tipo === "pescador") {
+        barcoCanoa(borda - l * 50, y, 0.5 * l, true, t);
+      }
+    }
+    // Canoa de madeira (com o pescador e a linha, se tiver)
+    function barcoCanoa(x, y, ang, pescador, t) {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(ang + Math.sin(t / 900) * 0.05);
+      ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.beginPath(); ctx.ellipse(2, 3, 6, 22, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#8b5a2b"; ctx.beginPath(); ctx.ellipse(0, 0, 6, 22, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#5a3418"; ctx.beginPath(); ctx.ellipse(0, 0, 4, 19, 0, 0, Math.PI * 2); ctx.fill();
+      if (pescador) {
+        ctx.fillStyle = "#2f80ed"; ctx.beginPath(); ctx.arc(0, 4, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#e9c46a"; ctx.beginPath(); ctx.arc(0, 4, 3.2, 0, Math.PI * 2); ctx.fill(); // chapéu de palha
+        ctx.strokeStyle = "#3a2a1a"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(2, 2); ctx.lineTo(18, -14); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.moveTo(18, -14); ctx.lineTo(20, -2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(20, -1, 2 + (t / 300 % 3), 0, Math.PI * 2); ctx.stroke(); // a linha mexendo na água
+      }
+      ctx.restore();
+    }
+    // O nosso barco de passeio, visto de cima: casco branco com faixa azul, proa de madeira com as
+    // crianças olhando, teto com a caixa d'água e boias; atrás, a esteira de espuma que abre em V
     function desenharBarco(t) {
       const x = barco.x, y = BARCO_Y, inc = Math.max(-0.3, Math.min(0.3, barco.vx / 500));
-      // Esteira
-      ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.moveTo(x - 8, y + 26); ctx.lineTo(x - 20, y + 60); ctx.moveTo(x + 8, y + 26); ctx.lineTo(x + 20, y + 60); ctx.stroke();
-      ctx.fillStyle = "rgba(255,255,255,.4)";
-      for (let i = 0; i < 4; i++) { const yy = y + 30 + ((t / 25 + i * 9) % 32); ctx.beginPath(); ctx.arc(x + Math.sin(i * 2.1) * 6, yy, 2.4, 0, Math.PI * 2); ctx.fill(); }
+      // esteira: segue o caminho que o barco fez e vai abrindo e sumindo
+      for (let lado = -1; lado <= 1; lado += 2) {
+        ctx.beginPath();
+        let ini = true;
+        for (let i = rastro.length - 1; i >= 0; i--) {
+          const r = rastro[i], a = dist - r.d, yy = yDe(r.d) + 36;
+          if (yy > H + 10) break;
+          const xx = r.x + lado * (9 + a * 0.32);
+          ini ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy);
+          ini = false;
+        }
+        ctx.strokeStyle = "rgba(255,255,255,.45)"; ctx.lineWidth = 2.2; ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(255,255,255,.35)";
+      for (let i = 0; i < 9; i++) { const a = ((t / 18 + i * 13) % 110), r = rastro[Math.max(0, rastro.length - 1 - Math.floor(a / 3))]; if (r) { ctx.beginPath(); ctx.arc(r.x + Math.sin(i * 2.1) * (3 + a * 0.06), y + 38 + a, 2.6 - a / 60, 0, Math.PI * 2); ctx.fill(); } }
       ctx.save();
       ctx.translate(x, y); ctx.rotate(inc);
       ctx.fillStyle = "rgba(0,0,0,.25)";
-      ctx.beginPath(); ctx.ellipse(3, 5, 17, 32, 0, 0, Math.PI * 2); ctx.fill();
-      // Casco
-      ctx.fillStyle = "#fffdf6"; ctx.strokeStyle = "#1d3557"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(4, 6, 16, 42, 0, 0, Math.PI * 2); ctx.fill();
+      // onda da proa
+      ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-15, -20); ctx.quadraticCurveTo(-4, -44, 0, -46); ctx.quadraticCurveTo(4, -44, 15, -20); ctx.stroke();
+      // casco
+      ctx.fillStyle = "#fbfbf8"; ctx.strokeStyle = "#3d4a5c"; ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(0, -32); ctx.quadraticCurveTo(17, -16, 16, 10); ctx.lineTo(14, 28); ctx.lineTo(-14, 28); ctx.lineTo(-16, 10); ctx.quadraticCurveTo(-17, -16, 0, -32);
+      ctx.moveTo(0, -42); ctx.quadraticCurveTo(15, -27, 14, -6); ctx.lineTo(14, 32); ctx.quadraticCurveTo(14, 37, 9, 37); ctx.lineTo(-9, 37); ctx.quadraticCurveTo(-14, 37, -14, 32); ctx.lineTo(-14, -6); ctx.quadraticCurveTo(-15, -27, 0, -42);
       ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = "#1d6fd8"; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(0, -27); ctx.quadraticCurveTo(13, -14, 12.5, 8); ctx.lineTo(11, 24); ctx.moveTo(0, -27); ctx.quadraticCurveTo(-13, -14, -12.5, 8); ctx.lineTo(-11, 24); ctx.stroke();
-      // Teto
-      ctx.fillStyle = "#e63946"; ctx.strokeStyle = "#7a1020"; ctx.lineWidth = 2;
-      retangulo(-10, -8, 20, 28, 4); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = "rgba(255,255,255,.6)"; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(-6, 16); ctx.moveTo(0, -4); ctx.lineTo(0, 16); ctx.moveTo(6, -4); ctx.lineTo(6, 16); ctx.stroke();
-      // Bandeirinha
-      ctx.fillStyle = "#2a9d55"; ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(9 + Math.sin(t / 120) * 2, -21); ctx.lineTo(0, -18); ctx.fill();
+      ctx.strokeStyle = "#1d6fd8"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(0, -38); ctx.quadraticCurveTo(12, -25, 11.5, -6); ctx.lineTo(11.5, 33); ctx.moveTo(0, -38); ctx.quadraticCurveTo(-12, -25, -11.5, -6); ctx.lineTo(-11.5, 33); ctx.stroke();
+      // proa de madeira com tábuas e duas crianças olhando o rio
+      ctx.fillStyle = "#b07a45";
+      ctx.beginPath(); ctx.moveTo(0, -36); ctx.quadraticCurveTo(10, -25, 10, -14); ctx.lineTo(-10, -14); ctx.quadraticCurveTo(-10, -25, 0, -36); ctx.fill();
+      ctx.strokeStyle = "rgba(60,30,10,.35)"; ctx.lineWidth = 1;
+      for (let yy = -32; yy < -14; yy += 4) { ctx.beginPath(); ctx.moveTo(-10, yy); ctx.lineTo(10, yy); ctx.stroke(); }
+      [[-4, -24, "#e63946"], [4, -21, "#ffd60a"]].forEach(([px, py, cor]) => { ctx.fillStyle = cor; ctx.beginPath(); ctx.arc(px, py + 3, 3.4, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#5a3825"; ctx.beginPath(); ctx.arc(px, py, 2.6, 0, Math.PI * 2); ctx.fill(); });
+      // teto com a beirada branca, a caixa d'água e as boias laranja
+      ctx.fillStyle = "#e63946"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5;
+      retangulo(-11, -12, 22, 44, 4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.fillRect(-1, -10, 2, 40);
+      ctx.fillStyle = "#1d3557"; ctx.fillRect(-9, -12, 18, 4); // para-brisa da cabine
+      ctx.fillStyle = "#2b2d42"; ctx.beginPath(); ctx.arc(0, 18, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#4a4e69"; ctx.beginPath(); ctx.arc(-1, 17, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#f77f00"; ctx.lineWidth = 2.5;
+      [[-13.5, 4], [13.5, 4]].forEach(([bx, by]) => { ctx.beginPath(); ctx.arc(bx, by, 3, 0, Math.PI * 2); ctx.stroke(); });
+      // bandeirinha na popa
+      ctx.fillStyle = "#2a9d55"; ctx.beginPath(); ctx.moveTo(0, 34); ctx.lineTo(9 + Math.sin(t / 120) * 2, 37); ctx.lineTo(0, 40); ctx.fill();
       ctx.restore();
     }
 
