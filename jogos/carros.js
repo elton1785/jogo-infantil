@@ -89,7 +89,7 @@
       { figura: "🟢", texto: "Na zona de DRS (a placa verde na reta), se você estiver a menos de 1 segundo do carro da frente, a asa traseira abre e o carro corre mais. Frear fecha a asa." },
       { figura: "🚦🔴", texto: "Na largada, as 5 luzes vermelhas acendem uma por uma. Quando ficam verdes, é JÁ!" },
       { figura: "🚙💨", texto: "No Rally, você corre sozinho contra o relógio, em especiais na Finlândia (terra e saltos), na Suécia (neve) ou nos Sertões (terra vermelha). O navegador fala as curvas antes: o número é o tamanho da curva, de 1 (bem fechada) a 6 (quase reta). No salto, mantenha o carro reto!" },
-      { figura: "🚙🏜️", texto: "No Off-road 4x4 não tem estrada: siga a trilha no Jalapão, nos Lençóis Maranhenses ou no sertão. Passe entre as bandeiras laranja dos waypoints (a seta do GPS mostra o rumo): perder uma bandeira dá 10 segundos de castigo. Cuidado com as pedras, a areia fofa, os rios e as dunas!" },
+      { figura: "🚙🪨", texto: "Off-road 4x4 não é corrida: é um desafio de trilha, visto de lado. Passe pelos obstáculos (subida de pedra, atoleiro, rio, valeta, tronco, duna, descida) sem capotar. Use o 4x4 (força nas quatro rodas) e a reduzida (mais força, menos velocidade). Atolou? Use o guincho. No rio, entre devagar, senão o motor afoga!" },
       { figura: "⏱️", texto: "No Rally, cada especial tem parciais: verde é na frente do líder, vermelho é atrás. No fim, a classificação geral soma os tempos de todas as especiais." },
       { figura: "⚡", texto: "Na corrida comum, passe por cima das setas amarelas na pista para ganhar turbo e correr mais que todo mundo!" },
       { figura: "👥🎮🎮", texto: "Corrida a dois: a tela se divide e cada um tem a sua estrada e os seus botões. Jogador 1 usa o 1º controle (ou as setas e Enter); jogador 2 usa o 2º controle (ou W A S D e F)." },
@@ -125,13 +125,13 @@
         { chave: "cor2", titulo: "Carro do jogador 2", quando: dois, valores: op => cores(op.cor, gp(op)) },
         { chave: "pista", titulo: "Escolha a pista", quando: comum, valores: () => Object.keys(TEMAS).filter(k => !TEMAS[k].gp && !TEMAS[k].rally && !TEMAS[k].off).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [])]) },
         { chave: "etapa", titulo: "Onde vai ser o rally?", quando: rally, valores: () => Object.keys(TEMAS).filter(k => TEMAS[k].rally).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [], false, "rally")]) },
-        { chave: "trilha", titulo: "Para onde vamos com o jipe?", quando: off, valores: () => Object.keys(TEMAS).filter(k => TEMAS[k].off).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [], false, "jeep")]) },
-        { chave: "especiais", titulo: op => (off(op) ? "Quantas etapas?" : "Quantas especiais?"), quando: op => rally(op) || off(op), valores: [["1", "⏱️ 1 especial"], ["2", "⏱️ 2 especiais"], ["3", "⏱️ 3 especiais"]] },
+        { chave: "trilha", titulo: "Onde vai ser a trilha 4x4?", quando: off, valores: () => Object.keys(TEMAS).filter(k => TEMAS[k].off).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [], false, "jeep")]) },
+        { chave: "especiais", titulo: "Quantas especiais?", quando: rally, valores: [["1", "⏱️ 1 especial"], ["2", "⏱️ 2 especiais"], ["3", "⏱️ 3 especiais"]] },
         { chave: "circuito", titulo: "Escolha o autódromo", quando: gp, valores: () => Object.keys(TEMAS).filter(k => TEMAS[k].gp).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [], false, true)]) },
         { chave: "voltas", titulo: "Quantas voltas?", quando: corrida_, valores: op => (gp(op) ? ["3", "5", "8"] : ["1", "3", "5"]).map(v => [v, `${v} ${v === "1" ? "volta" : "voltas"}`]) },
         { chave: "nivel", titulo: "Jeito de dirigir", valores: [["facil", "🐢 Fácil"], ["normal", "🐇 Normal"], ["dificil", "🚀 Rápido"]] },
       ],
-      aoJogar: op => (op.modo === "cidade" ? cidade : corrida)(area, { ...op, fid, pista: op.modo === "gp" ? op.circuito : op.modo === "rally" ? op.etapa : op.modo === "offroad" ? op.trilha : op.pista, jogadores: op.modo === "rally" || op.modo === "offroad" ? "1" : op.jogadores, especial: 1, acum: null, ral: null }),
+      aoJogar: op => op.modo === "offroad" ? Desafio4x4.iniciar(area, { ...op, fid }, () => escolhas(area, faixa)) : (op.modo === "cidade" ? cidade : corrida)(area, { ...op, fid, pista: op.modo === "gp" ? op.circuito : op.modo === "rally" ? op.etapa : op.modo === "offroad" ? op.trilha : op.pista, jogadores: op.modo === "rally" || op.modo === "offroad" ? "1" : op.jogadores, especial: 1, acum: null, ral: null }),
     });
   }
   // Figuras dos cartões: o carro de verdade, a pista com a paisagem e a cidade vista de cima
