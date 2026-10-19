@@ -1225,6 +1225,7 @@ button { font-family: inherit; }
 .carros-botao small { font-size: 12px; font-weight: 700; margin-top: 2px; }
 .carros-botao.acel { width: 92px; height: 92px; background: rgba(160, 240, 170, .9); }
 .carros-botao.freio { background: rgba(255, 190, 190, .9); }
+.carros-botao.acao { background: rgba(255, 230, 140, .92); }
 .carros-botao.apertado { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
 @media (orientation: portrait) { .carros-botao { width: 70px; height: 70px; } .carros-botao.acel { width: 84px; height: 84px; } }
 /* Cartão "Livre" (todos os jogos, qualquer idade): dourado e mais largo */

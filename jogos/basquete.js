@@ -15,7 +15,8 @@
     id: "basquete", nome: "Basquete", icone: ICONE, teclas: true,
     faixas: ["5-6", "6-8", "8-10"],
     ajuda: [
-      { figura: "🏀", texto: "Segure o botão ARREMESSAR: o jogador dobra os joelhos e pula. Solte quando a barra chegar na faixa verde! Solte cedo e a bola fica curta; tarde, ela passa da cesta." },
+      { figura: "🎯", texto: "Primeiro a mira: o anel em cima do aro mostra para onde a bola vai. Arraste o dedo na quadra (ou use as setas / a alavanca) até ele ficar verde, no meio do aro. A mão balança um pouquinho, como de verdade!" },
+      { figura: "🏀", texto: "Depois o arremesso: segure o botão ARREMESSAR (ou A no controle): o jogador sobe a bola, dobra os joelhos e pula. Solte quando a barra chegar na faixa verde! Solte cedo e a bola fica curta; tarde, ela passa da cesta." },
       { figura: "💦", texto: "Quando a bola entra sem encostar no aro, é um CHUÁ! A rede balança." },
       { figura: "🎯", texto: "Lance livre: 10 arremessos da linha do lance livre, cada cesta vale 1 ponto." },
       { figura: "🏆", texto: "Concurso de 3 pontos: 5 carrinhos com 5 bolas em volta da linha de três. Cada bola vale 1 ponto e a última, a colorida, vale 2. Corra contra o relógio e tente passar o adversário!" },
@@ -90,10 +91,25 @@
     // ---------- A bola ----------
     const bola = { x: 0, y: 1.2, z: 0, vx: 0, vy: 0, vz: 0, giro: 0, estado: "mao", tempo: 0, aro: false, tabela: false, contou: false, colorida: false };
     let carga = 0, carregando = false, pulo = 0, braco = 0, rede = 0, msg = null, ultFala = 0;
+    // a mira: o ponto do aro para onde a bola vai (cada arremesso começa um pouco fora do centro;
+    // o jogador arrasta o dedo ou usa as setas para pôr a mira no meio do aro) e o "balanço" da mão
+    const mira = { x: 0, z: 0 };
+    const novaMira = () => { const a = op.nivel === "facil" ? 0.4 : op.nivel === "dificil" ? 0.8 : 0.6; mira.x = (Math.random() - 0.5) * a; mira.z = (Math.random() - 0.5) * a * 0.8; };
+    const AMP = { facil: 0.015, normal: 0.04, dificil: 0.07 }[op.nivel] || 0.04;
+    const balanco = () => { const t = performance.now() / 1000; return { x: Math.sin(t * 1.7) * AMP + Math.sin(t * 3.1) * AMP * 0.4, z: Math.cos(t * 1.3) * AMP }; };
+    novaMira();
     const naMao = () => {
-      const [sx, sz] = LUGARES[Math.min(lugar, LUGARES.length - 1)], d = Math.hypot(sx, sz);
-      const alt = 1.25 + braco * 1.05 + pulo * 0.45;
-      Object.assign(bola, { x: sx - sx / d * 0.25, y: alt, z: sz - sz / d * 0.25, vx: 0, vy: 0, vz: 0 });
+      const [sx, sz] = LUGARES[Math.min(lugar, LUGARES.length - 1)], d = Math.hypot(sx, sz), fx = -sx / d, fz = -sz / d;
+      if (!carregando && braco < 0.12) {
+        // quicando a bola do lado direito, como o jogador faz antes do lance livre
+        const t = performance.now() / 1000, f = Math.abs(Math.sin(t * 5.2));
+        Object.assign(bola, { x: sx + fz * 0.38 + fx * 0.2, z: sz - fx * 0.38 + fz * 0.2, y: BOLA_R + f * 0.95 });
+        if (f < 0.1 && !bola.quicou) { bola.quicou = true; Motor.nota(120, { dur: 0.08, tipo: "sine", vol: 0.05 }); } else if (f > 0.3) bola.quicou = false;
+      } else {
+        // nas duas mãos, subindo até em cima da cabeça
+        Object.assign(bola, { x: sx + fx * (0.2 + braco * 0.06), z: sz + fz * (0.2 + braco * 0.06), y: 1.15 + braco * 1.1 + pulo * 0.45 });
+      }
+      bola.vx = bola.vy = bola.vz = 0;
     };
     naMao();
     const somAro = () => { Motor.nota(1650, { dur: 0.12, tipo: "square", vol: 0.05 }); Motor.nota(2480, { dur: 0.08, tipo: "triangle", vol: 0.04 }); };
@@ -108,7 +124,8 @@
       // timing: o centro da faixa verde é o arremesso perfeito
       const alvo = 0.82, e = (carga - alvo) / NIVEL.tol;
       bola.y = Math.max(bola.y, 2.25); // a bola sai das mãos lá em cima da cabeça, no pulo
-      const dx = -bola.x, dz = TABELA_Z * 0.15 - bola.z, d = Math.hypot(dx, dz), dh = ARO_Y - bola.y;
+      const bal = balanco(), mx = mira.x + bal.x, mz = mira.z + bal.z; // a bola vai para onde a mira está
+      const dx = mx - bola.x, dz = mz - bola.z, d = Math.hypot(dx, dz), dh = ARO_Y - bola.y;
       const th = (d > 5.5 ? 51 : 55) * Math.PI / 180; // arco alto: a bola cai na cesta num ângulo bom (uns 45°)
       let v = Math.sqrt(G * d * d / (2 * Math.cos(th) ** 2 * (d * Math.tan(th) - dh)));
       const perfeito = Math.abs(e) < 0.35;
@@ -188,7 +205,7 @@
         if (op.modo !== "tres") falar(bola.aro ? Motor.sortear(["Bateu no aro!", "Quase! Rodou no aro.", "No aro!"]) : bola.tabela ? "Bateu na tabela!" : "Passou longe! Isso se chama air ball.");
         else if (bola.aro) Motor.ruido({ dur: 0.6, vol: 0.07, filtro: "lowpass", freq: 400 }); // "ôôô" da torcida
       }
-      bola.estado = "mao"; carga = 0; carregando = false;
+      bola.estado = "mao"; carga = 0; carregando = false; novaMira();
       if (op.modo === "tres") {
         bolasNoLugar++;
         if (bolasNoLugar >= 5) { bolasNoLugar = 0; lugar++; if (lugar >= LUGARES.length) return terminar(); falar(`Próximo carrinho: ${NOMES_LUGAR[lugar]}!`, true); }
@@ -242,14 +259,28 @@
     const posicionar = () => { const t = Math.max(110, Math.min(150, Math.min(P.W, P.H) * 0.26)); Object.assign(bArr.style, { right: "calc(16px + env(safe-area-inset-right, 0px))", bottom: "calc(16px + env(safe-area-inset-bottom, 0px))", width: t + "px", height: t + "px", minWidth: "0", minHeight: "0", borderRadius: "50%" }); };
     posicionar(); P.aoMedir = posicionar;
     let teclaFoi = false;
-    P.teclas((e, d) => { if (e.key === " " || e.key === "Enter" || e.key === "ArrowUp") { e.preventDefault(); if (d && !teclaFoi) { teclaFoi = true; comecar(); } else if (!d) { teclaFoi = false; soltar(); } } });
-    P.canvas.addEventListener("pointerdown", () => comecar());
-    ["pointerup", "pointercancel"].forEach(t => P.canvas.addEventListener(t, () => soltar()));
+    const tec = {};
+    P.teclas((e, d) => {
+      const k = e.key;
+      if (k === " " || k === "Enter" || k === "c") { e.preventDefault(); if (d && !teclaFoi) { teclaFoi = true; comecar(); } else if (!d) { teclaFoi = false; soltar(); } }
+      else if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(k)) { tec[k] = d; e.preventDefault(); }
+    });
+    // arrastar o dedo na quadra move a mira (para os lados e para mais perto / mais longe)
+    let arrasto = null;
+    P.canvas.addEventListener("pointerdown", e => { arrasto = { x: e.clientX, y: e.clientY, id: e.pointerId }; try { P.canvas.setPointerCapture(e.pointerId); } catch (er) { /* ok */ } });
+    P.canvas.addEventListener("pointermove", e => { if (!arrasto || e.pointerId !== arrasto.id || bola.estado !== "mao") return; moverMira((e.clientX - arrasto.x) * 0.004, -(e.clientY - arrasto.y) * 0.004); arrasto.x = e.clientX; arrasto.y = e.clientY; });
+    ["pointerup", "pointercancel"].forEach(t => P.canvas.addEventListener(t, () => { arrasto = null; }));
+    function moverMira(lado, frente) {
+      let fx = cam.tx - cam.x, fz = cam.tz - cam.z; const fl = Math.hypot(fx, fz) || 1; fx /= fl; fz /= fl;
+      mira.x = Math.max(-0.9, Math.min(0.9, mira.x + fz * lado + fx * frente));
+      mira.z = Math.max(-0.8, Math.min(0.4, mira.z - fx * lado + fz * frente));
+    }
     function comecar() { if (bola.estado === "mao" && !fim && !pausado && !carregando) { carregando = true; carga = 0; } }
     function soltar() { if (carregando) { carregando = false; arremessar(); } }
 
     function atualizar(dt) {
       if (op.modo === "tres" && !fim && arremessos > 0) { tempoRestante -= dt; /* o relógio começa no primeiro arremesso */ if (tempoRestante <= 0) { tempoRestante = 0; bola.estado = "fim"; return terminar(); } }
+      if (bola.estado === "mao" && !fim) moverMira(((tec.ArrowRight ? 1 : 0) - (tec.ArrowLeft ? 1 : 0)) * 0.45 * dt, ((tec.ArrowUp ? 1 : 0) - (tec.ArrowDown ? 1 : 0)) * 0.45 * dt);
       if (carregando) { carga += dt / NIVEL.janela; if (carga >= 1.05) { carga = 1.05; carregando = false; arremessar(); } }
       // corpo: agacha enquanto carrega, pula e estica os braços no arremesso
       const alvoPulo = carregando ? Math.max(0, (carga - 0.35) * 1.3) : bola.estado === "voando" && bola.tempo < 0.35 ? 1 - bola.tempo / 0.35 : 0;
@@ -338,12 +369,28 @@
       if (pr) Palco.texto(ctx, op.modo === "tres" ? String(Math.ceil(tempoRestante)) : "24", pr[0], pr[1], Math.max(10, pr[2] * 0.25), "#ff3b30", { contorno: null });
       // aro, rede e a bola (quem está mais perto da câmera é desenhado por último)
       const pa = proj(0, ARO_Y, 0), pb = proj(bola.x, bola.y, bola.z);
+      const naMaoAgora = bola.estado === "mao";
       const bolaNaFrente = pb && pa && pb[3] < pa[3];
-      if (!bolaNaFrente) desenharBola(pb, s);
+      if (!naMaoAgora && !bolaNaFrente) desenharBola(pb, s);
       desenharAroERede(s);
-      if (bolaNaFrente) desenharBola(pb, s);
-      desenharJogador(s);
+      if (!naMaoAgora && bolaNaFrente) desenharBola(pb, s);
+      if (naMaoAgora && !fim) desenharMira(s);
+      desenharJogador(s, naMaoAgora ? pb : null);
       painel(W, H, s);
+    }
+    // A mira: um anel no plano do aro (verde no meio, amarelo quase, vermelho fora) e a linha até o chão
+    function desenharMira(s) {
+      const bal = balanco(), ax = mira.x + bal.x, az = mira.z + bal.z, dc = Math.hypot(ax, az);
+      const corM = dc < 0.07 ? "#3cff78" : dc < 0.16 ? "#ffd60a" : "#ff4d4d";
+      const anel = []; for (let k = 0; k <= 24; k++) { const t = k / 24 * Math.PI * 2; anel.push([ax + Math.cos(t) * 0.11, ARO_Y + 0.01, az + Math.sin(t) * 0.11]); }
+      linhaMundo(anel, "rgba(0,0,0,.5)", Math.max(3, 6 * s));
+      linhaMundo(anel, corM, Math.max(2, 3.5 * s));
+      linhaMundo([[ax - 0.17, ARO_Y + 0.01, az], [ax + 0.17, ARO_Y + 0.01, az]], corM, Math.max(1.5, 2 * s));
+      linhaMundo([[ax, ARO_Y + 0.01, az - 0.17], [ax, ARO_Y + 0.01, az + 0.17]], corM, Math.max(1.5, 2 * s));
+      const c = proj(ax, ARO_Y + 0.01, az);
+      if (c) { ctx.fillStyle = corM; ctx.beginPath(); ctx.arc(c[0], c[1], Math.max(3, 4 * s), 0, 7); ctx.fill(); }
+      const ch = proj(ax, 0.01, az);
+      if (c && ch) { ctx.setLineDash([5, 6]); ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(c[0], c[1]); ctx.lineTo(ch[0], ch[1]); ctx.stroke(); ctx.setLineDash([]); }
     }
     function desenharAroERede(s) {
       // a rede: 12 fios em zigue-zague até o anel de baixo, balançando quando a bola entra
@@ -384,23 +431,22 @@
     }
     // O jogador visto de costas: tênis, meião, short e regata do time com o nome e o número 10;
     // agacha para carregar, pula e estica os braços com a bola, e o punho "quebra" no final
-    function desenharJogador(s) {
+    function desenharJogador(s, pBola) {
       const [sx, sz] = LUGARES[Math.min(lugar, LUGARES.length - 1)], d = Math.hypot(sx, sz);
       const fx = sx + sx / d * 0.15, fz = sz + sz / d * 0.15;
       const pe = proj(fx, pulo * 0.45, fz), cab = proj(fx, 1.85 + pulo * 0.45, fz);
       if (!pe || !cab) return;
       const k = pe[2], X = pe[0], agacha = carregando ? Math.min(1, carga * 1.4) * 0.12 * (1 - pulo) : 0;
-      const Y = pe[1], topo = cab[1] + agacha * k;
-      const alt = Y - topo, m = alt / 1.85; // pixels por metro do corpo
-      const pele = "#c68642";
-      // sombra
+      const Y = pe[1] - agacha * k * 0.4, m = (Y - cab[1] - agacha * k * 0.6) / 1.85;
+      const pele = "#c68642", peleSombra = "#a86f35";
       const sh = proj(fx, 0.01, fz);
       if (sh) { ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(sh[0], sh[1], 0.35 * k, 0.1 * k, 0, 0, 7); ctx.fill(); }
-      // pernas, meião e tênis
+      // pernas (dobradas quando agacha), meião e tênis
       [-1, 1].forEach(l => {
-        const x = X + l * 0.12 * m;
-        ctx.fillStyle = pele; ctx.fillRect(x - 0.055 * m, Y - 0.85 * m, 0.11 * m, 0.6 * m);
-        ctx.fillStyle = "#fff"; ctx.fillRect(x - 0.06 * m, Y - 0.3 * m, 0.12 * m, 0.22 * m);
+        const x = X + l * 0.12 * m, joelho = agacha * 0.25;
+        ctx.strokeStyle = pele; ctx.lineWidth = 0.11 * m; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(x, Y - 0.85 * m); ctx.lineTo(x + l * joelho * 0.3 * m, Y - 0.48 * m); ctx.lineTo(x, Y - 0.2 * m); ctx.stroke();
+        ctx.fillStyle = "#fff"; ctx.fillRect(x - 0.06 * m, Y - 0.3 * m, 0.12 * m, 0.2 * m);
         ctx.fillStyle = "#1b1b1f"; ctx.beginPath(); ctx.roundRect(x - 0.08 * m, Y - 0.1 * m, 0.16 * m, 0.1 * m, 0.03 * m); ctx.fill();
       });
       // short e regata com o nome e o número
@@ -410,17 +456,41 @@
       ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.font = `bold ${Math.max(8, 0.07 * m)}px Fredoka, sans-serif`; ctx.fillText(nome.toUpperCase(), X, Y - 1.44 * m, 0.42 * m);
       ctx.font = `bold ${Math.max(10, 0.2 * m)}px Fredoka, sans-serif`; ctx.fillText("10", X, Y - 1.27 * m);
-      // braços: do lado do corpo (parado) até lá em cima segurando a bola
-      const ombroY = Y - 1.52 * m, mao = braco;
-      [-1, 1].forEach(l => {
-        const ox = X + l * 0.22 * m, hx = X + l * (0.25 - 0.17 * mao) * m, hy = ombroY + (0.55 - 1.05 * mao) * m;
+      const ombroY = Y - 1.5 * m, ombros = [X - 0.22 * m, X + 0.22 * m];
+      const bracoAte = (ox, hx, hy) => {
         ctx.strokeStyle = pele; ctx.lineWidth = 0.09 * m; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(ox, ombroY + 0.04 * m); ctx.quadraticCurveTo(ox + l * 0.1 * m, (ombroY + hy) / 2 + 0.1 * m, hx, hy); ctx.stroke();
-      });
-      // cabeça (cabelo curtinho) e o pescoço
-      ctx.fillStyle = pele; ctx.fillRect(X - 0.05 * m, Y - 1.66 * m, 0.1 * m, 0.1 * m);
-      ctx.fillStyle = "#2b1a0e"; ctx.beginPath(); ctx.arc(X, Y - 1.76 * m, 0.12 * m, 0, 7); ctx.fill();
-      ctx.fillStyle = pele; [-1, 1].forEach(l => { ctx.beginPath(); ctx.arc(X + l * 0.12 * m, Y - 1.74 * m, 0.03 * m, 0, 7); ctx.fill(); });
+        const cx = (ox + hx) / 2 + (hx > ox ? 0.06 : -0.06) * m, cy = (ombroY + hy) / 2 + 0.08 * m;
+        ctx.beginPath(); ctx.moveTo(ox, ombroY + 0.03 * m); ctx.quadraticCurveTo(cx, cy, hx, hy); ctx.stroke();
+      };
+      const mao = (hx, hy, ang) => { ctx.save(); ctx.translate(hx, hy); ctx.rotate(ang); ctx.fillStyle = pele; ctx.beginPath(); ctx.ellipse(0, 0, 0.045 * m, 0.07 * m, 0, 0, 7); ctx.fill(); ctx.fillStyle = peleSombra; ctx.fillRect(-0.04 * m, -0.075 * m, 0.08 * m, 0.03 * m); ctx.restore(); };
+      const cabeca = () => {
+        ctx.fillStyle = pele; ctx.fillRect(X - 0.05 * m, Y - 1.66 * m, 0.1 * m, 0.1 * m);
+        ctx.fillStyle = "#2b1a0e"; ctx.beginPath(); ctx.arc(X, Y - 1.76 * m, 0.12 * m, 0, 7); ctx.fill();
+        ctx.fillStyle = pele; [-1, 1].forEach(l => { ctx.beginPath(); ctx.arc(X + l * 0.12 * m, Y - 1.74 * m, 0.03 * m, 0, 7); ctx.fill(); });
+      };
+      if (!pBola) {
+        // já arremessou: braços esticados lá em cima e o punho caído (o "pescoço de cisne" do arremesso)
+        cabeca();
+        const alto = braco;
+        [-1, 1].forEach((l, i) => { const hx = X + l * (0.25 - 0.14 * alto) * m, hy = ombroY + (0.55 - 1.1 * alto) * m; bracoAte(ombros[i], hx, hy); mao(hx, hy - 0.03 * m, l * 0.3 + (alto > 0.5 ? Math.PI : 0)); });
+        return;
+      }
+      const r = BOLA_R * pBola[2], segurando = carregando || braco >= 0.12;
+      if (segurando) {
+        // bola nas duas mãos: a cabeça fica na frente da parte de baixo da bola quando ela está no alto
+        const alto = pBola[1] < Y - 1.7 * m;
+        if (!alto) cabeca();
+        desenharBola(pBola, s);
+        if (alto) cabeca();
+        [-1, 1].forEach((l, i) => { const hx = pBola[0] + l * r * 0.92, hy = pBola[1] + r * 0.15; bracoAte(ombros[i], hx, hy); mao(hx, hy, l * 0.35); });
+      } else {
+        // quicando: a mão direita empurra a bola de cima; a esquerda fica do lado do corpo
+        cabeca();
+        bracoAte(ombros[0], X - 0.3 * m, ombroY + 0.62 * m); mao(X - 0.3 * m, ombroY + 0.66 * m, 0);
+        desenharBola(pBola, s);
+        const hy = Math.min(pBola[1] - r * 1.05, ombroY + 0.75 * m);
+        bracoAte(ombros[1], pBola[0], hy); mao(pBola[0], hy, Math.PI / 2);
+      }
     }
     function painel(W, H, s) {
       const x0 = 70, y0 = 8, pw = 230 * s, ph = 74 * s;
@@ -452,13 +522,16 @@
         const c = Math.min(1, carga);
         ctx.fillStyle = c > g1 ? "#ff6b6b" : c > g0 ? "#3cff78" : "#fff"; ctx.fillRect(bx, byy + bh * (1 - c), bw, bh * c);
         ctx.fillStyle = "#fff"; ctx.fillRect(bx - 6, byy + bh * (1 - c) - 2, bw + 12, 4);
-        if (!carregando) Palco.texto(ctx, "Segure e solte no verde!", W / 2, H * 0.86, Math.min(22 * s, W / 20), "#fff");
+        if (!carregando) {
+          const bal = balanco(), dc = Math.hypot(mira.x + bal.x, mira.z + bal.z);
+          Palco.texto(ctx, dc < 0.07 ? "🎯 Mira no meio! Segure e solte no verde" : "👆 Arraste a mira para o meio do aro", W / 2, H * 0.86, Math.min(20 * s, W / 24), dc < 0.07 ? "#3cff78" : "#fff");
+        }
       }
       if (msg) Palco.texto(ctx, msg.txt, W / 2, H * 0.22, Math.min(46 * s, W / 11), msg.cor || "#fff");
       if (pausado) Palco.texto(ctx, "⏸️ Pausa", W / 2, H / 2, 54 * s);
     }
 
-    if (window.BASQUETE_TESTE) window.BASQUETE_TESTE = { estado: () => ({ pontos, acertos, arremessos, lugar, fim, bola: bola.estado, b: [bola.x, bola.y, bola.z].map(v => +v.toFixed(2)) }), chutar: c => { carga = c; arremessar(); } };
+    if (window.BASQUETE_TESTE) window.BASQUETE_TESTE = { estado: () => ({ pontos, acertos, arremessos, lugar, fim, bola: bola.estado, b: [bola.x, bola.y, bola.z].map(v => +v.toFixed(2)) }), chutar: c => { carga = c; arremessar(); }, mirar: (x, z) => { mira.x = x; mira.z = z; }, segurar: v => { if (v) comecar(); else soltar(); } };
     P.rodar(dt => { if (!pausado) atualizar(dt); desenhar(); });
     const falas = {
       lance: "Lance livre! A cesta fica a três metros e cinco centímetros do chão, e a linha do lance livre fica a quatro metros e vinte e cinco centímetros dela. Cada cesta vale um ponto. Segure o botão, o jogador pula, e solte quando a barra chegar na faixa verde!",

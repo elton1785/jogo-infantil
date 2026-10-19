@@ -82,6 +82,7 @@
     ajuda: [
       { figura: "🏁🏎️🏙️", texto: "Escolha: corrida contra outros carros, Grande Prêmio com carros de fórmula nos autódromos, ou passear pela cidade fazendo entregas." },
       { figura: "⬅️➡️", texto: "Os botões da esquerda viram o carro. No controle de videogame, use o direcional." },
+      { figura: "🎮", texto: "No controle: A ou RT acelera, LT freia, Y é a buzina. No Rally, X é o freio de mão (para fazer os grampos de lado). No Grande Prêmio, X abre o DRS quando ele estiver liberado." },
       { figura: "⛽🛑", texto: "Os botões da direita aceleram e freiam (segurando o freio, dá ré). No modo fácil o carro acelera sozinho." },
       { figura: "🥇", texto: "Você escolhe quantas voltas! Passe os outros carros e não saia da pista, que na grama o carro fica lento. Cada pista tem o seu traçado." },
       { figura: "🏎️🏟️", texto: "No Grande Prêmio, os carros são de fórmula e as pistas têm o traçado e as curvas de verdade: Interlagos (anti-horário, com subidas e descidas), Mônaco (nas ruas, com muros e o túnel) e Monza (retas enormes e chicanes). O mapa da pista mostra onde cada carro está." },
@@ -196,7 +197,7 @@
     const h = Math.floor((H - VAO) / 2);
     return [[0, 0, W, h], [0, H - h, W, h]];
   }
-  function montarTela(area, { aoPausar, dois = false }) {
+  function montarTela(area, { aoPausar, dois = false, acao = null }) {
     area.innerHTML = "";
     const tela = document.createElement("div");
     tela.className = "arcade-tela carros-tela" + (dois ? " carros-dois" : "");
@@ -237,6 +238,7 @@
       dir.className = "carros-pad pedais";
       esq.append(botao("⬅️", alvo, "esq"), botao("➡️", alvo, "dir"));
       dir.append(botao("<span>🛑</span><small>frear</small>", alvo, "freio", "freio"), botao("<span>⛽</span><small>acelerar</small>", alvo, "acel", "acel"));
+      if (acao) dir.prepend(botao(acao, alvo, "acao", "acao"));
       onde.append(esq, dir);
     };
     const metades = [];
@@ -251,7 +253,9 @@
     // Teclado / controle de videogame (setas; Enter e espaço também aceleram).
     // Com 2 jogadores: jogador 1 = setas + Enter, jogador 2 = W A S D + F; os controles de videogame
     // são lidos direto na corrida, então as teclas que o 1º controle gera (doControle) são ignoradas.
-    const MAPA = { ArrowLeft: "esq", ArrowRight: "dir", ArrowUp: "acel", ArrowDown: "freio", Enter: "acel", " ": "acel", a: "esq", d: "dir", w: "acel", s: "freio" };
+    // 1 jogador: Enter/↑/RT aceleram, ↓/LT freiam, X (espaço) é a ação do modo (freio de mão no rally,
+    // DRS no Grande Prêmio) e Y (tecla y) é a buzina
+    const MAPA = { ArrowLeft: "esq", ArrowRight: "dir", ArrowUp: "acel", ArrowDown: "freio", Enter: "acel", c: "acel", z: "freio", " ": acao ? "acao" : "acel", y: "buzina", a: "esq", d: "dir", w: "acel", s: "freio" };
     const MAPA1 = { ArrowLeft: "esq", ArrowRight: "dir", ArrowUp: "acel", ArrowDown: "freio", Enter: "acel", " ": "acel" };
     const MAPA2 = { a: "esq", d: "dir", w: "acel", s: "freio", f: "acel" };
     const qual = e => {
@@ -1105,7 +1109,7 @@
     const GRIP = { finlandia: 1, suecia: 1.12, sertoes: 1, jalapao: 1.05, lencois: 1.08, caatinga: 1 }[op.pista] || 1; // rally: o carro escorrega (na neve, mais)
     const ESPECIAL = op.especial || 1, TOTAL_ESP = Math.max(1, Math.min(3, parseInt(op.especiais, 10) || 2));
     const DOIS = op.jogadores === "2" && !RALLY; // corrida a dois, com a tela dividida
-    const T = montarTela(area, { dois: DOIS, aoPausar: () => alternarPausa() });
+    const T = montarTela(area, { dois: DOIS, aoPausar: () => alternarPausa(), acao: tema.rally ? "<span>🅧</span><small>freio de mão</small>" : tema.gp ? "<span>🟢</span><small>DRS</small>" : null });
     const vivo = () => sessao === Motor.sessaoAtual() && document.contains(T.tela);
 
     // ----- Pista: segmentos com curva e altura -----
@@ -1258,7 +1262,7 @@
       const ACAO = { duna: "Duna! Acelera na subida!", lama: op.pista === "caatinga" ? "Leito de rio seco, areia fofa! Acelera firme!" : "Areia fofa! Acelera firme!", pedra: n => `Pedra na ${n.lado < 0 ? "esquerda" : "direita"}! Desvia!`, salto: OFF ? "Buraco! Segura!" : "Salto! Segura reto!", agua: op.pista === "lencois" ? "Lagoa! Passa devagar!" : OFF ? "Rio! Passa devagar!" : "Água! Passa reto!" };
       const txt = n => n.tipo !== "curva" ? (typeof ACAO[n.tipo] === "function" ? ACAO[n.tipo](n) : ACAO[n.tipo]) : (n.grau === 1 ? `Grampo ${n.lado < 0 ? "esquerda" : "direita"}` : `${n.lado < 0 ? "Esquerda" : "Direita"} ${NUM_NOTA[n.grau]}`) + (n.longa ? " longa" : "");
       notas.forEach((n, i) => {
-        n.texto = (n.tipo === "curva" && n.grau <= 2 ? "Cuidado! " : "") + txt(n);
+        n.texto = (n.tipo === "curva" && n.grau <= 2 ? "Cuidado! " : "") + txt(n) + (n.tipo === "curva" && n.grau === 1 && !OFF ? ", freio de mão!" : "");
         if (n.tipo !== "curva") return; // dunas, rios, pedras: cada aviso sozinho
         const prox = notas[i + 1];
         if (prox && prox.tipo === "curva" && n.tipo === "curva" && prox.lado === n.lado && prox.grau < n.grau && prox.ini - n.fim < 20) n.texto += ", fecha";
@@ -1493,6 +1497,7 @@
           dir: t.dir || p.botao(15) || ax > 0.4,
           acel: t.acel || p.botao(0) || p.botao(2) || p.botao(7) || p.botao(12) || ay < -0.6,
           freio: t.freio || p.botao(13) || p.botao(6) || ay > 0.6,
+          acao: t.acao || p.botao(2), buzina: t.buzina || p.botao(3),
         };
       });
       // Start do 2º controle pausa (o do 1º já chega como a tecla "p")
@@ -1502,6 +1507,8 @@
     }
 
     function moverJogador(j, dt) {
+      if (j.ent.buzina && !j.buzinou) { Motor.nota(330, { dur: 0.35, tipo: "square", vol: 0.07 }); Motor.nota(415, { dur: 0.35, tipo: "square", vol: 0.05 }); }
+      j.buzinou = !!j.ent.buzina;
       const seg = segDe(j.pos + CAM), pv = j.vel / VMAX;
       const corre = fase === "correndo" && !j.chegou;
       if (DOIS && j.chegou) {
@@ -1516,8 +1523,16 @@
         // fórmula gruda mais no chão (asas), mas nas curvas fechadas só passa freando antes
         j.x -= dx * pv * seg.curva * 0.28 * (GP ? 0.7 : RALLY ? GRIP : 1);
         if (RALLY) {
-          // de lado nas curvas (o carro escorrega na terra e na neve)
-          j.drift = (j.drift || 0) + ((seg.curva * pv * 0.045) - (j.drift || 0)) * Math.min(1, dt * 4);
+          // freio de mão: trava as rodas de trás, a traseira escorrega e o carro "gira" para dentro da
+          // curva (é assim que os pilotos fazem os grampos)
+          const puxaFreioMao = j.ent.acao && pv > 0.12 && !(j.ar > 0);
+          if (puxaFreioMao) {
+            const lado = j.ent.esq ? -1 : j.ent.dir ? 1 : Math.sign(seg.curva);
+            j.x += lado * dt * 1.7 * pv; j.vel -= VMAX * 0.42 * dt;
+            if (!j.ultDerrapa || tempo - j.ultDerrapa > 0.35) { j.ultDerrapa = tempo; Motor.ruido({ dur: 0.35, vol: 0.12, filtro: "highpass", freq: 1500 }); }
+          }
+          // de lado nas curvas (o carro escorrega na terra e na neve; com o freio de mão, bem mais)
+          j.drift = (j.drift || 0) + ((seg.curva * pv * 0.045 + (puxaFreioMao ? (j.ent.esq ? -0.25 : j.ent.dir ? 0.25 : Math.sign(seg.curva) * 0.25) : 0)) - (j.drift || 0)) * Math.min(1, dt * 4);
           // salto: passou na lombada rápido, o carro voa um pouco
           if (seg.salto && j.saltoSeg !== seg.i && pv > 0.5) { j.saltoSeg = seg.i; j.ar = j.arTotal = 0.25 + pv * 0.6; }
           if (j.ar > 0) { j.ar -= dt; if (j.ar <= 0) { j.tremor = 0.5; Motor.ruido({ dur: 0.25, vol: 0.25, freq: 180 }); if (j.arTotal > 0.7) avisar(j, "🪂 QUE SALTO!", "#ffd60a", 1.2); } }
@@ -1544,11 +1559,13 @@
             j.zonaDrs = seg.i;
             const zj = j.pos + CAM, frente = [...rivais.map(r => r.z), ...jog.filter(o => o !== j).map(o => o.pos + CAM)].map(z => ((z - zj) % VOLTA + VOLTA) % VOLTA).filter(d => d > 0);
             const gap = frente.length ? Math.min(...frente) / Math.max(j.vel, VMAX * 0.3) : 9;
-            j.drs = gap < 1 && j.voltas >= 1; // como na Fórmula 1: o DRS só vale a partir da 2ª volta
-            if (j.drs) { avisar(j, "🟢 DRS ABERTO!", "#3cff78", 1.4); Motor.nota(520, { dur: 0.25, tipo: "triangle", vol: 0.08, ate: 900 }); }
+            // como na Fórmula 1: o DRS só vale a partir da 2ª volta, e o piloto aperta o botão para abrir
+            j.drsPode = gap < 1 && j.voltas >= 1;
+            if (j.drsPode) { avisar(j, "🟢 DRS LIBERADO! APERTE", "#3cff78", 1.6); Motor.nota(520, { dur: 0.25, tipo: "triangle", vol: 0.08, ate: 900 }); if (!DOIS && !j.falouBotaoDrs) { j.falouBotaoDrs = true; Motor.falar("DRS liberado! Aperte o botão do DRS para abrir a asa!"); } }
             else if (!j.explicouDrs && !DOIS && j.voltas >= 1) { j.explicouDrs = true; Motor.falar("Zona de DRS! Chegue a menos de um segundo do carro da frente, e a asa traseira abre na próxima reta."); }
           }
-          if (!seg.drs || j.ent.freio) j.drs = false;
+          if (j.drsPode && seg.drs && !j.drs && (j.ent.acao || NIVEL.auto)) { j.drs = true; avisar(j, "🟢 DRS ABERTO!", "#3cff78", 1.2); Motor.ruido({ dur: 0.2, vol: 0.1, filtro: "highpass", freq: 3000 }); }
+          if (!seg.drs || j.ent.freio) { j.drs = false; if (!seg.drs) j.drsPode = false; }
         }
         if (acelera) j.vel += VMAX / 5 * dt * (j.drs ? 1.4 : 1);
         else if (j.ent.freio) j.vel -= VMAX * dt;
@@ -2422,7 +2439,7 @@
       ctx.fillText(String(kmh), cx, cy + 8 * s);
       const zonaDrs = GP && segDe(j.pos + CAM).drs;
       ctx.fillStyle = j.turbo > 0 ? "#ffd60a" : j.drs ? "#3cff78" : zonaDrs ? "rgba(255,255,255,.45)" : "rgba(255,255,255,.65)"; ctx.font = `bold ${12 * s}px Fredoka, sans-serif`;
-      ctx.fillText(j.turbo > 0 ? "⚡ TURBO" : j.drs ? "🟢 DRS" : zonaDrs ? "DRS ⚪" : GP ? `km/h · ${1 + Math.min(7, Math.floor(j.vel / VMAX * 8))}ª` : "km/h", cx, cy + 26 * s);
+      ctx.fillText(j.turbo > 0 ? "⚡ TURBO" : j.drs ? "🟢 DRS" : j.drsPode ? "DRS: APERTE!" : zonaDrs ? "DRS ⚪" : GP ? `km/h · ${1 + Math.min(7, Math.floor(j.vel / VMAX * 8))}ª` : "km/h", cx, cy + 26 * s);
       // mapa da pista embaixo do velocímetro (se couber)
       const m = Math.min(130 * s, W * 0.22), my = cy + R + 10 * s;
       if (GP && my + m < H - 150 && !DOIS) { ctx.fillStyle = "rgba(15,20,35,.6)"; ctx.beginPath(); ctx.roundRect(W - m - 18, my - 4, m + 8, m + 8, 12 * s); ctx.fill(); mapaPista(W - m - 14, my, m, j); }

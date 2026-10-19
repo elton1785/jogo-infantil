@@ -98,7 +98,7 @@ const Desafio4x4 = (() => {
     const bAcel = P.botao("⛽<small>ACELERAR</small>", v => { acel = v; }, { segurar: true, classe: "principal" });
     const b4 = P.botao("", () => trocar4x4());
     const bRed = P.botao("", () => trocarReduzida());
-    const bGuincho = P.botao("🪝<small>GUINCHO</small>", () => usarGuincho());
+    const bGuincho = P.botao("🪝<small>GUINCHO (X)</small>", () => usarGuincho());
     [bFreio, bAcel, b4, bRed, bGuincho].forEach(b => P.controles.appendChild(b));
     bGuincho.hidden = true;
     const pintarBotoes = () => {
@@ -120,11 +120,13 @@ const Desafio4x4 = (() => {
     P.aoMedir = posicionar;
     P.teclas((e, d) => {
       const k = e.key;
-      if (["ArrowRight", "ArrowUp", "Enter", " "].includes(k)) { tec.acel = d; e.preventDefault(); }
-      else if (["ArrowLeft", "ArrowDown"].includes(k)) { tec.freio = d; e.preventDefault(); }
+      // controle: A/RT acelera, LT freia (e dá ré), LB liga o 4x4, RB a reduzida, X o guincho, Y a buzina
+      if (["ArrowRight", "ArrowUp", "Enter", "c", "C"].includes(k)) { tec.acel = d; e.preventDefault(); }
+      else if (["ArrowLeft", "ArrowDown", "z", "Z"].includes(k)) { tec.freio = d; e.preventDefault(); }
       else if (d && !e.repeat && (k === "4" || k === "q" || k === "Q")) trocar4x4();
-      else if (d && !e.repeat && (k === "r" || k === "R")) trocarReduzida();
-      else if (d && !e.repeat && (k === "g" || k === "G")) usarGuincho();
+      else if (d && !e.repeat && (k === "r" || k === "R" || k === "e" || k === "E")) trocarReduzida();
+      else if (d && !e.repeat && (k === "g" || k === "G" || k === " ")) { e.preventDefault(); usarGuincho(); }
+      else if (d && !e.repeat && (k === "y" || k === "Y")) { Motor.nota(300, { dur: 0.4, tipo: "square", vol: 0.07 }); Motor.nota(380, { dur: 0.4, tipo: "square", vol: 0.05 }); }
     });
     function trocar4x4() { q4 = !q4; pintarBotoes(); Motor.nota(q4 ? 660 : 440, { dur: 0.12, tipo: "square", vol: 0.06 }); dizer(q4 ? "4x4 ligado: força nas quatro rodas!" : "4x2: só as rodas de trás puxam.", false); }
     function trocarReduzida() { reduzida = !reduzida; pintarBotoes(); Motor.nota(reduzida ? 330 : 550, { dur: 0.12, tipo: "square", vol: 0.06 }); dizer(reduzida ? "Reduzida ligada: mais força, menos velocidade." : "Reduzida desligada: mais velocidade.", false); }
@@ -480,6 +482,9 @@ const Desafio4x4 = (() => {
       if (fase === "capotou") Palco.texto(ctx, "🔄 CAPOTOU!", W / 2, H * 0.3, 40 * s, "#ff6b6b");
       if (msg) Palco.texto(ctx, msg.txt, W / 2, H * 0.18, Math.min(30 * s, W / 16), "#fff");
       if (pausado) Palco.texto(ctx, "⏸️ Pausa", W / 2, H / 2, 54 * s);
+      // com controle de videogame ligado: a legenda dos botões
+      const temPad = navigator.getGamepads && [...navigator.getGamepads()].some(Boolean);
+      if (temPad) Palco.texto(ctx, "🎮 A/RT acelera · LT freia/ré · LB 4x4 · RB reduzida · X guincho", W / 2, H - 14 * s, Math.min(14 * s, W / 50), "#fff");
     }
 
     if (window.TRILHA_TESTE) window.TRILHA_TESTE = { estado: () => ({ x: jipe.x, y: jipe.y, a: jipe.a, vx: jipe.vx, fase, pontos, penal, secoes: secoes.length, FIM, guincho: !bGuincho.hidden }), pular: x => { Object.assign(jipe, { x, y: h(x) + R + L0 + 0.3, a: 0, vx: 0, vy: 0, w: 0 }); camX = x; }, acel: v => { tec.acel = v; }, liga: () => { q4 = true; reduzida = true; pintarBotoes(); } };

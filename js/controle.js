@@ -5,7 +5,7 @@
 // - Jogos de ação marcam `teclas: true` em JOGOS: durante a partida as setas vão para o jogo
 //   (pular, mover...) em vez de mover o destaque. Telas de fim de partida ganham o destaque sozinhas.
 // - Ponte do controle: direcional/alavanca esquerda = setas, A = Enter, B = Voltar, X = espaço,
-//   Y = "y", LB/RB = "q"/"e", Start = "p" (pausa). Os eventos de teclado gerados levam
+//   Y = "y", LB/RB = "q"/"e", LT/RT = "z"/"c", Start = "p" (pausa). Os eventos de teclado gerados levam
 //   `doControle = true`, para jogos que leem o controle direto (Mundo de Blocos) os ignorarem.
 // Todo elemento com ação de clique é marcado (__clicavel) para entrar na navegação, sem precisar
 // mexer em cada jogo.
@@ -193,6 +193,8 @@ const Controle = (() => {
     ["y", p => p.botao(3)],
     ["q", p => p.botao(4)],
     ["e", p => p.botao(5)],
+    ["z", p => p.botao(6)],
+    ["c", p => p.botao(7)],
     ["p", p => p.botao(9)],
   ];
   const segurando = {}; // tecla → hora da próxima repetição
