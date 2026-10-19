@@ -408,31 +408,85 @@
     });
     return cv;
   }
-  // Carro de rally visto de trás: o carro comum mais alto, com a asa grande no teto, tomada de ar,
-  // faixas da pintura, número na janela, lameiros vermelhos atrás das rodas e barro respingado
+  // Carro de rally visto de trás (hatch de competição): pneus de terra largos com cravos, paralamas
+  // bem alargados, cabine estreita e alta, vidro pequeno com a faixa RALLY e o número, asa enorme no
+  // teto com pescoço de cisne, tomada de ar e antena, lanternas finas, difusor, escape no meio,
+  // lameiros grandes e barro respingado
   function carroRally(cor, curva = 0, freio = false, fase = 0) {
-    const base = carroDeTras(cor, curva, freio, fase), W = 220, H = 142, cv = document.createElement("canvas");
+    const W = 232, H = 152, cv = document.createElement("canvas");
     cv.width = W; cv.height = H;
     const c = cv.getContext("2d");
-    c.drawImage(base, 0, H - base.height);
     c.translate(W / 2, H);
-    const sk = curva * 10, escuro = clarear(cor, -0.5);
-    c.save(); c.beginPath(); c.rect(-96, -68, 192, 40); c.clip();
-    c.fillStyle = "rgba(255,255,255,.85)";
-    [-62, 28].forEach(x0 => { c.beginPath(); c.moveTo(x0, -28); c.lineTo(x0 + 14, -28); c.lineTo(x0 + 44, -68); c.lineTo(x0 + 30, -68); c.fill(); });
-    c.fillStyle = "#ffd60a"; c.beginPath(); c.moveTo(-42, -28); c.lineTo(-36, -28); c.lineTo(-6, -68); c.lineTo(-12, -68); c.fill();
+    const sk = curva * 9, escuro = clarear(cor, -0.45), claro = clarear(cor, 0.32);
+    const gs = c.createRadialGradient(0, 0, 10, 0, 0, 116);
+    gs.addColorStop(0, "rgba(0,0,0,.55)"); gs.addColorStop(1, "rgba(0,0,0,0)");
+    c.save(); c.translate(0, -6); c.scale(1, 0.13); c.fillStyle = gs; c.beginPath(); c.arc(0, 0, 116, 0, 7); c.fill(); c.restore();
+    // pneus de terra: largos, cravos grandes e barro
+    [-1, 1].forEach(l => {
+      const px = l < 0 ? -110 : 72;
+      c.fillStyle = "#141416"; c.beginPath(); c.roundRect(px, -52, 38, 48, 9); c.fill();
+      c.fillStyle = "#2c2c31";
+      for (let y = -50 + (fase % 2) * 6, k = 0; y < -8; y += 12, k++) { c.fillRect(px + 3 + (k % 2) * 8, y, 12, 6); c.fillRect(px + 21 - (k % 2) * 8, y + 6, 12, 6); }
+      c.fillStyle = "rgba(110,72,38,.55)"; c.fillRect(px, -18, 38, 14);
+      c.fillStyle = "#f1f3f5"; c.beginPath(); c.ellipse(l * 94 - l * curva * 3, -28, 4.5, 13, 0, 0, 7); c.fill(); // aro branco aparecendo
+    });
+    // parte de baixo: larga, com os paralamas alargados por cima das rodas
+    const baixo = () => {
+      c.beginPath();
+      c.moveTo(-106, -20); c.lineTo(-108, -50); c.quadraticCurveTo(-106, -70, -84, -70); c.lineTo(-70, -68);
+      c.lineTo(70, -68); c.lineTo(84, -70); c.quadraticCurveTo(106, -70, 108, -50); c.lineTo(106, -20);
+      c.quadraticCurveTo(105, -12, 94, -12); c.lineTo(-94, -12); c.quadraticCurveTo(-105, -12, -106, -20); c.closePath();
+    };
+    const gb = c.createLinearGradient(0, -70, 0, -12);
+    gb.addColorStop(0, claro); gb.addColorStop(0.45, cor); gb.addColorStop(1, escuro);
+    c.fillStyle = gb; baixo(); c.fill();
+    c.save(); baixo(); c.clip();
+    c.fillStyle = "#fff"; c.beginPath(); c.moveTo(-108, -46); c.lineTo(108, -54); c.lineTo(108, -44); c.lineTo(-108, -36); c.fill();  // faixa branca da pintura
+    c.fillStyle = "#1d1d22"; c.fillRect(-110, -27, 220, 16);                                                                        // saia preta
+    c.fillStyle = "rgba(0,0,0,.25)"; c.fillRect(-110, -70, 22, 60); c.fillRect(88, -70, 22, 60);                                  // volume dos paralamas
     c.restore();
-    c.fillStyle = "#fff"; c.beginPath(); c.roundRect(18 + sk, -97, 22, 18, 4); c.fill();
-    c.fillStyle = "#111"; c.font = "bold 14px sans-serif"; c.textAlign = "center"; c.fillText("7", 29 + sk, -83);
-    c.fillStyle = escuro; c.fillRect(-12 + sk, -110, 24, 6);
-    c.fillStyle = "#1b1b1f"; c.fillRect(-52 + sk, -116, 6, 14); c.fillRect(46 + sk, -116, 6, 14);
-    const ga = c.createLinearGradient(0, -127, 0, -115); ga.addColorStop(0, clarear(cor, 0.15)); ga.addColorStop(1, escuro);
-    c.fillStyle = ga; c.beginPath(); c.roundRect(-76 + sk, -127, 152, 12, 3); c.fill();
-    c.fillStyle = "#1b1b1f"; c.fillRect(-78 + sk, -132, 6, 20); c.fillRect(72 + sk, -132, 6, 20);
-    [-1, 1].forEach(l => { const px = l < 0 ? -100 : 70; c.fillStyle = "#c92a2a"; c.fillRect(px, -17, 30, 15); c.fillStyle = "#fff"; c.font = "bold 7px sans-serif"; c.textAlign = "center"; c.fillText("RALLY", px + 15, -7); });
-    c.fillStyle = "#f77f00"; c.fillRect(54, -31, 11, 5);
-    c.fillStyle = "rgba(110,75,40,.55)";
-    for (let i = 0; i < 30; i++) { const x = -94 + ((i * 37) % 188), y = -16 - ((i * 13) % 22); c.beginPath(); c.arc(x, y, 1.4 + (i % 3), 0, 7); c.fill(); }
+    c.strokeStyle = "rgba(0,0,0,.45)"; c.lineWidth = 2.5; baixo(); c.stroke();
+    // cabine estreita e alta
+    const cab = () => { c.beginPath(); c.moveTo(-68, -68); c.lineTo(-54 + sk, -110); c.quadraticCurveTo(-52 + sk, -116, -44 + sk, -116); c.lineTo(44 + sk, -116); c.quadraticCurveTo(52 + sk, -116, 54 + sk, -110); c.lineTo(68, -68); c.closePath(); };
+    const gc = c.createLinearGradient(0, -116, 0, -68); gc.addColorStop(0, claro); gc.addColorStop(1, cor);
+    c.fillStyle = gc; cab(); c.fill(); c.strokeStyle = "rgba(0,0,0,.4)"; c.lineWidth = 2; cab(); c.stroke();
+    // vidro de trás pequeno, a faixa RALLY no alto e o número
+    c.fillStyle = "#15191f"; c.beginPath(); c.moveTo(-42 + sk, -108); c.lineTo(42 + sk, -108); c.lineTo(52 + sk, -76); c.lineTo(-52 + sk, -76); c.closePath(); c.fill();
+    const v = c.createLinearGradient(0, -106, 0, -78); v.addColorStop(0, "#9fc9ec"); v.addColorStop(1, "#1f3550");
+    c.fillStyle = v; c.beginPath(); c.moveTo(-38 + sk, -100); c.lineTo(38 + sk, -100); c.lineTo(48 + sk, -79); c.lineTo(-48 + sk, -79); c.closePath(); c.fill();
+    c.fillStyle = "rgba(255,255,255,.3)"; c.beginPath(); c.moveTo(-18 + sk, -100); c.lineTo(-6 + sk, -100); c.lineTo(-20 + sk, -79); c.lineTo(-32 + sk, -79); c.closePath(); c.fill();
+    c.fillStyle = "#fff"; c.fillRect(-42 + sk, -108, 84, 9);
+    c.fillStyle = "#c92a2a"; c.font = "bold 8px sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("RALLY", sk, -103.5);
+    c.fillStyle = "#fff"; c.beginPath(); c.roundRect(22 + sk, -96, 20, 15, 3); c.fill();
+    c.fillStyle = "#111"; c.font = "bold 12px sans-serif"; c.fillText("7", 32 + sk, -88);
+    // lanternas finas de LED nos cantos
+    [-1, 1].forEach(l => {
+      const x = l < 0 ? -100 : 92;
+      if (freio) { const g = c.createRadialGradient(x + 4, -56, 2, x + 4, -56, 26); g.addColorStop(0, "rgba(255,70,50,.8)"); g.addColorStop(1, "rgba(255,40,30,0)"); c.fillStyle = g; c.fillRect(x - 24, -84, 56, 56); }
+      c.fillStyle = freio ? "#ff5a4a" : "#b3170f"; c.beginPath(); c.roundRect(x, -66, 8, 22, 3); c.fill();
+      c.fillStyle = freio ? "#fff" : "#ff8a80"; c.fillRect(x + 3, -63, 2, 16);
+    });
+    // difusor, escape no meio e a fita de reboque
+    c.fillStyle = "#0f0f12"; c.fillRect(-60, -24, 120, 10);
+    c.strokeStyle = "#2b2b31"; c.lineWidth = 2; for (let x = -48; x <= 48; x += 16) { c.beginPath(); c.moveTo(x, -24); c.lineTo(x, -14); c.stroke(); }
+    c.fillStyle = "#c9d0d6"; c.beginPath(); c.arc(0, -19, 7, 0, 7); c.fill(); c.fillStyle = "#111"; c.beginPath(); c.arc(0, -19, 4.5, 0, 7); c.fill();
+    c.fillStyle = "#e63946"; c.fillRect(-72, -30, 8, 12);
+    // asa enorme no teto, com pescoço de cisne e placas laterais altas; tomada de ar e antena
+    c.fillStyle = "#1b1b1f"; c.fillRect(-42 + sk, -132, 6, 18); c.fillRect(36 + sk, -132, 6, 18);
+    const ga = c.createLinearGradient(0, -142, 0, -128); ga.addColorStop(0, claro); ga.addColorStop(1, escuro);
+    c.fillStyle = ga; c.beginPath(); c.roundRect(-88 + sk, -142, 176, 13, 4); c.fill();
+    c.fillStyle = "#1b1b1f"; c.fillRect(-92 + sk, -148, 7, 26); c.fillRect(85 + sk, -148, 7, 26);
+    c.fillStyle = "#fff"; c.fillRect(-60 + sk, -139, 120, 3);
+    c.fillStyle = escuro; c.beginPath(); c.moveTo(-14 + sk, -116); c.lineTo(14 + sk, -116); c.lineTo(10 + sk, -121); c.lineTo(-10 + sk, -121); c.fill();
+    c.strokeStyle = "#222"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(28 + sk, -116); c.lineTo(33 + sk, -150); c.stroke();
+    // lameiros grandes atrás das rodas e o barro
+    [-1, 1].forEach(l => {
+      const px = l < 0 ? -110 : 72;
+      c.fillStyle = "#c92a2a"; c.beginPath(); c.roundRect(px + 1, -22, 36, 20, 2); c.fill();
+      c.fillStyle = "#fff"; c.font = "bold 8px sans-serif"; c.textAlign = "center"; c.fillText("RALLY", px + 19, -11);
+    });
+    c.fillStyle = "rgba(110,72,38,.55)";
+    for (let i = 0; i < 40; i++) { const x = -100 + ((i * 41) % 200), y = -14 - ((i * 17) % 30); c.beginPath(); c.arc(x, y, 1.2 + (i % 3) * 0.9, 0, 7); c.fill(); }
     return cv;
   }
   // Carro de fórmula visto de trás (Grande Prêmio), desenhado de trás para a frente:
@@ -1220,6 +1274,23 @@
       rallyRivais = op.ral.map(r => ({ ...r, tempo: tIdeal * (faixa[0] + r.hab * (faixa[1] - faixa[0])) * (0.98 + Math.random() * 0.04) }));
     }
     const SPLITS = RALLY ? [Math.floor(N / 3), Math.floor(N * 2 / 3)] : [];
+    // Rally: os outros pilotos aparecem como "fantasmas" (transparentes, sem batida), cada um no
+    // ritmo exato do tempo que vai fazer: dá para ver quem está na frente e passar por eles
+    if (RALLY) rallyRivais.forEach(r => rivais.push({ cor: r.hex, nome: r.nome, tFim: 0, x: 0, z: CAM, voltas: 0, vel: 0, chegou: 0, fantasma: true, T: r.tempo }));
+    function moverFantasma(r, dt) {
+      if (fase !== "correndo") { r.z = CAM; return; }
+      const ti = tempo * (tPref[N - 1] / r.T);
+      if (ti >= tPref[N - 9]) { r.oculto = true; r.voltas = 1; r.z = CAM; return; } // já cruzou a chegada
+      let lo = 0, hi = N - 1;
+      while (lo < hi) { const m = (lo + hi) >> 1; if (tPref[m] < ti) lo = m + 1; else hi = m; }
+      const t0 = lo ? tPref[lo - 1] : 0, fr = Math.max(0, Math.min(1, (ti - t0) / (tPref[lo] - t0 || 1)));
+      const z = CAM + (lo + fr) * SEG;
+      r.freando = z - r.z < (r.vel || 0) * dt * 0.97;
+      r.vel = dt > 0 ? (z - r.z) / dt : 0; r.v = r.vel;
+      r.z = z;
+      const sg = segDe(z);
+      r.x += ((-Math.sign(sg.curva) * Math.min(0.45, Math.abs(sg.curva) * 0.08)) - r.x) * Math.min(1, dt * 1.5); // corta por dentro da curva
+    }
     jog.forEach(j => { j.tVolta = 0; j.melhor = 0; j.ultima = 0; j.drs = false; });
     const TOTAL_CARROS = rivais.length + jog.length;
     let tempo = 0, fase = "largada", contagem = RALLY ? 5.6 : 3.6, chegada = 0, primeiraChegada = 0;
@@ -1323,6 +1394,7 @@
         if (j.turbo > 0) { j.turbo -= dt; if (corre) j.vel += VMAX * 0.9 * dt; }
         // Encostou num adversário (ou no outro jogador, que está na frente): perde velocidade
         rivais.forEach(r => {
+          if (r.fantasma) return;
           const dz = ((r.z - j.pos - CAM) % VOLTA + VOLTA) % VOLTA;
           if (j.vel > r.vel && dz < SEG * 1.2 && Math.abs(j.x - r.x) < 0.45) { j.vel = r.vel * 0.7; Motor.ruido({ dur: 0.12, vol: 0.15, freq: 900 }); }
         });
@@ -1362,6 +1434,7 @@
       // Adversários: aceleram até a sua velocidade, freiam um pouco nas curvas e desviam
       const carrosJog = jog.map(j => ({ x: j.x, z: j.pos + CAM, v: j.vel }));
       rivais.forEach(r => {
+        if (r.fantasma) return moverFantasma(r, dt);
         const sr = segDe(r.z);
         let fator = 1 - Math.min(0.25, Math.abs(sr.curva) * 0.05);
         if (GP) { let c = 0; for (let k = 0; k < 7; k++) c = Math.max(c, Math.abs(segDe(r.z + k * SEG).curva)); fator = (c > 0 ? Math.min(1, 1.05 / (c * 0.196)) : 1) * (sr.drs ? 1.04 : 1); }
@@ -1824,7 +1897,27 @@
         const s = segs[(base.i + n) % N];
         if (!s.p1.escala || s.p1.cz <= PROF) continue;
         s.enfeites.forEach(e => coisa(img(e.tipo), tamDe(e.tipo), s.p1.escala, s.p1.sx + s.p1.escala * e.x * LARGURA * W / 2, s.p1.sy, s.clip));
-        rivais.forEach(r => { if (segDe(r.z) === s) carroNaPista(spriteCarro(r.cor, s.curva > 1 ? "dir" : s.curva < -1 ? "esq" : "reto", r.freando, Math.floor(r.z / 400) % 2), s, r.z, r.x); });
+        rivais.forEach(r => {
+          if (r.oculto || segDe(r.z) !== s) return;
+          if (r.fantasma) ctx.globalAlpha = 0.55;
+          carroNaPista(spriteCarro(r.cor, s.curva > 1 ? "dir" : s.curva < -1 ? "esq" : "reto", r.freando, Math.floor(r.z / 400) % 2), s, r.z, r.x);
+          ctx.globalAlpha = 1;
+          if (r.fantasma) {
+            // o nome do piloto em cima do fantasma (quando está perto)
+            const pr = (r.z % SEG) / SEG, e2 = s.p1.escala + (s.p2.escala - s.p1.escala) * pr, larg = e2 * 560 * W / 2;
+            if (larg > 26) {
+              const sx = s.p1.sx + (s.p2.sx - s.p1.sx) * pr + e2 * r.x * LARGURA * W / 2, sy = s.p1.sy + (s.p2.sy - s.p1.sy) * pr - larg * 0.68 - 8;
+              if (sy < s.clip) {
+                const tam = Math.max(11, Math.min(18, larg * 0.09));
+                ctx.font = `bold ${tam}px Fredoka, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                const tw = ctx.measureText(r.nome).width + 14;
+                ctx.fillStyle = "rgba(15,20,35,.75)"; ctx.beginPath(); ctx.roundRect(sx - tw / 2, sy - tam * 0.75, tw, tam * 1.5, tam * 0.6); ctx.fill();
+                ctx.fillStyle = r.cor; ctx.fillRect(sx - tw / 2 + 4, sy - tam * 0.45, 3, tam * 0.9);
+                ctx.fillStyle = "#fff"; ctx.fillText(r.nome, sx + 2, sy); ctx.textBaseline = "alphabetic";
+              }
+            }
+          }
+        });
         outros.forEach(c => { if (c.s === s) carroNaPista(c.img, s, c.z, c.o.x); });
       }
       // O seu carro
@@ -1868,7 +1961,8 @@
         if (!j.ultAviso || tempo - j.ultAviso > 1.6) { avisar(j, `ULTRAPASSOU! ${p}º`, "#8cff9e", 1.2); j.ultAviso = tempo; }
       }
       // Grande Prêmio: o narrador conta quem passou quem (sem falar toda hora)
-      if (GP && !DOIS && fase === "correndo" && !j.chegou && j.ultPos < 99 && p !== j.ultPos && (!j.ultNarra || tempo - j.ultNarra > 5)) {
+      const notaPerto = RALLY && notas.some(n => !n.chamada && !n.junta && n.ini * SEG - (j.pos + CAM) < Math.max(SEG * 30, j.vel * 3.5));
+      if ((GP || RALLY) && !DOIS && !notaPerto && fase === "correndo" && !j.chegou && j.ultPos < 99 && p !== j.ultPos && (!j.ultNarra || tempo - j.ultNarra > 5)) {
         const meu = progresso(j.voltas, j.pos + CAM), outros = rivais.map(r => ({ n: r.nome, d: progresso(r.voltas, r.z) - meu }));
         if (p < j.ultPos) { const q = outros.filter(o => o.d < 0).sort((a, b) => b.d - a.d)[0]; if (q) { j.ultNarra = tempo; Motor.falar(`Você passou ${q.n}! Agora está em ${p}º lugar!`); } }
         else { const q = outros.filter(o => o.d > 0).sort((a, b) => a.d - b.d)[0]; if (q) { j.ultNarra = tempo; Motor.falar(`${q.n} passou você! Vamos buscar!`); } }
@@ -1971,7 +2065,7 @@
       ctx.fillStyle = "#fff"; ctx.font = `bold ${28 * s}px Fredoka, sans-serif`; ctx.fillText(inf.nome, x + 22 * s, y + 62 * s, w * 0.6);
       ctx.fillStyle = "rgba(255,255,255,.82)"; ctx.font = `bold ${15 * s}px Fredoka, sans-serif`;
       const lider = rallyRivais.slice().sort((a, b) => a.tempo - b.tempo)[0];
-      [`🛣️ ${inf.piso}`, `🗣️ o navegador fala as curvas`, `⏱️ tempo para bater: ${tempoTxt(lider.tempo)}`].forEach((l, k) => ctx.fillText(l, x + 22 * s, y + (92 + k * 24) * s, w * 0.6));
+      [`🛣️ ${inf.piso}`, `👻 ${rallyRivais.length} pilotos correndo junto`, `⏱️ tempo para bater: ${tempoTxt(lider.tempo)}`].forEach((l, k) => ctx.fillText(l, x + 22 * s, y + (92 + k * 24) * s, w * 0.6));
       const m = Math.min(h - 30 * s, w * 0.34);
       mapaPista(x + w - m - 16 * s, y + (h - m) / 2, m, null);
     }
@@ -2012,6 +2106,13 @@
       ctx.font = `bold ${13 * s}px Fredoka, sans-serif`;
       SPLITS.forEach((sp, k) => { const d = j[`p${k}`]; ctx.fillStyle = d === undefined ? "rgba(255,255,255,.45)" : d <= 0 ? "#3cff78" : "#ff6b6b"; ctx.fillText(`P${k + 1} ${d === undefined ? "--" : (d <= 0 ? "−" : "+") + Math.abs(d).toFixed(1).replace(".", ",")}`, x0 + 10 * s + k * (pw / 2), by + 19 * s); });
       ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.fillText(`🏆 LÍDER ${tempoTxt(lider)}`, x0 + 10 * s, by + 38 * s, pw - 20 * s);
+      // posição agora, contando os fantasmas que já passaram e os que ficaram para trás
+      if (fase === "correndo") {
+        const py = by + bh + 6 * s, lugar = lugarDe(j);
+        ctx.fillStyle = "rgba(15,20,35,.72)"; ctx.beginPath(); ctx.roundRect(x0, py, pw, 30 * s, 10 * s); ctx.fill();
+        ctx.fillStyle = lugar === 1 ? "#ffd60a" : "#fff"; ctx.font = `bold ${15 * s}px Fredoka, sans-serif`;
+        ctx.fillText(`📍 AGORA: ${lugar}º de ${TOTAL_CARROS}`, x0 + 10 * s, py + 20 * s, pw - 20 * s);
+      }
       // velocímetro com a marcha, e o mapa da especial
       const R = 46 * s, cx = W - R - 14, cy = 66 + R, pv = j.vel / VMAX, frac = Math.min(1, pv);
       ctx.fillStyle = "rgba(15,20,35,.78)"; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill();
@@ -2147,7 +2248,7 @@
     requestAnimationFrame(laco);
     if (RALLY) {
       const fim = () => { esperaIntro = false; };
-      Motor.falar(INFO_RALLY[op.pista].fala + ` Especial ${ESPECIAL} de ${TOTAL_ESP}.` + (ESPECIAL === 1 ? " Eu sou o seu navegador e vou falando as curvas antes de elas chegarem: o número é o tamanho da curva. Um é bem fechada, seis é quase reta. Quando eu disser salto, segure o carro reto!" : " Vamos lá!") + " A largada é no relógio!").then(fim);
+      Motor.falar(INFO_RALLY[op.pista].fala + ` Especial ${ESPECIAL} de ${TOTAL_ESP}.` + (ESPECIAL === 1 ? " Eu sou o seu navegador e vou falando as curvas antes de elas chegarem: o número é o tamanho da curva. Um é bem fechada, seis é quase reta. Quando eu disser salto, segure o carro reto! Os carros transparentes são os outros pilotos, cada um no ritmo do seu tempo: passe na frente deles!" : " Vamos lá!") + " A largada é no relógio!").then(fim);
       setTimeout(fim, 26000);
     } else if (GP && !DOIS) {
       const fim = () => { esperaIntro = false; };
