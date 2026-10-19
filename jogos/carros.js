@@ -54,8 +54,8 @@
         if (pv == null) { saida.gain.setTargetAtTime(0, t, 0.05); return; }
         pv = Math.max(0, Math.min(1, pv));
         // 4 marchas (8 no carro de fórmula, que grita bem mais agudo): a rotação sobe em cada uma e cai na troca
-        const nm = formula ? 8 : 4, m = Math.min(nm - 1, Math.floor(pv * nm)), rot = pv * nm - m;
-        const f = formula ? 70 + m * 9 + rot * 120 + (acelerando && pv < 0.05 ? 20 : 0) : 42 + m * 10 + rot * 62 + (acelerando && pv < 0.05 ? 12 : 0);
+        const nm = formula === "rally" ? 6 : formula ? 8 : 4, m = Math.min(nm - 1, Math.floor(pv * nm)), rot = pv * nm - m;
+        const f = formula === "rally" ? 52 + m * 11 + rot * 95 + (acelerando && pv < 0.05 ? 16 : 0) : formula ? 70 + m * 9 + rot * 120 + (acelerando && pv < 0.05 ? 20 : 0) : 42 + m * 10 + rot * 62 + (acelerando && pv < 0.05 ? 12 : 0);
         o1.frequency.setTargetAtTime(f, t, 0.06);
         o2.frequency.setTargetAtTime(f / 2, t, 0.06);
         o3.frequency.setTargetAtTime(f * 3.01, t, 0.06);
@@ -88,6 +88,8 @@
       { figura: "🛑", texto: "No Grande Prêmio, as placas 150, 100 e 50 avisam a curva fechada: freie antes dela! Fora da pista tem brita (o carro quase para) e, em Mônaco, o muro." },
       { figura: "🟢", texto: "Na zona de DRS (a placa verde na reta), se você estiver a menos de 1 segundo do carro da frente, a asa traseira abre e o carro corre mais. Frear fecha a asa." },
       { figura: "🚦🔴", texto: "Na largada, as 5 luzes vermelhas acendem uma por uma. Quando ficam verdes, é JÁ!" },
+      { figura: "🚙💨", texto: "No Rally, você corre sozinho contra o relógio, em especiais na Finlândia (terra e saltos), na Suécia (neve) ou nos Sertões (terra vermelha). O navegador fala as curvas antes: o número é o tamanho da curva, de 1 (bem fechada) a 6 (quase reta). No salto, mantenha o carro reto!" },
+      { figura: "⏱️", texto: "No Rally, cada especial tem parciais: verde é na frente do líder, vermelho é atrás. No fim, a classificação geral soma os tempos de todas as especiais." },
       { figura: "⚡", texto: "Na corrida comum, passe por cima das setas amarelas na pista para ganhar turbo e correr mais que todo mundo!" },
       { figura: "👥🎮🎮", texto: "Corrida a dois: a tela se divide e cada um tem a sua estrada e os seus botões. Jogador 1 usa o 1º controle (ou as setas e Enter); jogador 2 usa o 2º controle (ou W A S D e F)." },
       { figura: "📦➜🏠", texto: "Na cidade, siga a seta: busque a encomenda e leve até a casinha. Pegue as estrelas pelo caminho!" },
@@ -101,34 +103,37 @@
   const NOMES_PILOTOS = ["Tico", "Bia", "Léo", "Duda", "Juca", "Nina", "Caio", "Lara", "Zeca", "Malu", "Davi", "Iara", "Rafa", "Teca", "Gabi", "Beto", "Lulu", "Theo", "Mel", "Dudu"];
   const NOMES_COR = { vermelho: "Vermelho", azul: "Azul", amarelo: "Amarelo", verde: "Verde", rosa: "Rosa", laranja: "Laranja" };
   const NOMES_PISTA = { campo: "Campo", praia: "Praia", noite: "Cidade à noite", neve: "Neve",
+    finlandia: "Finlândia (terra e saltos)", suecia: "Suécia (neve e gelo)", sertoes: "Sertões (Brasil)",
     interlagos: "Interlagos (São Paulo)", monaco: "Mônaco (ruas da cidade)", monza: "Monza (a mais rápida)" };
   function escolhas(area, faixa) {
     const fid = (faixa && faixa.id) || "6-8";
     const perfil = typeof Album !== "undefined" ? Album.perfilAtual().nome : "";
-    const corrida_ = op => op.modo === "corrida" || op.modo === "gp", gp = op => op.modo === "gp", comum = op => op.modo === "corrida";
+    const corrida_ = op => op.modo === "corrida" || op.modo === "gp", gp = op => op.modo === "gp", comum = op => op.modo === "corrida", rally = op => op.modo === "rally";
     const dois = op => corrida_(op) && op.jogadores === "2";
     const cores = (exceto, formula) => Object.keys(CORES).filter(k => k !== exceto).map(k => [k, NOMES_COR[k], () => figuraCarro(k, formula)]);
     Motor.telaOpcoes(area, {
       chave: `carros-${fid}`,
-      padrao: { modo: "corrida", jogadores: "1", cor: "vermelho", cor2: "azul", pista: "campo", circuito: "interlagos", voltas: "3", nivel: fid === "5-6" ? "facil" : "normal", nome1: perfil === "Visitante" ? "" : perfil, nome2: "" },
+      padrao: { modo: "corrida", jogadores: "1", cor: "vermelho", cor2: "azul", pista: "campo", circuito: "interlagos", etapa: "finlandia", especiais: "2", voltas: "3", nivel: fid === "5-6" ? "facil" : "normal", nome1: perfil === "Visitante" ? "" : perfil, nome2: "" },
       opcoes: [
-        { chave: "modo", titulo: "O que vamos fazer?", valores: [["corrida", "Corrida", op => figuraCena("campo", [CORES[op.cor]])], ["gp", "Grande Prêmio", op => figuraCena("interlagos", [CORES[op.cor]], false, true)], ["cidade", "Passear na cidade", op => figuraCidade(op.cor)]] },
+        { chave: "modo", titulo: "O que vamos fazer?", valores: [["corrida", "Corrida", op => figuraCena("campo", [CORES[op.cor]])], ["gp", "Grande Prêmio", op => figuraCena("interlagos", [CORES[op.cor]], false, true)], ["rally", "Rally", op => figuraCena("finlandia", [CORES[op.cor]], false, "rally")], ["cidade", "Passear na cidade", op => figuraCidade(op.cor)]] },
         { chave: "jogadores", titulo: "Quantos jogadores?", quando: corrida_, valores: [["1", "1 jogador", op => figuraCena("campo", [CORES[op.cor]])], ["2", "2 jogadores", () => figuraCena("campo", [CORES.vermelho, CORES.azul], true)]] },
-        { chave: "nome1", tipo: "texto", quando: corrida_, titulo: op => (dois(op) ? "Nome do jogador 1" : "Qual é o nome do piloto?"), dica: op => (dois(op) ? "Jogador 1" : "Você") },
+        { chave: "nome1", tipo: "texto", quando: op => corrida_(op) || rally(op), titulo: op => (dois(op) ? "Nome do jogador 1" : "Qual é o nome do piloto?"), dica: op => (dois(op) ? "Jogador 1" : "Você") },
         { chave: "nome2", tipo: "texto", quando: dois, titulo: "Nome do jogador 2", dica: "Jogador 2" },
-        { chave: "cor", titulo: op => (dois(op) ? "Carro do jogador 1" : "Escolha o seu carro"), valores: op => cores(undefined, gp(op)) },
+        { chave: "cor", titulo: op => (dois(op) ? "Carro do jogador 1" : "Escolha o seu carro"), valores: op => cores(undefined, gp(op) ? true : rally(op) ? "rally" : false) },
         { chave: "cor2", titulo: "Carro do jogador 2", quando: dois, valores: op => cores(op.cor, gp(op)) },
-        { chave: "pista", titulo: "Escolha a pista", quando: comum, valores: () => Object.keys(TEMAS).filter(k => !TEMAS[k].gp).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [])]) },
+        { chave: "pista", titulo: "Escolha a pista", quando: comum, valores: () => Object.keys(TEMAS).filter(k => !TEMAS[k].gp && !TEMAS[k].rally).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [])]) },
+        { chave: "etapa", titulo: "Onde vai ser o rally?", quando: rally, valores: () => Object.keys(TEMAS).filter(k => TEMAS[k].rally).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [], false, "rally")]) },
+        { chave: "especiais", titulo: "Quantas especiais?", quando: rally, valores: [["1", "⏱️ 1 especial"], ["2", "⏱️ 2 especiais"], ["3", "⏱️ 3 especiais"]] },
         { chave: "circuito", titulo: "Escolha o autódromo", quando: gp, valores: () => Object.keys(TEMAS).filter(k => TEMAS[k].gp).map(k => [k, NOMES_PISTA[k], () => figuraCena(k, [], false, true)]) },
         { chave: "voltas", titulo: "Quantas voltas?", quando: corrida_, valores: op => (gp(op) ? ["3", "5", "8"] : ["1", "3", "5"]).map(v => [v, `${v} ${v === "1" ? "volta" : "voltas"}`]) },
         { chave: "nivel", titulo: "Jeito de dirigir", valores: [["facil", "🐢 Fácil"], ["normal", "🐇 Normal"], ["dificil", "🚀 Rápido"]] },
       ],
-      aoJogar: op => (op.modo === "cidade" ? cidade : corrida)(area, { ...op, fid, pista: op.modo === "gp" ? op.circuito : op.pista }),
+      aoJogar: op => (op.modo === "cidade" ? cidade : corrida)(area, { ...op, fid, pista: op.modo === "gp" ? op.circuito : op.modo === "rally" ? op.etapa : op.pista, jogadores: op.modo === "rally" ? "1" : op.jogadores, especial: 1, acum: null, ral: null }),
     });
   }
   // Figuras dos cartões: o carro de verdade, a pista com a paisagem e a cidade vista de cima
   function figuraCarro(cor, formula) {
-    const cv = (formula ? formulaDeTras : carroDeTras)(CORES[cor]);
+    const cv = (formula === "rally" ? carroRally : formula ? formulaDeTras : carroDeTras)(CORES[cor]);
     cv.className = "fig-carro";
     return cv;
   }
@@ -154,7 +159,7 @@
         const im = desenharEnfeite(tm.coisas[i % tm.coisas.length]), hh = H * tam, ww = hh * im.width / im.height;
         c.drawImage(im, fx * w - ww / 2, fy * H - hh * 0.6, ww, hh);
       });
-      if (carro) { const im = (formula ? formulaDeTras : carroDeTras)(carro), cw = Math.min(w * 0.6, 130), ch = cw * im.height / im.width; c.drawImage(im, w / 2 - cw / 2, H - ch - 4, cw, ch); }
+      if (carro) { const im = (formula === "rally" ? carroRally : formula ? formulaDeTras : carroDeTras)(carro), cw = Math.min(w * 0.6, 130), ch = cw * im.height / im.width; c.drawImage(im, w / 2 - cw / 2, H - ch - 4, cw, ch); }
       c.restore();
     };
     if (dividida) { metade(0, W / 2 - 2, carros[0]); metade(W / 2 + 2, W / 2 - 2, carros[1]); c.fillStyle = "#1d1d2b"; c.fillRect(W / 2 - 2, 0, 4, H); }
@@ -403,6 +408,33 @@
     });
     return cv;
   }
+  // Carro de rally visto de trás: o carro comum mais alto, com a asa grande no teto, tomada de ar,
+  // faixas da pintura, número na janela, lameiros vermelhos atrás das rodas e barro respingado
+  function carroRally(cor, curva = 0, freio = false, fase = 0) {
+    const base = carroDeTras(cor, curva, freio, fase), W = 220, H = 142, cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const c = cv.getContext("2d");
+    c.drawImage(base, 0, H - base.height);
+    c.translate(W / 2, H);
+    const sk = curva * 10, escuro = clarear(cor, -0.5);
+    c.save(); c.beginPath(); c.rect(-96, -68, 192, 40); c.clip();
+    c.fillStyle = "rgba(255,255,255,.85)";
+    [-62, 28].forEach(x0 => { c.beginPath(); c.moveTo(x0, -28); c.lineTo(x0 + 14, -28); c.lineTo(x0 + 44, -68); c.lineTo(x0 + 30, -68); c.fill(); });
+    c.fillStyle = "#ffd60a"; c.beginPath(); c.moveTo(-42, -28); c.lineTo(-36, -28); c.lineTo(-6, -68); c.lineTo(-12, -68); c.fill();
+    c.restore();
+    c.fillStyle = "#fff"; c.beginPath(); c.roundRect(18 + sk, -97, 22, 18, 4); c.fill();
+    c.fillStyle = "#111"; c.font = "bold 14px sans-serif"; c.textAlign = "center"; c.fillText("7", 29 + sk, -83);
+    c.fillStyle = escuro; c.fillRect(-12 + sk, -110, 24, 6);
+    c.fillStyle = "#1b1b1f"; c.fillRect(-52 + sk, -116, 6, 14); c.fillRect(46 + sk, -116, 6, 14);
+    const ga = c.createLinearGradient(0, -127, 0, -115); ga.addColorStop(0, clarear(cor, 0.15)); ga.addColorStop(1, escuro);
+    c.fillStyle = ga; c.beginPath(); c.roundRect(-76 + sk, -127, 152, 12, 3); c.fill();
+    c.fillStyle = "#1b1b1f"; c.fillRect(-78 + sk, -132, 6, 20); c.fillRect(72 + sk, -132, 6, 20);
+    [-1, 1].forEach(l => { const px = l < 0 ? -100 : 70; c.fillStyle = "#c92a2a"; c.fillRect(px, -17, 30, 15); c.fillStyle = "#fff"; c.font = "bold 7px sans-serif"; c.textAlign = "center"; c.fillText("RALLY", px + 15, -7); });
+    c.fillStyle = "#f77f00"; c.fillRect(54, -31, 11, 5);
+    c.fillStyle = "rgba(110,75,40,.55)";
+    for (let i = 0; i < 30; i++) { const x = -94 + ((i * 37) % 188), y = -16 - ((i * 13) % 22); c.beginPath(); c.arc(x, y, 1.4 + (i % 3), 0, 7); c.fill(); }
+    return cv;
+  }
   // Carro de fórmula visto de trás (Grande Prêmio), desenhado de trás para a frente:
   // rodas e asa dianteiras lá na frente, pneus traseiros enormes, assoalho e difusor com a luz
   // vermelha, pontões, capa do motor alta e estreita com a entrada de ar sobre o capacete, o halo,
@@ -492,11 +524,11 @@
 
   // Sprites dos carros da corrida guardados prontos (cor × virando × freio × fase da roda × fórmula)
   const spritesCarro = new Map();
-  let formulaNaPista = false; // a corrida aberta é Grande Prêmio
+  let formulaNaPista = false, rallyNaPista = false; // a corrida aberta é Grande Prêmio / Rally
   const spriteCarro = (cor, vira, freio, fase) => {
-    const k = (formulaNaPista ? "f" : "") + cor + vira + (freio ? 1 : 0) + fase;
+    const k = (formulaNaPista ? "f" : rallyNaPista ? "r" : "") + cor + vira + (freio ? 1 : 0) + fase;
     let s = spritesCarro.get(k);
-    if (!s) { s = (formulaNaPista ? formulaDeTras : carroDeTras)(cor, vira === "esq" ? -1 : vira === "dir" ? 1 : 0, freio, fase); spritesCarro.set(k, s); }
+    if (!s) { s = (formulaNaPista ? formulaDeTras : rallyNaPista ? carroRally : carroDeTras)(cor, vira === "esq" ? -1 : vira === "dir" ? 1 : 0, freio, fase); spritesCarro.set(k, s); }
     return s;
   };
   // Carro visto de cima (cidade): x para a frente
@@ -568,6 +600,10 @@
     interlagos: { ceu: ["#4a90d9", "#d4e9fb"], grama: ["#4f9d3a", "#47923a"], zebra: ["#e63946", "#fff"], pista: ["#505056", "#4b4b51"], faixa: "#fff", acost: "#8a8f96", nevoa: "#d4e9fb", morros: ["#8fb07a", "#6f9a5a"], coisas: ["arquibancada", "arquibancada", "pneus", "faixa-gp", "bandeira", "arvore"], gp: true },
     monaco: { ceu: ["#2f8fe8", "#d6efff"], grama: ["#a3a8ae", "#9a9fa6"], zebra: ["#e63946", "#fff"], pista: ["#46464d", "#424249"], faixa: "#fff", acost: "#c9ccd1", nevoa: "#d6efff", morros: ["#4fc3f7", "#29a3d8"], coisas: ["predio", "predio", "arquibancada", "faixa-gp", "pneus", "coqueiro"], gp: true, largura: 1650 },
     monza: { ceu: ["#3d8fe0", "#d5ecff"], grama: ["#5fb34a", "#56a843"], zebra: ["#e63946", "#fff"], pista: ["#55555b", "#505056"], faixa: "#fff", acost: "#a39a80", nevoa: "#d5ecff", morros: ["#7cc36a", "#5aa84a"], coisas: ["arvore", "arvore", "arquibancada", "faixa-gp", "pneus", "bandeira"], gp: true },
+    // Rally: estradas de terra/neve, estreitas, sem faixas pintadas
+    finlandia: { ceu: ["#5b9be0", "#dcecf8"], grama: ["#5a8f3c", "#548a37"], zebra: ["#b49567", "#a88b5f"], pista: ["#9c7a52", "#957349"], faixa: "#9c7a52", acost: "#b49567", nevoa: "#dcecf8", morros: ["#6f9a5a", "#4f7f3d"], coisas: ["pinheiro", "pinheiro", "torcida", "casa-vermelha"], rally: true, largura: 1450 },
+    suecia: { ceu: ["#9fb3c8", "#e8eef5"], grama: ["#f2f6fb", "#e7eef7"], zebra: ["#ffffff", "#f1f5fa"], pista: ["#d3dbe4", "#cad3dd"], faixa: "#d3dbe4", acost: "#ffffff", nevoa: "#e8eef5", morros: ["#dfe9f5", "#c9d8ea"], coisas: ["pinheiro-neve", "pinheiro-neve", "torcida", "banco-neve"], rally: true, largura: 1450 },
+    sertoes: { ceu: ["#4aa3e0", "#fbe3b0"], grama: ["#c9a46a", "#c29d63"], zebra: ["#c98a55", "#bf8050"], pista: ["#b5653a", "#ad5f35"], faixa: "#b5653a", acost: "#c98a55", nevoa: "#f6dcb0", morros: ["#c49a6c", "#a8805a"], coisas: ["mandacaru", "pedra", "torcida", "mandacaru"], rally: true, largura: 1450 },
     neve: { ceu: ["#8fb8d8", "#eef6ff"], grama: ["#f4f8ff", "#e8f0fa"], zebra: ["#2f80ed", "#fff"], pista: ["#7a7f86", "#757a81"], faixa: "#fff", acost: "#b9c3ce", nevoa: "#eef6ff", morros: ["#dfe9f5", "#c9d8ea"], coisas: ["pinheiro-neve", "pinheiro-neve", "boneco", "placa"] },
   };
   // Enfeites da beira da pista: [largura, altura] no mundo e o desenho
@@ -797,6 +833,66 @@
       for (let y = 26; y < h - 50; y += 40) for (let x = 14; x < 150; x += 40) { c.fillStyle = "#5d7f95"; c.fillRect(x, y, 22, 26); c.fillStyle = "#2f6b4a"; c.fillRect(x - 5, y, 4, 26); c.fillRect(x + 23, y, 4, 26); c.fillStyle = "#fff"; c.fillRect(x - 6, y + 26, 34, 4); }
       c.fillStyle = Motor.sortear(["#e63946", "#2f80ed", "#2a9d55", "#f77f00"]); c.fillRect(0, h - 40, 170, 12);
       c.fillStyle = "#3a3a3a"; c.fillRect(18, h - 28, 134, 28);
+    } else if (tipo === "torcida") {
+      // público do rally atrás da fita, com bandeiras e os braços para cima
+      pronto(320, 150);
+      sombra(160, 150, 150);
+      for (let r = 0; r < 3; r++) for (let x = 12 + r * 6; x < 310; x += 14) {
+        const y = 52 + r * 24;
+        c.fillStyle = Motor.sortear(["#e63946", "#ffd60a", "#2f80ed", "#2a9d55", "#fff", "#f77f00", "#111"]); c.fillRect(x - 5, y + 6, 10, 16);
+        c.fillStyle = Motor.sortear(["#f1c27d", "#c68642", "#8d5524", "#ffdbac"]); c.beginPath(); c.arc(x, y + 2, 4.5, 0, 7); c.fill();
+        if (Math.random() < 0.3) { c.strokeStyle = "#f1c27d"; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x - 4, y + 8); c.lineTo(x - 8, y - 6); c.moveTo(x + 4, y + 8); c.lineTo(x + 8, y - 6); c.stroke(); }
+      }
+      [[40, "#2f80ed"], [170, "#ffd60a"], [270, "#e63946"]].forEach(([x, cor]) => { c.fillStyle = "#555"; c.fillRect(x, 6, 3, 50); c.fillStyle = cor; c.beginPath(); c.moveTo(x + 3, 8); c.lineTo(x + 34, 16); c.lineTo(x + 3, 26); c.fill(); });
+      c.fillStyle = "#777"; for (let x = 4; x < 320; x += 78) c.fillRect(x, 112, 4, 38);
+      for (let x = 0; x < 320; x += 20) { c.fillStyle = (x / 20) % 2 ? "#fff" : "#e63946"; c.fillRect(x, 118, 20, 6); }
+    } else if (tipo === "casa-vermelha") {
+      // casa de madeira vermelha com as beiradas brancas (Finlândia)
+      pronto(220, 180);
+      sombra(110, 100, 180);
+      c.fillStyle = "#a61e1e"; c.fillRect(20, 70, 180, 106);
+      c.fillStyle = "rgba(0,0,0,.12)"; for (let x = 24; x < 200; x += 8) c.fillRect(x, 70, 2, 106);
+      c.fillStyle = "#fff"; c.fillRect(16, 70, 6, 106); c.fillRect(198, 70, 6, 106);
+      c.fillStyle = "#3b3f45"; c.beginPath(); c.moveTo(6, 74); c.lineTo(110, 10); c.lineTo(214, 74); c.fill();
+      [[44, 96], [140, 96]].forEach(([x, y]) => { c.fillStyle = "#fff"; c.fillRect(x - 3, y - 3, 40, 36); c.fillStyle = "#7fb0d4"; c.fillRect(x, y, 34, 30); c.fillStyle = "#fff"; c.fillRect(x + 16, y, 2, 30); });
+      c.fillStyle = "#5a3418"; c.fillRect(96, 128, 28, 48);
+    } else if (tipo === "banco-neve") {
+      // monte de neve na beira da estrada (segura o carro, como na Suécia)
+      pronto(260, 70);
+      const g = c.createLinearGradient(0, 10, 0, 70); g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#c9d8ea");
+      c.fillStyle = g; c.beginPath(); c.moveTo(0, 70); c.quadraticCurveTo(40, 8, 130, 14); c.quadraticCurveTo(220, 8, 260, 70); c.fill();
+      c.fillStyle = "rgba(160,190,220,.45)"; c.beginPath(); c.ellipse(170, 50, 60, 12, 0, 0, 7); c.fill();
+    } else if (tipo === "mandacaru") {
+      pronto(120, 230);
+      sombra(60, 40, 230);
+      const col = (x, y, w, h) => { const g = c.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, "#5f9a4a"); g.addColorStop(1, "#2f6a2f"); c.fillStyle = g; c.beginPath(); c.roundRect(x, y, w, h, w / 2); c.fill(); };
+      col(48, 30, 24, 198); col(14, 70, 18, 80); col(88, 50, 18, 90);
+      c.fillStyle = "#4a8a3c"; c.fillRect(26, 130, 26, 14); c.fillRect(70, 118, 22, 14);
+      c.strokeStyle = "rgba(255,255,255,.25)"; c.lineWidth = 1; for (let x = 54; x < 70; x += 5) { c.beginPath(); c.moveTo(x, 36); c.lineTo(x, 224); c.stroke(); }
+    } else if (tipo === "pedra") {
+      pronto(160, 100);
+      sombra(80, 70, 100);
+      c.fillStyle = "#8a7d6d"; c.beginPath(); c.moveTo(10, 96); c.lineTo(28, 40); c.lineTo(70, 14); c.lineTo(118, 22); c.lineTo(150, 60); c.lineTo(152, 96); c.fill();
+      c.fillStyle = "rgba(255,255,255,.18)"; c.beginPath(); c.moveTo(30, 44); c.lineTo(70, 18); c.lineTo(84, 40); c.lineTo(46, 60); c.fill();
+      c.fillStyle = "rgba(0,0,0,.18)"; c.beginPath(); c.moveTo(118, 22); c.lineTo(150, 60); c.lineTo(152, 96); c.lineTo(110, 96); c.fill();
+    } else if (tipo === "cuidado") {
+      // placa de perigo: curva fechada ou salto logo à frente
+      pronto(120, 200);
+      sombra(60, 30, 200);
+      c.fillStyle = "#555"; c.fillRect(55, 96, 10, 104);
+      c.fillStyle = "#111"; c.beginPath(); c.moveTo(60, 2); c.lineTo(118, 104); c.lineTo(2, 104); c.closePath(); c.fill();
+      c.fillStyle = "#ffd60a"; c.beginPath(); c.moveTo(60, 14); c.lineTo(106, 96); c.lineTo(14, 96); c.closePath(); c.fill();
+      c.fillStyle = "#111"; c.font = "bold 50px sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("!", 60, 66);
+    } else if (tipo.startsWith("arco:")) {
+      // arco inflável da largada e da chegada da especial, por cima da estrada
+      pronto(900, 420);
+      const coluna = x => { const g = c.createLinearGradient(x, 0, x + 70, 0); g.addColorStop(0, "#c92a2a"); g.addColorStop(0.5, "#ff6b6b"); g.addColorStop(1, "#a51d1d"); c.fillStyle = g; c.beginPath(); c.roundRect(x, 90, 70, 330, 30); c.fill(); };
+      coluna(20); coluna(810);
+      const g = c.createLinearGradient(0, 10, 0, 110); g.addColorStop(0, "#ff6b6b"); g.addColorStop(1, "#a51d1d");
+      c.fillStyle = g; c.beginPath(); c.roundRect(10, 10, 880, 110, 50); c.fill();
+      c.fillStyle = "#fff"; c.beginPath(); c.roundRect(160, 30, 580, 70, 14); c.fill();
+      for (let k = 0; k < 10; k++) { c.fillStyle = k % 2 ? "#111" : "#fff"; c.fillRect(40 + (k % 5) * 18, 40 + Math.floor(k / 5) * 18, 18, 18); c.fillStyle = k % 2 ? "#fff" : "#111"; c.fillRect(770 + (k % 5) * 18 - 30, 40 + Math.floor(k / 5) * 18, 18, 18); }
+      c.fillStyle = "#c92a2a"; c.font = "bold 54px sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(tipo.slice(5), 450, 67, 560);
     } else if (tipo === "iate") {
       // iate no porto de Mônaco
       pronto(300, 170);
@@ -809,7 +905,7 @@
     }
     return cv;
   }
-  const TAM_ENFEITE = { boxes: 2600, muro: 1500, guardrail: 1100, freio: 520, nome: 1700, drs: 650, "parede-tunel": 700, "predio-dia": 1900, iate: 2200, arquibancada: 2400, pneus: 650, "faixa-gp": 1200, bandeira: 1000, arvore: 1300, pinheiro: 900, "pinheiro-neve": 900, coqueiro: 1300, "guarda-sol": 900, predio: 1800, poste: 500, placa: 1100, flores: 700, boneco: 650 };
+  const TAM_ENFEITE = { torcida: 2200, "casa-vermelha": 2000, "banco-neve": 1500, mandacaru: 900, pedra: 900, cuidado: 520, boxes: 2600, muro: 1500, guardrail: 1100, freio: 520, nome: 1700, drs: 650, "parede-tunel": 700, "predio-dia": 1900, iate: 2200, arquibancada: 2400, pneus: 650, "faixa-gp": 1200, bandeira: 1000, arvore: 1300, pinheiro: 900, "pinheiro-neve": 900, coqueiro: 1300, "guarda-sol": 900, predio: 1800, poste: 500, placa: 1100, flores: 700, boneco: 650 };
 
   // Os autódromos de verdade: ficha (cartão antes da largada) e a apresentação do narrador
   const INFO_GP = {
@@ -820,13 +916,24 @@
     monza: { nome: "Monza", local: "📍 Monza · Itália", km: "5,8 km", curvas: 11, sentido: "horário",
       fala: "Bem-vindos a Monza, na Itália, o Templo da Velocidade! Tem retas enormes, onde os carros passam de trezentos e cinquenta quilômetros por hora. Freie bem nas chicanes!" },
   };
+  // Rally: as três etapas (ficha da especial e a apresentação do navegador)
+  const INFO_RALLY = {
+    finlandia: { nome: "Rally da Finlândia", piso: "terra rápida e saltos", fala: "Rally da Finlândia! Estradas de terra no meio da floresta de pinheiros, muito rápidas e cheias de saltos, com lagos por todo lado." },
+    suecia: { nome: "Rally da Suécia", piso: "neve e gelo", fala: "Rally da Suécia! A estrada é de neve e gelo e o carro escorrega muito. Os montes de neve na beira da estrada seguram o carro." },
+    sertoes: { nome: "Rally dos Sertões", piso: "terra vermelha e poeira", fala: "Rally dos Sertões, no Brasil! Terra vermelha, muita poeira, pedras e cactos mandacaru na beira da estrada." },
+  };
+  const NUM_NOTA = ["", "um", "dois", "três", "quatro", "cinco", "seis"];
   function corrida(area, op) {
     const tema = TEMAS[op.pista] || TEMAS.campo;
     formulaNaPista = !!tema.gp;
+    rallyNaPista = !!tema.rally;
     const NIVEL = { facil: { max: 0.82, rivais: 0.7, auto: true }, normal: { max: 1, rivais: 0.86, auto: false }, dificil: { max: 1.12, rivais: 0.97, auto: false } }[op.nivel] || { max: 1, rivais: 0.86 };
     const sessao = Motor.sessaoAtual();
     let pausado = false;
-    const DOIS = op.jogadores === "2"; // corrida a dois, com a tela dividida
+    const RALLY = !!tema.rally;
+    const GRIP = { finlandia: 1, suecia: 1.12, sertoes: 1 }[op.pista] || 1; // rally: o carro escorrega (na neve, mais)
+    const ESPECIAL = op.especial || 1, TOTAL_ESP = Math.max(1, Math.min(3, parseInt(op.especiais, 10) || 2));
+    const DOIS = op.jogadores === "2" && !RALLY; // corrida a dois, com a tela dividida
     const T = montarTela(area, { dois: DOIS, aoPausar: () => alternarPausa() });
     const vivo = () => sessao === Motor.sessaoAtual() && document.contains(T.tela);
 
@@ -902,6 +1009,52 @@
       ],
     };
     const GP = !!tema.gp && !!CIRCUITOS[op.pista];
+    // Rally: notas do navegador (curvas com grau 1 a 6, saltos e água) e a especial em si
+    const notas = [];
+    function gerarEspecial() {
+      let st = ([...op.pista].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7) + ESPECIAL * 977) >>> 0;
+      const rnd = () => { st = (st * 1664525 + 1013904223) >>> 0; return st / 4294967296; };
+      const PR = { finlandia: { saltos: 0.42, agua: 0.12, sobe: 28 }, suecia: { saltos: 0.15, agua: 0, sobe: 16 }, sertoes: { saltos: 0.25, agua: 0, sobe: 22 } }[op.pista] || { saltos: 0.2, agua: 0, sobe: 20 };
+      trecho(15, 70, 10, 0, 0);
+      while (segs.length < 2900) {
+        if (rnd() < 0.3) {
+          const f = 30 + Math.floor(rnd() * 110);
+          if (rnd() < PR.saltos) {
+            trecho(10, 10, 6, 0, 0);
+            const n0 = segs.length;
+            trecho(8, 3, 2, 0, PR.sobe * (0.8 + rnd() * 0.6));
+            segs[segs.length - 1].salto = true;
+            trecho(2, 2, 10, 0, -PR.sobe * (0.9 + rnd() * 0.5));
+            notas.push({ ini: n0, fim: segs.length - 1, tipo: "salto" });
+            trecho(10, f, 10, 0, 0);
+          } else if (PR.agua && rnd() < PR.agua * 2.5) {
+            trecho(10, 14, 5, 0, 0);
+            const n0 = segs.length;
+            trecho(2, 8, 2, 0, 0);
+            for (let n = n0; n < segs.length; n++) segs[n].agua = true;
+            notas.push({ ini: n0, fim: segs.length - 1, tipo: "agua" });
+            trecho(5, f, 10, 0, (rnd() - 0.5) * 16);
+          } else trecho(15, f, 15, 0, (rnd() - 0.5) * PR.sobe);
+        } else {
+          const grau = 1 + Math.floor(rnd() * 6), lado = rnd() < 0.5 ? -1 : 1, longa = grau > 2 && rnd() < 0.25;
+          const len = [0, 10, 14, 18, 22, 28, 34][grau] * (longa ? 2.2 : 1);
+          const n0 = segs.length;
+          trecho(Math.round(len * 0.4) + 4, Math.round(len), Math.round(len * 0.4) + 4, lado * [0, 8.5, 6.5, 5, 3.8, 2.6, 1.6][grau], (rnd() - 0.5) * PR.sobe * 0.6);
+          notas.push({ ini: n0, fim: segs.length - 1, tipo: "curva", grau, lado, longa });
+          if (rnd() < 0.35) trecho(2, 3, 2, 0, 0); else trecho(6, 10 + Math.floor(rnd() * 40), 6, 0, (rnd() - 0.5) * PR.sobe * 0.5);
+        }
+      }
+      trecho(10, 90, 10, 0, 0);
+      // o texto de cada nota, como um navegador de verdade: "Esquerda três longa", "Grampo direita",
+      // "fecha" quando a curva aperta, e "e" quando uma curva emenda na outra
+      const txt = n => n.tipo === "salto" ? "Salto! Segura reto!" : n.tipo === "agua" ? "Água! Passa reto!" : (n.grau === 1 ? `Grampo ${n.lado < 0 ? "esquerda" : "direita"}` : `${n.lado < 0 ? "Esquerda" : "Direita"} ${NUM_NOTA[n.grau]}`) + (n.longa ? " longa" : "");
+      notas.forEach((n, i) => {
+        n.texto = (n.tipo === "curva" && n.grau <= 2 ? "Cuidado! " : "") + txt(n);
+        const prox = notas[i + 1];
+        if (prox && prox.tipo === "curva" && n.tipo === "curva" && prox.lado === n.lado && prox.grau < n.grau && prox.ini - n.fim < 20) n.texto += ", fecha";
+        if (prox && prox.ini - n.fim < 16 && !n.junta) { n.texto += ` e ${txt(prox).toLowerCase()}`; prox.junta = true; }
+      });
+    }
     const curvas = []; // curvas com nome: { nome, ini, fim, curva }
     if (GP) {
       CIRCUITOS[op.pista].forEach(([nome, e, f, sa, cv, sub, ex = {}]) => {
@@ -915,11 +1068,12 @@
           else curvas.push({ nome, ini: n0, fim: segs.length - 1, curva: cv });
         }
       });
-    } else (TRACADOS[op.pista] || TRACADOS.campo).forEach(t => trecho(...t));
+    } else if (RALLY) gerarEspecial();
+    else (TRACADOS[op.pista] || TRACADOS.campo).forEach(t => trecho(...t));
     trecho(30, 30, 40, 0, ultimaY() / -SEG); // volta à altura do começo
     const N = segs.length, VOLTA = N * SEG;
     const MURO = op.pista === "monaco"; // Mônaco: muro dos dois lados, sem área de escape
-    segs.forEach(sg => { sg.zebra = !GP; if (MURO) sg.parede = true; });
+    segs.forEach(sg => { sg.zebra = !GP && !RALLY; if (MURO) sg.parede = true; if (op.pista === "suecia") sg.banco = true; });
     if (GP) curvas.forEach(cu => {
       for (let n = cu.ini - 4; n <= cu.fim + 4; n++) segs[(n + N) % N].zebra = true;
       if (!MURO && Math.abs(cu.curva) >= 2.5) for (let n = cu.ini + 4; n <= cu.fim + 10; n++) segs[(n + N) % N].brita = true;
@@ -927,7 +1081,7 @@
     // Largada e chegada (quadriculado)
     segs[2].largada = true; segs[3].largada = true;
     // Faixas de turbo ⚡ nas retas, numa das 3 faixas da pista: passar por cima dá um empurrão
-    for (let n = 45; !GP && n < N - 30; n += 50 + Math.floor(Math.random() * 35)) {
+    for (let n = 45; !GP && !RALLY && n < N - 30; n += 50 + Math.floor(Math.random() * 35)) {
       if ([0, 1, 2, 3].some(k => Math.abs(segs[n + k].curva) > 1.5)) continue;
       const tx = [-2 / 3, 0, 2 / 3][Math.floor(Math.random() * 3)];
       for (let k = 0; k < 4; k++) segs[n + k].turbo = tx;
@@ -936,7 +1090,7 @@
     const imagens = {};
     const img = tipo => (imagens[tipo] = imagens[tipo] || desenharEnfeite(tipo));
     // tamanho de cada enfeite no mundo (o pórtico e a boca do túnel têm a largura da pista)
-    const tamDe = t => (t === "portico" ? LARGURA * 2.4 : t === "tunel" ? LARGURA * 3 : TAM_ENFEITE[t] || TAM_ENFEITE[t.split(":")[0]] || 1000);
+    const tamDe = t => (t === "portico" ? LARGURA * 2.4 : t.startsWith("arco:") ? LARGURA * 2.7 : t === "tunel" ? LARGURA * 3 : TAM_ENFEITE[t] || TAM_ENFEITE[t.split(":")[0]] || 1000);
     const por = (n, tipo, x, solido = true) => segs[(n + N) % N].enfeites.push({ tipo, x, solido });
     if (GP) {
       por(3, "portico", 0, false);
@@ -971,7 +1125,36 @@
       });
       segs.forEach((sg, n) => { if (sg.drsIni) por(n, "drs", 1.6); });
     }
-    for (let n = 20; !GP && n < N - 10; n += 3 + Math.floor(Math.random() * 4)) {
+    // Rally: floresta colada na estrada (Finlândia), montes de neve (Suécia), cactos e pedras (Sertões),
+    // o arco da largada e o da chegada, público nos saltos e nas curvas fechadas, placas de perigo
+    if (RALLY) {
+      let st = 12345 + ESPECIAL;
+      const rnd = () => { st = (st * 1664525 + 1013904223) >>> 0; return st / 4294967296; };
+      por(3, "arco:LARGADA", 0, false);
+      por(N - 8, "arco:CHEGADA", 0, false);
+      for (let n = 10; n < N - 12; n++) {
+        const lado = rnd() < 0.5 ? -1 : 1;
+        if (op.pista === "finlandia") {
+          if (n % 2 === 0) por(n, rnd() < 0.85 ? "pinheiro" : "arvore", lado * (1.55 + rnd() * 1.4));
+          if (n % 3 === 0) por(n, "pinheiro", -lado * (2 + rnd() * 1.5));
+          if (n % 97 === 40) por(n, "casa-vermelha", lado * 3.4);
+        } else if (op.pista === "suecia") {
+          if (n % 2 === 0) { por(n, "banco-neve", -1.32, false); por(n, "banco-neve", 1.32, false); }
+          if (n % 3 === 0) por(n, "pinheiro-neve", lado * (2 + rnd() * 1.4));
+        } else {
+          if (n % 5 === 0) por(n, "mandacaru", lado * (1.7 + rnd() * 1.8));
+          if (n % 9 === 4) por(n, "pedra", lado * (1.5 + rnd() * 1));
+          if (n % 13 === 6) por(n, rnd() < 0.5 ? "arvore" : "pedra", -lado * (2.4 + rnd()));
+        }
+      }
+      notas.forEach(nt => {
+        const fora = nt.tipo === "curva" ? -nt.lado : 1;
+        if (nt.tipo === "salto") { por(nt.fim, "torcida", 2.4); por(nt.fim + 2, "torcida", -2.5); por(nt.ini - 24, "cuidado", 1.6); }
+        else if (nt.tipo === "agua") { por(nt.ini + 3, "torcida", 2.5); }
+        else if (nt.grau <= 2) { por(nt.ini - 20, "cuidado", fora * 1.6); if (rnd() < 0.6) por(nt.ini + 4, "torcida", fora * 2.6); }
+      });
+    }
+    for (let n = 20; !GP && !RALLY && n < N - 10; n += 3 + Math.floor(Math.random() * 4)) {
       const lado = Math.random() < 0.5 ? -1 : 1, tipo = Motor.sortear(tema.coisas);
       // a arquibancada é grande: fica mais longe da pista
       segs[n].enfeites.push({ tipo, x: lado * (tipo === "arquibancada" ? 2.3 + Math.random() * 0.8 : 1.35 + Math.random() * 1.4) });
@@ -979,8 +1162,8 @@
     }
 
     // ----- Jogadores (1 ou 2, tela dividida) e adversários -----
-    const VMAX = (SEG / (1 / 60)) * NIVEL.max * (GP ? 1.2 : 1);
-    const KMH = { interlagos: 320, monaco: 290, monza: 350 }[op.pista] || 220; // velocidade máxima no velocímetro
+    const VMAX = (SEG / (1 / 60)) * NIVEL.max * (GP ? 1.2 : RALLY ? 1.05 : 1);
+    const KMH = { interlagos: 320, monaco: 290, monza: 350, finlandia: 200, suecia: 190, sertoes: 195 }[op.pista] || 220; // velocidade máxima no velocímetro
     const CAM = ALT_CAMERA * PROF; // o carro do jogador fica esta distância à frente da câmera
     const EMOJI_COR = { vermelho: "🔴", azul: "🔵", amarelo: "🟡", verde: "🟢", rosa: "🩷", laranja: "🟠" };
     const cor1 = CORES[op.cor] ? op.cor : "vermelho", cor2 = CORES[op.cor2] && op.cor2 !== cor1 ? op.cor2 : cor1 === "azul" ? "laranja" : "azul";
@@ -995,7 +1178,7 @@
     };
     const jog = DOIS ? [novoJogador(1, cor1, T.ent), novoJogador(2, cor2, T.ent2)] : [novoJogador(1, cor1, T.ent)];
     if (DOIS) { jog[0].x = -0.5; jog[1].x = 0.5; }
-    const roncos = jog.map((j, i) => somDeMotor(DOIS ? (i ? 0.6 : -0.6) : 0, !!tema.gp));
+    const roncos = jog.map((j, i) => somDeMotor(DOIS ? (i ? 0.6 : -0.6) : 0, RALLY ? "rally" : !!tema.gp));
     const usadas = jog.map(j => j.hex);
     const outrasCores = Object.values(CORES).filter(c => !usadas.includes(c));
     // Os adversários ganham nomes sorteados (diferentes dos nomes dos jogadores)
@@ -1020,14 +1203,31 @@
       }
       jog[0].x = SLOT % 2 ? 0.45 : -0.45;
     }
+    if (RALLY) rivais.length = 0; // no rally, um carro de cada vez na estrada: a disputa é no relógio
+    // Rally: tempo ideal da especial (andando no limite de cada curva) para os tempos dos outros pilotos e as parciais
+    const tPref = [];
+    let rallyRivais = null;
+    if (RALLY) {
+      const lim = c => (c > 0 ? Math.min(1, 1 / (c * 0.28 * GRIP) - 0.04) : 1);
+      let t = 0;
+      for (let n = 0; n < N; n++) { let c = 0; for (let k = 0; k < 5; k++) c = Math.max(c, Math.abs(segs[(n + k) % N].curva)); t += SEG / (VMAX * lim(c)) * 1.06; tPref.push(t); }
+      const tIdeal = t, faixa = { facil: [1.12, 1.45], normal: [1.04, 1.3], dificil: [1, 1.18] }[op.nivel] || [1.04, 1.3];
+      if (!op.ral) {
+        const nomes = Motor.embaralhar(NOMES_PILOTOS.filter(nm => nm.toLowerCase() !== (op.nome1 || "").toLowerCase())).slice(0, 7);
+        const cores = ["#e10600", "#1e41ff", "#ffd700", "#00d2be", "#ff8700", "#2a9d55", "#b6babd"];
+        op.ral = nomes.map((nome, k) => ({ nome, hex: cores[k], hab: k / 6 }));
+      }
+      rallyRivais = op.ral.map(r => ({ ...r, tempo: tIdeal * (faixa[0] + r.hab * (faixa[1] - faixa[0])) * (0.98 + Math.random() * 0.04) }));
+    }
+    const SPLITS = RALLY ? [Math.floor(N / 3), Math.floor(N * 2 / 3)] : [];
     jog.forEach(j => { j.tVolta = 0; j.melhor = 0; j.ultima = 0; j.drs = false; });
     const TOTAL_CARROS = rivais.length + jog.length;
-    let tempo = 0, fase = "largada", contagem = 3.6, chegada = 0, primeiraChegada = 0;
+    let tempo = 0, fase = "largada", contagem = RALLY ? 5.6 : 3.6, chegada = 0, primeiraChegada = 0;
     // Grande Prêmio: antes das luzes, o narrador apresenta o autódromo (com o cartão na tela)
-    let esperaIntro = GP && !DOIS;
+    let esperaIntro = (GP || RALLY) && !DOIS;
     // relógio da prova: continua depois que você chega, para cada carro ter o seu tempo de chegada
     let relogioProva = 0;
-    const TOTAL_VOLTAS = Math.max(1, Math.min(10, parseInt(op.voltas, 10) || 3)); // escolhido nas opções
+    const TOTAL_VOLTAS = RALLY ? 1 : Math.max(1, Math.min(10, parseInt(op.voltas, 10) || 3)); // escolhido nas opções (o rally é uma especial)
     const segDe = z => segs[Math.floor(((z % VOLTA) + VOLTA) % VOLTA / SEG) % N];
     const progresso = (v, z) => v * VOLTA + z;
     const posicao = j => {
@@ -1067,21 +1267,33 @@
         j.x += ((j.n === 1 ? -0.6 : 0.6) - j.x) * Math.min(1, dt * 1.5);
       } else {
         // Direção: vira mais rápido quando anda; nas curvas a força puxa para fora
-        const dx = dt * 2.2 * pv;
+        const dx = dt * 2.2 * pv * (j.ar > 0 ? 0.15 : 1); // no ar (salto) o volante quase não faz nada
         if (corre && j.ent.esq) j.x -= dx;
         if (corre && j.ent.dir) j.x += dx;
         // fórmula gruda mais no chão (asas), mas nas curvas fechadas só passa freando antes
-        j.x -= dx * pv * seg.curva * 0.28 * (GP ? 0.7 : 1);
+        j.x -= dx * pv * seg.curva * 0.28 * (GP ? 0.7 : RALLY ? GRIP : 1);
+        if (RALLY) {
+          // de lado nas curvas (o carro escorrega na terra e na neve)
+          j.drift = (j.drift || 0) + ((seg.curva * pv * 0.045) - (j.drift || 0)) * Math.min(1, dt * 4);
+          // salto: passou na lombada rápido, o carro voa um pouco
+          if (seg.salto && j.saltoSeg !== seg.i && pv > 0.5) { j.saltoSeg = seg.i; j.ar = j.arTotal = 0.25 + pv * 0.6; }
+          if (j.ar > 0) { j.ar -= dt; if (j.ar <= 0) { j.tremor = 0.5; Motor.ruido({ dur: 0.25, vol: 0.25, freq: 180 }); if (j.arTotal > 0.7) avisar(j, "🪂 QUE SALTO!", "#ffd60a", 1.2); } }
+          // água: freia um pouco e espirra
+          if (seg.agua) { if (j.vel > VMAX * 0.45) j.vel -= VMAX * 0.5 * dt; j.molhou = 0.6; if (!j.ultAgua || tempo - j.ultAgua > 1) { j.ultAgua = tempo; Motor.ruido({ dur: 0.6, vol: 0.25, filtro: "highpass", freq: 900 }); } }
+          // monte de neve: segura o carro, mas ele perde velocidade
+          if (seg.banco && Math.abs(j.x) > 1.12) { j.x = Math.sign(j.x) * 1.12; j.vel -= VMAX * 0.5 * dt; j.tremor = 0.3; }
+          j.molhou = Math.max(0, (j.molhou || 0) - dt); j.tremor = Math.max(0, (j.tremor || 0) - dt);
+        }
         let acelera = corre && (j.ent.acel || (NIVEL.auto && !j.ent.freio));
         j.freioAuto = false;
-        if (GP && corre) {
+        if ((GP || RALLY) && corre) {
           // a curva mais fechada logo à frente e a velocidade que dá para fazer nela
           let cmax = 0;
           for (let k = 0; k < 34; k++) cmax = Math.max(cmax, Math.abs(segDe(j.pos + CAM + k * SEG).curva));
-          const limite = cmax > 0 ? Math.min(1, 1 / (cmax * 0.28 * 0.7) - 0.04) : 1;
+          const limite = cmax > 0 ? Math.min(1, 1 / (cmax * 0.28 * (GP ? 0.7 : GRIP)) - 0.04) : 1;
           // no fácil, o carro freia sozinho antes das curvas fechadas
           if (NIVEL.auto && pv > limite) { acelera = false; j.vel -= VMAX * 0.9 * dt; j.freioAuto = true; }
-          else if (pv > limite + 0.06 && j.voltas === 0 && !j.ent.freio && (!j.ultFreio || tempo - j.ultFreio > 4)) { j.ultFreio = tempo; avisar(j, "🛑 FREIE!", "#ff4d6d", 1); }
+          else if (!RALLY && pv > limite + 0.06 && j.voltas === 0 && !j.ent.freio && (!j.ultFreio || tempo - j.ultFreio > 4)) { j.ultFreio = tempo; avisar(j, "🛑 FREIE!", "#ff4d6d", 1); }
           // DRS: ao entrar na zona, abre se o carro da frente estiver a menos de 1 segundo
           if (seg.drsIni && j.zonaDrs !== seg.i) {
             j.zonaDrs = seg.i;
@@ -1136,7 +1348,8 @@
       if (fase === "largada") {
         const antes = Math.ceil(contagem), luzesAntes = luzesAcesas();
         contagem -= dt;
-        if (Math.ceil(contagem) !== antes && contagem > 0 && antes <= 3) Motor.falar(String(Math.ceil(contagem)));
+        if (RALLY && Math.ceil(contagem) !== antes && contagem > 0) Motor.nota(660, { dur: 0.12, tipo: "square", vol: 0.07 }); // o relógio da largada apita a cada segundo
+        if (Math.ceil(contagem) !== antes && contagem > 0 && antes <= (RALLY ? 5 : 3)) Motor.falar(String(Math.ceil(contagem)));
         if (luzesAcesas() > luzesAntes) Motor.nota(440, { dur: 0.18, tipo: "square", vol: 0.07 }); // semáforo: uma luz por vez
         if (contagem <= 0) { fase = "correndo"; Motor.nota(880, { dur: 0.5, tipo: "square", vol: 0.1 }); Motor.falar("Já!"); }
         return;
@@ -1163,6 +1376,23 @@
         r.z += r.v * dt;
         if (r.z >= VOLTA) { r.z -= VOLTA; r.voltas++; if (r.voltas >= TOTAL_VOLTAS && !r.chegou) { r.chegou = ++chegada; r.tFim = relogioProva; } }
       });
+      // Rally: o navegador canta a próxima nota uns 2,5 s antes; nas parciais, compara com o líder
+      if (RALLY && fase === "correndo" && !jog[0].chegou) {
+        const j = jog[0], zc = j.pos + CAM;
+        const nt = notas.find(n => !n.chamada && !n.junta && n.ini * SEG > zc - SEG * 4);
+        if (nt && nt.ini * SEG - zc < Math.max(SEG * 22, j.vel * 2.6)) { nt.chamada = true; Motor.falar(nt.texto); j.nota = nt; }
+        if (j.nota && zc > (j.nota.fim + 6) * SEG) j.nota = null;
+        const sn = segDe(zc).i, lider = Math.min(...rallyRivais.map(r => r.tempo));
+        SPLITS.forEach((sp, k) => {
+          if (j[`p${k}`] === undefined && sn >= sp && sn < sp + 50) {
+            const dif = tempo - lider * (tPref[sp] / tPref[N - 1]);
+            j[`p${k}`] = dif;
+            const txt = `${dif <= 0 ? "−" : "+"}${Math.abs(dif).toFixed(1).replace(".", ",")}`;
+            avisar(j, `⏱️ PARCIAL ${k + 1}: ${txt}`, dif <= 0 ? "#3cff78" : "#ff6b6b", 2.4);
+            Motor.falar(dif <= 0 ? "Parcial: na frente do líder!" : `Parcial: ${Math.max(1, Math.round(dif))} segundo${Math.round(dif) > 1 ? "s" : ""} atrás do líder.`, { naFila: true });
+          }
+        });
+      }
       // 2 jogadores: depois que o primeiro chega, o outro tem um tempinho para terminar
       if (DOIS && fase === "correndo" && primeiraChegada && tempo - primeiraChegada > 25) terminarDois();
     }
@@ -1204,7 +1434,29 @@
         Motor.falar(DOIS ? `${msg}, ${j.nome}!` : msg + "!");
       }
     }
+    function fimRally() {
+      fase = "fim";
+      const meu = tempo, nome = op.nome1 || "Você", hexJ = jog[0].hex;
+      const daEspecial = [...rallyRivais.map(r => ({ nome: r.nome, hex: r.hex, tempo: r.tempo })), { nome, hex: hexJ, tempo: meu, j: true }].sort((a, b) => a.tempo - b.tempo);
+      const posEsp = daEspecial.findIndex(c => c.j) + 1;
+      const acum = { ...(op.acum || {}) };
+      daEspecial.forEach(c => { acum[c.j ? "__eu" : c.nome] = (acum[c.j ? "__eu" : c.nome] || 0) + c.tempo; });
+      const geral = daEspecial.map(c => ({ ...c, total: acum[c.j ? "__eu" : c.nome] })).sort((a, b) => a.total - b.total);
+      const posGeral = geral.findIndex(c => c.j) + 1, ultima = ESPECIAL >= TOTAL_ESP;
+      const chave = `carros-rally-${op.pista}-${ESPECIAL}`;
+      let rec = 0; try { rec = +localStorage.getItem(chave) || 0; } catch (e) { /* ok */ }
+      const novo = !rec || meu < rec;
+      if (novo) { try { localStorage.setItem(chave, meu); } catch (e) { /* ok */ } }
+      Motor.tim();
+      const lider = geral[0].total;
+      Motor.falar(`Fim da especial ${ESPECIAL}! Seu tempo foi ${tempoFalado(meu)}, o ${posEsp}º melhor tempo.` + (ultima ? (posGeral === 1 ? " Você é o campeão do rally!" : ` Fim do rally: você terminou em ${posGeral}º lugar no geral!`) : ` Na classificação geral, você está em ${posGeral}º.`) + (novo ? " É o seu melhor tempo nesta especial!" : ""));
+      const lista = geral.map(c => ({ nome: c.nome, hex: c.hex, tempo: c.total, j: c.j, txt: c.total === lider ? tempoTxt(c.total) : `+${tempoTxt(c.total - lider)}` }));
+      const titulo = ultima ? (posGeral === 1 ? "Campeão do rally!" : `${posGeral}º no geral!`) : `Especial ${ESPECIAL} de ${TOTAL_ESP}`;
+      const proxima = ultima ? () => corrida(area, { ...op, especial: 1, acum: null, ral: null }) : () => corrida(area, { ...op, especial: ESPECIAL + 1, acum });
+      setTimeout(() => { if (vivo()) T.fim(titulo, ultima ? MEDALHA(posGeral) : "⏱️", `⏱️ ${tempoTxt(meu)} · ${posEsp}º nesta especial` + (novo ? " · 🏆 recorde!" : ""), proxima, opcoes, lista, ultima ? "🔁 Correr o rally de novo" : "▶️ Próxima especial"); }, 1200);
+    }
     function fimUmJogador() {
+      if (RALLY) return fimRally();
       fase = "fim";
       const lugar = jog[0].chegou;
       const t = relogio();
@@ -1351,8 +1603,20 @@
       })],
     ];
     CAMADAS.monza = CAMADAS.campo;
+    // Rally: Finlândia com lagos e pinheirais, Suécia na neve, Sertões com as chapadas de topo reto
+    CAMADAS.finlandia = () => [
+      [0.25, camada(c => serra(c, ["#9db9d6", "#c3d6ea"], 70, 30, [2, 5, 9]))],
+      [0.5, camada(c => { c.fillStyle = "#4f86b8"; c.fillRect(0, TH - PE - 22, TW, 30); c.fillStyle = "rgba(255,255,255,.35)"; for (let k = 0; k < 60; k++) c.fillRect(Math.random() * TW, TH - PE - 20 + Math.random() * 26, 10 + Math.random() * 20, 1.5); const y = serra(c, ["#4f7f3d", "#3f6f33"], 30, 16, [3, 7]); bosque(c, y, "#2f5f2a", true); })],
+      [1, camada(c => { const y = serra(c, ["#4f8a3a", "#548a37"], 14, 10, [4, 9]); bosque(c, y, "#2b5a28", true); })],
+    ];
+    CAMADAS.suecia = CAMADAS.neve;
+    CAMADAS.sertoes = () => [
+      [0.25, camada(c => { c.fillStyle = "#c79a74"; for (let x = 0; x < TW; x += 260) { c.beginPath(); c.moveTo(x, TH - PE); c.lineTo(x + 40, TH - PE - 110); c.lineTo(x + 190, TH - PE - 110); c.lineTo(x + 240, TH - PE); c.fill(); } c.fillStyle = "rgba(255,255,255,.18)"; for (let x = 0; x < TW; x += 260) c.fillRect(x + 40, TH - PE - 110, 150, 8); })],
+      [0.5, camada(c => { const y = serra(c, ["#b08a5a", "#a07a4c"], 30, 18, [3, 7]); bosque(c, y, "#7d8a4a"); })],
+      [1, camada(c => serra(c, ["#c29d63", "#b8935a"], 10, 8, [4, 9]))],
+    ];
     const camadas = (CAMADAS[op.pista] || CAMADAS.campo)();
-    const corChao = { campo: "#55a645", praia: "#ebcd80", noite: "#263426", neve: "#e8f0fa", interlagos: "#47923a", monaco: "#9a9fa6", monza: "#56a843" }[op.pista] || "#55a645";
+    const corChao = { finlandia: "#548a37", suecia: "#e7eef7", sertoes: "#c29d63", campo: "#55a645", praia: "#ebcd80", noite: "#263426", neve: "#e8f0fa", interlagos: "#47923a", monaco: "#9a9fa6", monza: "#56a843" }[op.pista] || "#55a645";
     // Névoa do horizonte: faixa de 1 pixel de largura, esticada
     const nevoaHoriz = (() => {
       const cv = document.createElement("canvas"); cv.width = 1; cv.height = 64;
@@ -1398,25 +1662,29 @@
       return f;
     };
     // Partículas da vista de um jogador: fumaça do escapamento e terra/grama/areia/neve voando
-    const POEIRA = { campo: ["#6b4a2a", "#4f9a3c", "#8a6a3a"], praia: ["#e8cf8a", "#d9b86a", "#f3e0a8"], noite: ["#3a3a30", "#2b3a2b", "#4a4a44"], neve: ["#fff", "#dfe9f5", "#cfdcea"] }[op.pista] || ["#6b4a2a"];
+    const POEIRA = { finlandia: ["#8a6a3a", "#4f7f3d", "#a08560"], suecia: ["#fff", "#e8f0fa", "#dfe9f5"], sertoes: ["#b5653a", "#c98a55", "#8a4a2a"], campo: ["#6b4a2a", "#4f9a3c", "#8a6a3a"], praia: ["#e8cf8a", "#d9b86a", "#f3e0a8"], noite: ["#3a3a30", "#2b3a2b", "#4a4a44"], neve: ["#fff", "#dfe9f5", "#cfdcea"] }[op.pista] || ["#6b4a2a"];
     function particulas(j, W, H, cx, cyBase, cw, ch) {
       const ps = j.parts, dt = dtQuadro, pv = j.vel / VMAX, e = cw / 260;
       if (dt > 0) {
         const acel = j.ent.acel || (NIVEL.auto && fase === "correndo" && !j.ent.freio);
+        if (RALLY && pv > 0.12 && !(j.ar > 0)) {
+          const cores = j.molhou > 0 ? ["#e6f2f7", "#b9d3dc"] : { finlandia: ["#b49a72", "#a0855c"], suecia: ["#ffffff", "#e8f0fa"], sertoes: ["#c98a55", "#b5653a"] }[op.pista];
+          for (let k = 0; k < (j.molhou > 0 ? 4 : 2); k++) { const l = Math.random() < 0.5 ? -1 : 1; ps.push({ f: 1, cor: Motor.sortear(cores), x: cx + l * cw * (0.3 + Math.random() * 0.15), y: cyBase - ch * 0.08, vx: l * (40 + Math.random() * 90) * e, vy: (j.molhou > 0 ? -(60 + Math.random() * 120) : (10 + Math.random() * 30)) * e, r: (6 + Math.random() * 6) * e, cres: (j.molhou > 0 ? 20 : 70) * e, a: j.molhou > 0 ? 0.8 : 0.32 * Math.min(1, pv * 1.4), vida: 0.7 + Math.random() * 0.5 }); }
+        }
         if (acel && pv < 0.85 && !j.chegou && Math.random() < 0.6) ps.push({ f: 1, x: cx - cw * 0.25 + (Math.random() - 0.5) * 4 * e, y: cyBase - ch * 0.15, vx: (Math.random() - 0.5) * 30 * e, vy: (20 + Math.random() * 30) * e, r: 3 * e, cres: 16 * e, a: 0.22, vida: 0.7 + Math.random() * 0.3 });
         if (j.turbo > 0) for (let k = -1; k <= 1; k += 2) ps.push({ f: 2, x: cx + k * cw * 0.2 + (Math.random() - 0.5) * 3 * e, y: cyBase - ch * 0.17, vx: (Math.random() - 0.5) * 24 * e, vy: (60 + Math.random() * 60) * e, r: (5 + Math.random() * 3) * e, cres: -10 * e, a: 1, vida: 0.22 });
         if (Math.abs(j.x) > 1.05 && pv > 0.08) for (let k = 0; k < 3; k++) {
           const l = Math.random() < 0.5 ? -1 : 1;
           ps.push({ f: 0, x: cx + l * cw * 0.38, y: cyBase - 6 * e, vx: l * (30 + Math.random() * 120) * e, vy: -(80 + Math.random() * 160) * e * (0.5 + pv), r: (2 + Math.random() * 4) * e, cor: Motor.sortear(POEIRA), a: 1, vida: 0.5 + Math.random() * 0.3 });
         }
-        if (ps.length > 70) ps.splice(0, ps.length - 70);
+        if (ps.length > (RALLY ? 120 : 70)) ps.splice(0, ps.length - (RALLY ? 120 : 70));
       }
       for (let i = ps.length - 1; i >= 0; i--) {
         const p = ps[i];
         p.vida -= dt; if (p.vida <= 0) { ps.splice(i, 1); continue; }
         p.x += p.vx * dt; p.y += p.vy * dt;
         if (p.f === 2) { p.r = Math.max(0.5, p.r + p.cres * dt); ctx.globalAlpha = Math.min(1, p.vida * 6); ctx.fillStyle = p.vida > 0.12 ? "#ffd60a" : "#ff6a00"; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
-        else if (p.f) { p.r += p.cres * dt; ctx.globalAlpha = p.a * Math.min(1, p.vida * 1.5); ctx.fillStyle = tema.noite ? "#9a9ab8" : "#e8e8ec"; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
+        else if (p.f) { p.r += p.cres * dt; ctx.globalAlpha = p.a * Math.min(1, p.vida * 1.5); ctx.fillStyle = p.cor || (tema.noite ? "#9a9ab8" : "#e8e8ec"); ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
         else { p.vy += 600 * e * dt; ctx.globalAlpha = Math.min(1, p.vida * 3); ctx.fillStyle = p.cor; ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r); }
       }
       ctx.globalAlpha = 1;
@@ -1492,7 +1760,8 @@
         const z1 = w1 / Math.max(6, 2 * FAIXAS), z2 = w2 / Math.max(6, 2 * FAIXAS);
         // acostamento (cascalho/areia) por fora da zebra; no Grande Prêmio: brita larga por fora das
         // curvas, calçada em Mônaco, e grama nas retas
-        if (!GP) { const a1 = z1 + w1 * 0.16, a2 = z2 + w2 * 0.16; poligono([x1 - w1 - a1, y1, x1 + w1 + a1, y1, x2 + w2 + a2, y2, x2 - w2 - a2, y2], cor(tonsAcost[s.cor])); }
+        if (RALLY) { const a1 = w1 * 0.1, a2 = w2 * 0.1; poligono([x1 - w1 - a1, y1, x1 + w1 + a1, y1, x2 + w2 + a2, y2, x2 - w2 - a2, y2], cor(tonsAcost[s.cor])); }
+        else if (!GP) { const a1 = z1 + w1 * 0.16, a2 = z2 + w2 * 0.16; poligono([x1 - w1 - a1, y1, x1 + w1 + a1, y1, x2 + w2 + a2, y2, x2 - w2 - a2, y2], cor(tonsAcost[s.cor])); }
         else if (s.tunel) { const a1 = w1 * 0.12, a2 = w2 * 0.12; poligono([x1 - w1 - a1, y1, x1 + w1 + a1, y1, x2 + w2 + a2, y2, x2 - w2 - a2, y2], cor("#3a3a42")); }
         else if (MURO) { const a1 = w1 * 0.14, a2 = w2 * 0.14; poligono([x1 - w1 - a1, y1, x1 + w1 + a1, y1, x2 + w2 + a2, y2, x2 - w2 - a2, y2], cor(s.cor ? "#c4c8cd" : "#bcc0c5")); }
         else if (s.brita) { const a1 = w1 * 0.7, a2 = w2 * 0.7; poligono([x1 - w1 - a1, y1, x1 + w1 + a1, y1, x2 + w2 + a2, y2, x2 - w2 - a2, y2], cor(s.cor ? "#d9c9a0" : "#d2c196")); }
@@ -1500,9 +1769,11 @@
           poligono([x1 - w1 - z1, y1, x1 - w1, y1, x2 - w2, y2, x2 - w2 - z2, y2], cor(tema.zebra[s.cor]));
           poligono([x1 + w1 + z1, y1, x1 + w1, y1, x2 + w2, y2, x2 + w2 + z2, y2], cor(tema.zebra[s.cor]));
         }
-        poligono([x1 - w1, y1, x1 + w1, y1, x2 + w2, y2, x2 - w2, y2], cor(tonsPista[s.tom][s.cor]));
+        poligono([x1 - w1, y1, x1 + w1, y1, x2 + w2, y2, x2 - w2, y2], cor(s.agua ? (s.cor ? "#6f8f9a" : "#7d9ca6") : tonsPista[s.tom][s.cor]));
         // linhas brancas contínuas da beira (só perto, onde aparecem)
-        if (n < 110) {
+        // rally: os sulcos das rodas na terra/neve
+        if (RALLY && n < 130 && !s.agua) [-0.42, 0.42].forEach(k => { const c1 = x1 + k * w1, c2 = x2 + k * w2, m1 = w1 * 0.07, m2 = w2 * 0.07; poligono([c1 - m1, y1, c1 + m1, y1, c2 + m2, y2, c2 - m2, y2], cor(op.pista === "suecia" ? "#b9c4d0" : "rgba(60,35,15,.25)")); });
+        if (n < 110 && !RALLY) {
           const b1 = w1 * 0.93, b2 = w2 * 0.93, e1 = w1 / 70, e2 = w2 / 70, cb = cor(tema.noite ? "#d8d8e0" : "#f4f4f4");
           poligono([x1 - b1 - e1, y1, x1 - b1 + e1, y1, x2 - b2 + e2, y2, x2 - b2 - e2, y2], cb);
           poligono([x1 + b1 - e1, y1, x1 + b1 + e1, y1, x2 + b2 + e2, y2, x2 + b2 - e2, y2], cb);
@@ -1511,7 +1782,7 @@
         if (s.largada) {
           const q = 8;
           for (let k = 0; k < q; k++) poligono([x1 - w1 + 2 * w1 * k / q, y1, x1 - w1 + 2 * w1 * (k + 1) / q, y1, x2 - w2 + 2 * w2 * (k + 1) / q, y2, x2 - w2 + 2 * w2 * k / q, y2], (k + s.i) % 2 ? "#111" : "#fff");
-        } else if (s.cor) {
+        } else if (s.cor && !RALLY) {
           const l1 = w1 / 32, l2 = w2 / 32;
           for (let k = 1; k < FAIXAS; k++) {
             const a1 = x1 - w1 + 2 * w1 * k / FAIXAS, a2 = x2 - w2 + 2 * w2 * k / FAIXAS;
@@ -1563,14 +1834,16 @@
       j.inclina += (((vira === "dir") - (vira === "esq")) * pvJ - j.inclina) * Math.min(1, dtQuadro * 6);
       const im = spriteCarro(j.hex, vira, (j.ent.freio || j.freioAuto) && j.vel > 1, Math.floor(j.giro) % 2);
       const cw = Math.min(W * 0.36, 260), ch = cw * im.height / im.width;
-      const balanca = (j.sacode ? (Math.random() - 0.5) * 6 : 0) + Math.sin(tempo * 30) * pvJ * 1.2;
-      const fundoCarro = H - 8 + balanca;
+      const balanca = (j.tremor > 0 ? (Math.random() - 0.5) * 14 * j.tremor : 0) + (j.sacode ? (Math.random() - 0.5) * 6 : 0) + Math.sin(tempo * 30) * pvJ * 1.2;
+      const voo = j.ar > 0 ? Math.sin(Math.PI * (1 - j.ar / j.arTotal)) * ch * 0.45 : 0; // salto: o carro sobe
+      const fundoCarro = H - 8 + balanca - voo;
+      if (voo > 1) { ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(W / 2, H - 10, cw * 0.42, cw * 0.06, 0, 0, 7); ctx.fill(); }
       if (fundo.farol) {
         ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.5;
         ctx.drawImage(fundo.farol, W / 2 - cw * 1.3 + j.inclina * cw * 0.3, horiz + (fundoCarro - ch * 0.5 - horiz) * 0.15, cw * 2.6, (fundoCarro - ch * 0.5 - horiz) * 0.85);
         ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
       }
-      ctx.save(); ctx.translate(W / 2, fundoCarro); ctx.rotate(-j.inclina * 0.035);
+      ctx.save(); ctx.translate(W / 2, fundoCarro); ctx.rotate(-j.inclina * 0.035 + (j.drift || 0));
       ctx.drawImage(im, -cw / 2, -ch, cw, ch);
       ctx.restore();
       particulas(j, W, H, W / 2, fundoCarro, cw, ch);
@@ -1603,9 +1876,11 @@
       j.ultPos = p;
       const s = Math.max(0.75, Math.min(2.2, Math.min(W, H * 1.7) / 680)); // tudo cresce em tela grande
       if (GP && fase === "correndo" && contagem <= -1.2 && !j.chegou) nomeDaCurva(j, W, s);
-      if (GP && fase === "largada" && esperaIntro) cartaoCircuito(W, H, s);
+      if (RALLY && fase === "largada" && esperaIntro) cartaoRally(W, H, s);
+      else if (GP && fase === "largada" && esperaIntro) cartaoCircuito(W, H, s);
+      else if (RALLY && fase === "largada") relogioLargada(W, H, s);
       else if (fase === "largada") semaforo(W, H, s, luzesAcesas(), false);
-      else if (fase === "correndo" && contagem > -1.2) { semaforo(W, H, s, 5, true); texto("JÁ!", 120 * s, "#2a9d55", W, H); }
+      else if (fase === "correndo" && contagem > -1.2) { if (RALLY) { relogioLargada(W, H, s); texto("VAI!", 120 * s, "#2a9d55", W, H); } else { semaforo(W, H, s, 5, true); texto("JÁ!", 120 * s, "#2a9d55", W, H); } }
       else if (DOIS && j.chegou && !j.aviso) texto(`${MEDALHA(j.chegou)} ${j.chegou}º lugar!`, 52 * s, "#ffd60a", W, H);
       if (j.aviso) {
         const av = j.aviso, pop = 1 + 0.35 * Math.max(0, 1 - (av.dur - av.t) * 6);
@@ -1648,13 +1923,13 @@
     }
     // Mapa da pista: o desenho do traçado (feito somando as curvas) e um pontinho para cada carro
     const MAPA = (() => {
-      if (!GP) return null;
+      if (!GP && !RALLY) return null;
       let a = 0, px = 0, py = 0;
-      const tot = segs.reduce((t, sg) => t + sg.curva, 0), k = (Math.PI * 2) / Math.abs(tot || 1);
+      const tot = segs.reduce((t, sg) => t + sg.curva, 0), k = GP ? (Math.PI * 2) / Math.abs(tot || 1) : 0.007;
       const pts = segs.map(sg => { a += sg.curva * k; px += Math.sin(a); py -= Math.cos(a); return [px, py]; });
       // corrige o pedacinho que sobra para o desenho fechar certinho
       const [ex, ey] = pts[pts.length - 1];
-      pts.forEach((q, i) => { q[0] -= ex * (i + 1) / pts.length; q[1] -= ey * (i + 1) / pts.length; });
+      if (GP) pts.forEach((q, i) => { q[0] -= ex * (i + 1) / pts.length; q[1] -= ey * (i + 1) / pts.length; });
       const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
       const x0 = Math.min(...xs), y0 = Math.min(...ys), tam = Math.max(Math.max(...xs) - x0, Math.max(...ys) - y0) || 1;
       return pts.map(([qx, qy]) => [(qx - x0) / tam, (qy - y0) / tam, (Math.max(...xs) - x0) / tam, (Math.max(...ys) - y0) / tam]);
@@ -1666,14 +1941,89 @@
       ctx.lineJoin = "round"; ctx.lineCap = "round";
       [["rgba(0,0,0,.55)", 7], ["#e9ecef", 3]].forEach(([c, lwd]) => {
         ctx.strokeStyle = c; ctx.lineWidth = lwd; ctx.beginPath();
-        for (let i = 0; i <= N; i += 3) { const q = MAPA[i % N]; i ? ctx.lineTo(ox + q[0] * m, oy + q[1] * m) : ctx.moveTo(ox + q[0] * m, oy + q[1] * m); }
-        ctx.closePath(); ctx.stroke();
+        for (let i = 0; i <= (GP ? N : N - 1); i += 3) { const q = MAPA[i % N]; i ? ctx.lineTo(ox + q[0] * m, oy + q[1] * m) : ctx.moveTo(ox + q[0] * m, oy + q[1] * m); }
+        if (GP) ctx.closePath();
+        ctx.stroke();
       });
       const [lx, ly] = ponto(3 * SEG); ctx.fillStyle = "#e10600"; ctx.fillRect(lx - 4, ly - 4, 8, 8);
+      if (RALLY) { const [fx, fy] = ponto((N - 8) * SEG); ctx.fillStyle = "#fff"; ctx.fillRect(fx - 4, fy - 4, 8, 8); ctx.fillStyle = "#111"; ctx.fillRect(fx - 4, fy - 4, 4, 4); ctx.fillRect(fx, fy, 4, 4); }
       if (!j) return;
       rivais.forEach(r => { const [qx, qy] = ponto(r.z); ctx.fillStyle = r.cor; ctx.beginPath(); ctx.arc(qx, qy, 3.5, 0, 7); ctx.fill(); });
       jog.forEach(o => { const [qx, qy] = ponto(o.pos + CAM); ctx.fillStyle = o.hex; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(qx, qy, o === j ? 6 : 4.5, 0, 7); ctx.fill(); ctx.stroke(); });
       ctx.lineCap = "butt";
+    }
+    // Rally: o relógio da largada (5, 4, 3, 2, 1 e a luz verde)
+    function relogioLargada(W, H, s) {
+      const w = 150 * s, h = 120 * s, x = W / 2 - w / 2, y = H * 0.1, n = Math.max(0, Math.ceil(contagem));
+      ctx.fillStyle = "rgba(15,18,28,.9)"; ctx.beginPath(); ctx.roundRect(x, y, w, h, 16 * s); ctx.fill();
+      ctx.strokeStyle = "#555"; ctx.lineWidth = 3 * s; ctx.stroke();
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = n ? "#ff4d4d" : "#3cff78"; ctx.font = `bold ${80 * s}px Fredoka, sans-serif`;
+      ctx.fillText(n ? String(n) : "●", W / 2, y + h * 0.55);
+      ctx.textBaseline = "alphabetic";
+    }
+    function cartaoRally(W, H, s) {
+      const inf = INFO_RALLY[op.pista], w = Math.min(W - 40, 460 * s), h = 170 * s, x = W / 2 - w / 2, y = H * 0.14;
+      ctx.fillStyle = "rgba(15,20,35,.9)"; ctx.beginPath(); ctx.roundRect(x, y, w, h, 18 * s); ctx.fill();
+      ctx.fillStyle = "#f77f00"; ctx.fillRect(x, y + 18 * s, 7 * s, h - 36 * s);
+      ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = "#ffd60a"; ctx.font = `bold ${15 * s}px Fredoka, sans-serif`; ctx.fillText(`ESPECIAL ${ESPECIAL} DE ${TOTAL_ESP}`, x + 22 * s, y + 30 * s);
+      ctx.fillStyle = "#fff"; ctx.font = `bold ${28 * s}px Fredoka, sans-serif`; ctx.fillText(inf.nome, x + 22 * s, y + 62 * s, w * 0.6);
+      ctx.fillStyle = "rgba(255,255,255,.82)"; ctx.font = `bold ${15 * s}px Fredoka, sans-serif`;
+      const lider = rallyRivais.slice().sort((a, b) => a.tempo - b.tempo)[0];
+      [`🛣️ ${inf.piso}`, `🗣️ o navegador fala as curvas`, `⏱️ tempo para bater: ${tempoTxt(lider.tempo)}`].forEach((l, k) => ctx.fillText(l, x + 22 * s, y + (92 + k * 24) * s, w * 0.6));
+      const m = Math.min(h - 30 * s, w * 0.34);
+      mapaPista(x + w - m - 16 * s, y + (h - m) / 2, m, null);
+    }
+    // Rally: o cartão da nota do navegador (seta da curva e o número, como no painel de verdade)
+    function cartaoNota(j, W, s) {
+      const nt = j.nota;
+      if (!nt) return;
+      const w = 210 * s, h = 70 * s, x = W / 2 - w / 2, y = 10 * s;
+      ctx.fillStyle = "rgba(15,20,35,.88)"; ctx.beginPath(); ctx.roundRect(x, y, w, h, 14 * s); ctx.fill();
+      ctx.save(); ctx.translate(x + 38 * s, y + h / 2);
+      ctx.strokeStyle = nt.tipo === "curva" && nt.grau <= 2 ? "#ff4d4d" : "#ffd60a"; ctx.lineWidth = 6 * s; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      if (nt.tipo === "curva") {
+        const l = nt.lado, k = (7 - nt.grau) / 6; // quanto mais fechada, mais a seta dobra
+        ctx.beginPath(); ctx.moveTo(0, 20 * s); ctx.quadraticCurveTo(0, -14 * s, l * 22 * k * s, -14 * s - (1 - k) * 8 * s); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(l * 22 * k * s - l * 8 * s, -22 * s - (1 - k) * 8 * s); ctx.lineTo(l * 22 * k * s, -14 * s - (1 - k) * 8 * s); ctx.lineTo(l * 22 * k * s - l * 8 * s, -6 * s - (1 - k) * 8 * s); ctx.stroke();
+      } else { ctx.font = `${34 * s}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(nt.tipo === "salto" ? "⛰️" : "💦", 0, 0); }
+      ctx.restore();
+      ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillStyle = "#fff";
+      ctx.font = `bold ${nt.tipo === "curva" ? 40 * s : 22 * s}px Fredoka, sans-serif`;
+      ctx.fillText(nt.tipo === "curva" ? (nt.grau === 1 ? "G" : String(nt.grau)) : nt.tipo === "salto" ? "SALTO" : "ÁGUA", x + 74 * s, y + h * 0.42, w - 84 * s);
+      if (nt.tipo === "curva") { ctx.font = `bold ${12 * s}px Fredoka, sans-serif`; ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.fillText((nt.grau === 1 ? "GRAMPO" : nt.lado < 0 ? "ESQUERDA" : "DIREITA") + (nt.longa ? " · LONGA" : ""), x + 74 * s, y + h * 0.78, w - 84 * s); }
+      ctx.textBaseline = "alphabetic";
+    }
+    function painelRally(j, W, H, s) {
+      const x0 = 70, y0 = 8, pw = 176 * s, ph = 82 * s;
+      ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(15,20,35,.8)"; ctx.beginPath(); ctx.roundRect(x0, y0, pw, ph, 14 * s); ctx.fill();
+      ctx.fillStyle = "#f77f00"; ctx.fillRect(x0, y0 + 10 * s, 5 * s, ph - 20 * s);
+      ctx.fillStyle = "rgba(255,255,255,.65)"; ctx.font = `bold ${13 * s}px Fredoka, sans-serif`; ctx.fillText(`ESPECIAL ${ESPECIAL}/${TOTAL_ESP}`, x0 + 16 * s, y0 + 22 * s);
+      ctx.fillStyle = "#fff"; ctx.font = `bold ${34 * s}px Fredoka, sans-serif`; ctx.fillText(tempoTxt(tempo), x0 + 14 * s, y0 + 58 * s, pw - 24 * s);
+      const fr = Math.min(1, (segDe(j.pos + CAM).i) / N);
+      ctx.fillStyle = "rgba(255,255,255,.2)"; ctx.fillRect(x0 + 16 * s, y0 + 68 * s, pw - 32 * s, 5 * s);
+      ctx.fillStyle = "#f77f00"; ctx.fillRect(x0 + 16 * s, y0 + 68 * s, (pw - 32 * s) * fr, 5 * s);
+      SPLITS.forEach((sp, k) => { ctx.fillStyle = "#fff"; ctx.fillRect(x0 + 16 * s + (pw - 32 * s) * sp / N - 1, y0 + 66 * s, 2, 9 * s); });
+      // parciais e o tempo do líder
+      const by = y0 + ph + 6 * s, bh = 46 * s, lider = Math.min(...rallyRivais.map(r => r.tempo));
+      ctx.fillStyle = "rgba(15,20,35,.72)"; ctx.beginPath(); ctx.roundRect(x0, by, pw, bh, 10 * s); ctx.fill();
+      ctx.font = `bold ${13 * s}px Fredoka, sans-serif`;
+      SPLITS.forEach((sp, k) => { const d = j[`p${k}`]; ctx.fillStyle = d === undefined ? "rgba(255,255,255,.45)" : d <= 0 ? "#3cff78" : "#ff6b6b"; ctx.fillText(`P${k + 1} ${d === undefined ? "--" : (d <= 0 ? "−" : "+") + Math.abs(d).toFixed(1).replace(".", ",")}`, x0 + 10 * s + k * (pw / 2), by + 19 * s); });
+      ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.fillText(`🏆 LÍDER ${tempoTxt(lider)}`, x0 + 10 * s, by + 38 * s, pw - 20 * s);
+      // velocímetro com a marcha, e o mapa da especial
+      const R = 46 * s, cx = W - R - 14, cy = 66 + R, pv = j.vel / VMAX, frac = Math.min(1, pv);
+      ctx.fillStyle = "rgba(15,20,35,.78)"; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill();
+      ctx.lineCap = "round"; ctx.lineWidth = 7 * s;
+      ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.beginPath(); ctx.arc(cx, cy, R - 9 * s, Math.PI * 0.75, Math.PI * 2.25); ctx.stroke();
+      ctx.strokeStyle = frac > 0.8 ? "#ffd60a" : "#3cff78"; ctx.beginPath(); ctx.arc(cx, cy, R - 9 * s, Math.PI * 0.75, Math.PI * (0.75 + 1.5 * Math.max(0.01, frac))); ctx.stroke();
+      ctx.lineCap = "butt"; ctx.textAlign = "center";
+      ctx.fillStyle = "#fff"; ctx.font = `bold ${28 * s}px Fredoka, sans-serif`; ctx.fillText(String(Math.round(pv * KMH * NIVEL.max)), cx, cy + 8 * s);
+      ctx.fillStyle = "rgba(255,255,255,.65)"; ctx.font = `bold ${12 * s}px Fredoka, sans-serif`; ctx.fillText(`km/h · ${1 + Math.min(5, Math.floor(pv * 6))}ª`, cx, cy + 26 * s);
+      const m = Math.min(130 * s, W * 0.22), my = cy + R + 10 * s;
+      if (my + m < H - 150) { ctx.fillStyle = "rgba(15,20,35,.6)"; ctx.beginPath(); ctx.roundRect(W - m - 18, my - 4, m + 8, m + 8, 12 * s); ctx.fill(); mapaPista(W - m - 14, my, m, j); }
+      if (fase === "correndo" && contagem <= -1.2) cartaoNota(j, W, s);
     }
     // Semáforo da largada: 5 luzes; ao apagar as vermelhas, ficam verdes (JÁ!)
     function semaforo(W, H, s, acesas, verde) {
@@ -1692,6 +2042,7 @@
     // Placar de cada vista: posição bem grande, volta e tempo; classificação na lateral (como na
     // Fórmula 1) e o velocímetro do outro lado
     function painel(j, W, H, s) {
+      if (RALLY) return painelRally(j, W, H, s);
       const lugar = lugarDe(j), x0 = j.n === 1 ? 70 : 12, y0 = DOIS && j.n === 2 ? 10 : 8;
       const pw = 172 * s, ph = 76 * s;
       ctx.textBaseline = "alphabetic";
@@ -1780,6 +2131,7 @@
       dtQuadro = pausado ? 0 : dt;
       jog.forEach((j, i) => {
         const quieto = pausado || !Motor.somLigado() || (fase === "fim" && j.vel < VMAX * 0.05);
+        if (RALLY && !quieto && !j.ent.acel && j.vel > VMAX * 0.45 && Math.random() < 0.05) Motor.ruido({ dur: 0.05, vol: 0.12, filtro: "highpass", freq: 2500 }); // estalo do escapamento ao tirar o pé
         roncos[i].tocar(quieto ? null : j.vel / VMAX, !!(j.ent.acel || (NIVEL.auto && fase === "correndo" && !j.ent.freio)));
       });
       desenhar(); // o placar é desenhado na própria tela (posição, volta, classificação e velocímetro)
@@ -1793,7 +2145,11 @@
       };
     }
     requestAnimationFrame(laco);
-    if (GP && !DOIS) {
+    if (RALLY) {
+      const fim = () => { esperaIntro = false; };
+      Motor.falar(INFO_RALLY[op.pista].fala + ` Especial ${ESPECIAL} de ${TOTAL_ESP}.` + (ESPECIAL === 1 ? " Eu sou o seu navegador e vou falando as curvas antes de elas chegarem: o número é o tamanho da curva. Um é bem fechada, seis é quase reta. Quando eu disser salto, segure o carro reto!" : " Vamos lá!") + " A largada é no relógio!").then(fim);
+      setTimeout(fim, 26000);
+    } else if (GP && !DOIS) {
       const fim = () => { esperaIntro = false; };
       Motor.falar(INFO_GP[op.pista].fala + ` São ${TOTAL_VOLTAS} voltas e você larga em sexto. Freie quando aparecerem as placas cento e cinquenta, cem e cinquenta. Atenção às luzes!`).then(fim);
       setTimeout(fim, 22000);
