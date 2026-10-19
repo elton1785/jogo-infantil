@@ -17,7 +17,7 @@
   // Ronco do motor: som contínuo que acompanha a velocidade, com troca de marcha. `lado`: -1 a 1,
   // para cada carro da corrida a dois soar do seu lado. tocar(pv, acelerando): pv de 0 a 1 (ou
   // null para silenciar, na pausa ou com o som desligado); parar() desliga de vez.
-  function somDeMotor(lado = 0) {
+  function somDeMotor(lado = 0, formula = false) {
     const a = Motor.audio();
     if (!a) return { tocar() {}, parar() {} };
     const t0 = a.currentTime;
@@ -53,9 +53,9 @@
         const t = a.currentTime;
         if (pv == null) { saida.gain.setTargetAtTime(0, t, 0.05); return; }
         pv = Math.max(0, Math.min(1, pv));
-        // 4 marchas: a rotação sobe em cada uma e cai um pouco na troca
-        const m = Math.min(3, Math.floor(pv * 4)), rot = pv * 4 - m;
-        const f = 42 + m * 10 + rot * 62 + (acelerando && pv < 0.05 ? 12 : 0);
+        // 4 marchas (8 no carro de fórmula, que grita bem mais agudo): a rotação sobe em cada uma e cai na troca
+        const nm = formula ? 8 : 4, m = Math.min(nm - 1, Math.floor(pv * nm)), rot = pv * nm - m;
+        const f = formula ? 70 + m * 9 + rot * 120 + (acelerando && pv < 0.05 ? 20 : 0) : 42 + m * 10 + rot * 62 + (acelerando && pv < 0.05 ? 12 : 0);
         o1.frequency.setTargetAtTime(f, t, 0.06);
         o2.frequency.setTargetAtTime(f / 2, t, 0.06);
         o3.frequency.setTargetAtTime(f * 3.01, t, 0.06);
@@ -84,9 +84,11 @@
       { figura: "⬅️➡️", texto: "Os botões da esquerda viram o carro. No controle de videogame, use o direcional." },
       { figura: "⛽🛑", texto: "Os botões da direita aceleram e freiam (segurando o freio, dá ré). No modo fácil o carro acelera sozinho." },
       { figura: "🥇", texto: "Você escolhe quantas voltas! Passe os outros carros e não saia da pista, que na grama o carro fica lento. Cada pista tem o seu traçado." },
-      { figura: "🏎️🏟️", texto: "No Grande Prêmio, os carros são de fórmula e as pistas são autódromos: Interlagos (com morros), Mônaco (ruas estreitas) e Monza (a mais rápida)." },
+      { figura: "🏎️🏟️", texto: "No Grande Prêmio, os carros são de fórmula e as pistas têm o traçado e as curvas de verdade: Interlagos (anti-horário, com subidas e descidas), Mônaco (nas ruas, com muros e o túnel) e Monza (retas enormes e chicanes). O mapa da pista mostra onde cada carro está." },
+      { figura: "🛑", texto: "No Grande Prêmio, as placas 150, 100 e 50 avisam a curva fechada: freie antes dela! Fora da pista tem brita (o carro quase para) e, em Mônaco, o muro." },
+      { figura: "🟢", texto: "Na zona de DRS (a placa verde na reta), se você estiver a menos de 1 segundo do carro da frente, a asa traseira abre e o carro corre mais. Frear fecha a asa." },
       { figura: "🚦🔴", texto: "Na largada, as 5 luzes vermelhas acendem uma por uma. Quando ficam verdes, é JÁ!" },
-      { figura: "⚡", texto: "Passe por cima das setas amarelas na pista para ganhar turbo e correr mais que todo mundo!" },
+      { figura: "⚡", texto: "Na corrida comum, passe por cima das setas amarelas na pista para ganhar turbo e correr mais que todo mundo!" },
       { figura: "👥🎮🎮", texto: "Corrida a dois: a tela se divide e cada um tem a sua estrada e os seus botões. Jogador 1 usa o 1º controle (ou as setas e Enter); jogador 2 usa o 2º controle (ou W A S D e F)." },
       { figura: "📦➜🏠", texto: "Na cidade, siga a seta: busque a encomenda e leve até a casinha. Pegue as estrelas pelo caminho!" },
       { figura: "🚦", texto: "Respeite os semáforos: no vermelho a gente para e espera o verde, como os outros carros." },
@@ -706,11 +708,118 @@
       c.fillStyle = "#f77f00"; c.beginPath(); c.moveTo(50, 60); c.lineTo(70, 64); c.lineTo(50, 66); c.fill();
       c.fillStyle = "#222"; c.beginPath(); c.arc(42, 52, 3, 0, 7); c.arc(58, 52, 3, 0, 7); c.fill();
       c.strokeStyle = "#e63946"; c.lineWidth = 7; c.beginPath(); c.moveTo(28, 82); c.lineTo(72, 82); c.stroke();
+    } else if (tipo === "boxes") {
+      // garagens dos boxes: portas abertas com o carro e os mecânicos, cada uma com a cor da equipe
+      pronto(360, 170);
+      sombra(180, 170, 170);
+      c.fillStyle = "#e9ecef"; c.fillRect(0, 20, 360, 150);
+      c.fillStyle = "#ced4da"; c.fillRect(0, 10, 360, 14);
+      for (let k = 0; k < 3; k++) {
+        const x = 12 + k * 118, cor = Motor.sortear(["#e10600", "#00d2be", "#ff8700", "#1e41ff", "#006f62", "#f596c8", "#ffd700"]);
+        c.fillStyle = cor; c.fillRect(x, 28, 100, 16);
+        c.fillStyle = "#2b2f36"; c.fillRect(x, 48, 100, 120);
+        c.fillStyle = "#3a4049"; c.fillRect(x + 4, 136, 92, 32);
+        c.fillStyle = cor; c.fillRect(x + 30, 122, 40, 16); c.fillRect(x + 22, 136, 56, 6);
+        c.fillStyle = "#111"; c.fillRect(x + 16, 120, 14, 24); c.fillRect(x + 70, 120, 14, 24);
+        [x + 10, x + 90].forEach(mx => { c.fillStyle = cor; c.fillRect(mx - 6, 110, 12, 30); c.fillStyle = "#f1c27d"; c.beginPath(); c.arc(mx, 104, 6, 0, 7); c.fill(); c.fillStyle = "#fff"; c.fillRect(mx - 7, 97, 14, 4); });
+      }
+    } else if (tipo === "muro") {
+      // muro dos boxes com a faixa de propaganda e a tela de proteção por cima
+      pronto(300, 90);
+      c.fillStyle = "#dee2e6"; c.fillRect(0, 40, 300, 50);
+      c.fillStyle = Motor.sortear(["#e63946", "#1d6fb8", "#2a9d55", "#111"]); c.fillRect(0, 48, 300, 26);
+      c.fillStyle = "#fff"; c.font = "bold 22px sans-serif"; c.textAlign = "center"; c.fillText(Motor.sortear(["CORRIDA", "VELOCIDADE", "BRASIL", "PÓDIO", "ACELERA!"]), 150, 69);
+      c.strokeStyle = "rgba(60,60,60,.55)"; c.lineWidth = 1;
+      for (let x = 0; x <= 300; x += 10) { c.beginPath(); c.moveTo(x, 2); c.lineTo(x, 40); c.stroke(); }
+      c.fillStyle = "#868e96"; for (let x = 0; x <= 300; x += 60) c.fillRect(x, 0, 4, 40);
+    } else if (tipo === "guardrail") {
+      // guard-rail das ruas de Mônaco, com a faixa vermelha e branca embaixo
+      pronto(240, 70);
+      c.fillStyle = "#adb5bd"; for (let x = 10; x < 240; x += 50) c.fillRect(x, 20, 6, 50);
+      const g = c.createLinearGradient(0, 14, 0, 42); g.addColorStop(0, "#f8f9fa"); g.addColorStop(1, "#868e96");
+      c.fillStyle = g; c.fillRect(0, 14, 240, 28);
+      for (let x = 0; x < 240; x += 20) { c.fillStyle = (x / 20) % 2 ? "#fff" : "#e63946"; c.fillRect(x, 44, 20, 12); }
+    } else if (tipo.startsWith("freio:")) {
+      // placa de frenagem: 150, 100 e 50 metros antes da curva fechada
+      pronto(110, 200);
+      sombra(55, 30, 200);
+      c.fillStyle = "#555"; c.fillRect(50, 100, 10, 100);
+      c.fillStyle = "#fff"; c.beginPath(); c.roundRect(5, 5, 100, 98, 10); c.fill();
+      c.strokeStyle = "#111"; c.lineWidth = 6; c.stroke();
+      c.fillStyle = "#111"; c.font = "bold 46px sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(tipo.slice(6), 55, 56, 90);
+    } else if (tipo.startsWith("nome:")) {
+      // placa com o nome da curva
+      pronto(420, 150);
+      sombra(210, 160, 150);
+      c.fillStyle = "#666"; c.fillRect(60, 70, 10, 80); c.fillRect(350, 70, 10, 80);
+      c.fillStyle = "#14213d"; c.beginPath(); c.roundRect(4, 6, 412, 72, 12); c.fill();
+      c.fillStyle = "#ffd60a"; c.fillRect(4, 70, 412, 8);
+      c.fillStyle = "#fff"; c.font = "bold 36px sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(tipo.slice(5).toUpperCase(), 210, 40, 390);
+    } else if (tipo === "drs") {
+      pronto(160, 190);
+      sombra(80, 40, 190);
+      c.fillStyle = "#555"; c.fillRect(75, 90, 10, 100);
+      c.fillStyle = "#111"; c.beginPath(); c.roundRect(4, 4, 152, 90, 12); c.fill();
+      c.fillStyle = "#3cff78"; c.font = "bold 52px sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("DRS", 80, 50);
+    } else if (tipo === "portico") {
+      // pórtico da largada por cima da pista, com as luzes e a bandeira quadriculada
+      pronto(800, 300);
+      c.fillStyle = "#3a3f47"; c.fillRect(22, 40, 22, 260); c.fillRect(756, 40, 22, 260);
+      c.fillStyle = "#2b2f36"; c.fillRect(10, 30, 780, 64);
+      c.fillStyle = "#fff"; c.fillRect(10, 30, 780, 5);
+      for (let k = 0; k < 5; k++) { const x = 330 + k * 46; c.fillStyle = "#111"; c.fillRect(x - 17, 40, 34, 48); c.fillStyle = "#4a1214"; c.beginPath(); c.arc(x, 54, 10, 0, 7); c.arc(x, 75, 10, 0, 7); c.fill(); }
+      c.fillStyle = "#fff"; c.font = "bold 30px sans-serif"; c.textAlign = "left"; c.textBaseline = "middle"; c.fillText("LARGADA", 46, 63);
+      for (let k = 0; k < 8; k++) { c.fillStyle = k % 2 ? "#111" : "#fff"; c.fillRect(600 + k * 20, 42, 20, 22); c.fillStyle = k % 2 ? "#fff" : "#111"; c.fillRect(600 + k * 20, 64, 20, 22); }
+    } else if (tipo === "tunel") {
+      // entrada do túnel de Mônaco: o hotel por cima e a boca escura onde a pista entra
+      pronto(900, 520);
+      c.fillStyle = "#ead9c0"; c.fillRect(0, 0, 900, 520);
+      for (let y = 20; y < 290; y += 50) for (let x = 24; x < 880; x += 60) { c.fillStyle = "#7aa6c2"; c.fillRect(x, y, 32, 30); c.fillStyle = "#2f6b3a"; c.fillRect(x - 6, y, 5, 30); c.fillRect(x + 33, y, 5, 30); c.fillStyle = "#fff"; c.fillRect(x - 7, y + 30, 46, 4); }
+      c.fillStyle = "#c9b393"; c.fillRect(0, 300, 900, 22);
+      c.fillStyle = "#0d0d11"; c.beginPath(); c.moveTo(120, 520); c.lineTo(120, 390); c.quadraticCurveTo(450, 310, 780, 390); c.lineTo(780, 520); c.closePath(); c.fill();
+      c.fillStyle = "rgba(255,214,120,.85)"; for (let k = 0; k < 7; k++) { c.beginPath(); c.arc(200 + k * 83, 404 - Math.sin(k / 6 * Math.PI) * 30, 5, 0, 7); c.fill(); }
+    } else if (tipo === "parede-tunel") {
+      // parede do túnel com a fileira de luzes amarelas lá em cima
+      pronto(120, 360);
+      c.fillStyle = "#2c2c33"; c.fillRect(0, 0, 120, 360);
+      c.fillStyle = "#ffe8a3"; c.fillRect(8, 8, 104, 10);
+      const g = c.createLinearGradient(0, 18, 0, 140); g.addColorStop(0, "rgba(255,232,163,.4)"); g.addColorStop(1, "rgba(255,232,163,0)");
+      c.fillStyle = g; c.fillRect(0, 18, 120, 122);
+      c.fillStyle = "#3a3a42"; c.fillRect(0, 300, 120, 60);
+      c.fillStyle = "#c9ccd1"; c.fillRect(0, 288, 120, 12);
+    } else if (tipo === "predio-dia") {
+      // prédio de Mônaco: fachada clarinha, janelas com venezianas verdes, varandas e o toldo da loja
+      const h = 260 + Math.floor(Math.random() * 3) * 50;
+      pronto(170, h);
+      c.fillStyle = Motor.sortear(["#f2d9b5", "#e8c4a0", "#f4e6c8", "#e7c9b0", "#f0d0c0", "#f6efe2"]); c.fillRect(0, 10, 170, h - 10);
+      c.fillStyle = "#b5523a"; c.fillRect(-2, 0, 174, 12);
+      c.fillStyle = "rgba(0,0,0,.1)"; c.fillRect(132, 10, 38, h - 10);
+      for (let y = 26; y < h - 50; y += 40) for (let x = 14; x < 150; x += 40) { c.fillStyle = "#5d7f95"; c.fillRect(x, y, 22, 26); c.fillStyle = "#2f6b4a"; c.fillRect(x - 5, y, 4, 26); c.fillRect(x + 23, y, 4, 26); c.fillStyle = "#fff"; c.fillRect(x - 6, y + 26, 34, 4); }
+      c.fillStyle = Motor.sortear(["#e63946", "#2f80ed", "#2a9d55", "#f77f00"]); c.fillRect(0, h - 40, 170, 12);
+      c.fillStyle = "#3a3a3a"; c.fillRect(18, h - 28, 134, 28);
+    } else if (tipo === "iate") {
+      // iate no porto de Mônaco
+      pronto(300, 170);
+      c.fillStyle = "#1d6fb8"; c.fillRect(0, 140, 300, 30);
+      c.fillStyle = "#fff"; c.beginPath(); c.moveTo(8, 108); c.lineTo(292, 108); c.lineTo(262, 146); c.lineTo(30, 146); c.fill();
+      c.fillStyle = "#f1f3f5"; c.fillRect(60, 80, 170, 28); c.fillRect(100, 56, 100, 24);
+      c.fillStyle = "#2b3a55"; c.fillRect(70, 88, 150, 10); c.fillRect(110, 62, 80, 8);
+      c.fillStyle = "#adb5bd"; c.fillRect(148, 14, 4, 42);
+      c.fillStyle = "rgba(255,255,255,.6)"; c.fillRect(0, 152, 300, 3);
     }
     return cv;
   }
-  const TAM_ENFEITE = { arquibancada: 2400, pneus: 650, "faixa-gp": 1200, bandeira: 1000, arvore: 1300, pinheiro: 900, "pinheiro-neve": 900, coqueiro: 1300, "guarda-sol": 900, predio: 1800, poste: 500, placa: 1100, flores: 700, boneco: 650 };
+  const TAM_ENFEITE = { boxes: 2600, muro: 1500, guardrail: 1100, freio: 520, nome: 1700, drs: 650, "parede-tunel": 700, "predio-dia": 1900, iate: 2200, arquibancada: 2400, pneus: 650, "faixa-gp": 1200, bandeira: 1000, arvore: 1300, pinheiro: 900, "pinheiro-neve": 900, coqueiro: 1300, "guarda-sol": 900, predio: 1800, poste: 500, placa: 1100, flores: 700, boneco: 650 };
 
+  // Os autódromos de verdade: ficha (cartão antes da largada) e a apresentação do narrador
+  const INFO_GP = {
+    interlagos: { nome: "Interlagos", local: "📍 São Paulo · Brasil", km: "4,3 km", curvas: 15, sentido: "anti-horário",
+      fala: "Bem-vindos a Interlagos, em São Paulo! A pista tem quatro quilômetros e trezentos metros e é corrida no sentido anti-horário, com muitas subidas e descidas. Logo depois da largada vem o S do Senna!" },
+    monaco: { nome: "Mônaco", local: "📍 Monte Carlo · Mônaco", km: "3,3 km", curvas: 19, sentido: "horário",
+      fala: "Bem-vindos a Mônaco! A corrida é nas ruas da cidade, entre prédios, muros e o porto cheio de iates. É a pista mais estreita e mais lenta: tem o grampo do Grand Hotel e um túnel!" },
+    monza: { nome: "Monza", local: "📍 Monza · Itália", km: "5,8 km", curvas: 11, sentido: "horário",
+      fala: "Bem-vindos a Monza, na Itália, o Templo da Velocidade! Tem retas enormes, onde os carros passam de trezentos e cinquenta quilômetros por hora. Freie bem nas chicanes!" },
+  };
   function corrida(area, op) {
     const tema = TEMAS[op.pista] || TEMAS.campo;
     formulaNaPista = !!tema.gp;
@@ -743,20 +852,82 @@
       noite: [[15, 25, 15, 0, 0], [8, 10, 8, 5, 0], [15, 30, 15, 0, 0], [8, 10, 8, -5, 0], [10, 20, 10, 0, 0], [8, 12, 8, 5, 0], [8, 12, 8, 5, 0], [15, 25, 15, 0, 0], [8, 10, 8, -5, 0], [12, 20, 12, 0, 0], [8, 10, 8, -5, 0]],
       // neve: montanha, sobe e desce
       neve: [[15, 25, 15, 0, 30], [20, 30, 20, 3, -30], [15, 20, 15, 0, 40], [25, 30, 25, -3, -40], [15, 25, 15, 2, 30], [20, 25, 20, -2, -30], [20, 30, 20, 0, 20]],
-      // Interlagos: largada em descida, o "S" logo depois, curva longa, reta oposta, miolo e a subida até a reta
-      interlagos: [[15, 30, 15, 0, -10], [8, 10, 8, -5, -10], [8, 10, 8, 5, -5], [25, 40, 25, -2.5, 0], [20, 60, 20, 0, -5], [12, 15, 12, -4, -10], [10, 15, 10, 4, 10], [10, 15, 10, -3, 0], [10, 12, 10, 4, 5], [12, 20, 12, -3, 10], [30, 40, 30, -1.5, 30]],
-      // Mônaco: ruas estreitas, curvas lentas, o grampo e o túnel (reta)
-      monaco: [[12, 20, 12, 0, 0], [6, 8, 6, 5, 5], [10, 15, 10, 0, 10], [6, 8, 6, -4, 0], [8, 10, 8, 6, -5], [6, 8, 6, -6, -5], [12, 25, 12, 0, -5], [6, 8, 6, -5, 0], [6, 8, 6, 5, 0], [10, 15, 10, 0, 0], [6, 8, 6, -5, 0], [8, 15, 8, 0, 0]],
-      // Monza: retas enormes e chicanes (a pista mais rápida)
-      monza: [[20, 80, 20, 0, 0], [6, 6, 6, -5, 0], [6, 6, 6, 5, 0], [25, 40, 25, 2, 0], [20, 60, 20, 0, 0], [25, 35, 25, 2.5, 0], [20, 70, 20, 0, 0], [6, 6, 6, -4, 0], [6, 6, 6, 4, 0], [30, 50, 30, 2, 0], [20, 60, 20, 0, 0]],
     };
-    (TRACADOS[op.pista] || TRACADOS.campo).forEach(t => trecho(...t));
+    // Grande Prêmio: o traçado de verdade, curva por curva, com o nome de cada uma:
+    // [nome, entrada, meio, saída, curva (+ direita, − esquerda), subida, extras]
+    // extras: drs (reta com DRS), tunel (Mônaco), porto (iates de um lado)
+    const CIRCUITOS = {
+      // Interlagos: anti-horário (quase tudo para a esquerda), descida até o S do Senna e a subida dos boxes
+      interlagos: [
+        ["Reta dos Boxes", 30, 380, 20, 0, -15, { drs: 1, reta: 1 }],
+        ["S do Senna", 10, 14, 8, -6.5, -12], ["S do Senna", 8, 12, 10, 5.5, -8],
+        ["Curva do Sol", 25, 50, 25, -2.8, -6],
+        ["Reta Oposta", 20, 420, 20, 0, -12, { drs: 1 }],
+        ["Descida do Lago", 12, 20, 12, -4.5, -14],
+        ["", 10, 60, 10, 0, 4],
+        ["Ferradura", 15, 30, 15, 3.5, 8], ["Laranjinha", 10, 14, 10, 4, 4],
+        ["", 10, 40, 10, 0, 0],
+        ["Pinheirinho", 10, 14, 10, -5, -2], ["Bico de Pato", 8, 10, 8, 7.5, -6],
+        ["", 10, 50, 10, 0, -6],
+        ["Mergulho", 12, 24, 12, -3.6, -22], ["Junção", 10, 14, 10, -5, 4],
+        ["Subida dos Boxes", 25, 260, 25, -1, 48], ["Arquibancadas", 15, 30, 15, -1.8, 8],
+      ],
+      // Mônaco: nas ruas, estreita, muros dos dois lados, o grampo do Grand Hotel e o túnel
+      monaco: [
+        ["Reta dos Boxes", 20, 140, 20, 0.3, 0, { drs: 1, reta: 1 }],
+        ["Sainte Dévote", 6, 10, 6, 6.5, 6], ["Beau Rivage", 15, 180, 15, -0.7, 45],
+        ["Massenet", 10, 22, 10, -4.2, 6], ["Cassino", 8, 12, 8, 4.5, 0],
+        ["", 10, 60, 10, 0, -14],
+        ["Mirabeau", 6, 10, 6, 6.5, -10], ["Grand Hotel", 5, 14, 5, -9.5, -6],
+        ["", 6, 30, 6, 0, -4], ["Portier", 6, 10, 6, 6, -6],
+        ["Túnel", 15, 200, 15, 0.7, 0, { tunel: 1 }],
+        ["Chicane do Porto", 5, 6, 5, -6.5, 0], ["Chicane do Porto", 5, 6, 5, 6.5, 0],
+        ["", 10, 70, 10, 0, 0, { porto: 1 }],
+        ["Tabac", 8, 12, 8, -4.5, 0, { porto: 1 }],
+        ["Piscina", 6, 8, 6, 4.5, 0, { porto: 1 }], ["Piscina", 6, 8, 6, -4.5, 0, { porto: 1 }],
+        ["", 8, 40, 8, 0, 0], ["Rascasse", 6, 14, 6, 7, 0], ["Anthony Noghès", 6, 10, 6, 5.5, 0],
+      ],
+      // Monza: o Templo da Velocidade, retas enormes e as chicanes
+      monza: [
+        ["Reta dos Boxes", 30, 380, 20, 0, 0, { drs: 1, reta: 1 }],
+        ["Variante del Rettifilo", 6, 6, 6, 6.5, 0], ["Variante del Rettifilo", 6, 6, 6, -6.5, 0],
+        ["Curva Grande", 30, 90, 30, 1.6, 0],
+        ["", 20, 120, 20, 0, 0],
+        ["Variante della Roggia", 6, 6, 6, -5.5, 0], ["Variante della Roggia", 6, 6, 6, 5.5, 0],
+        ["Lesmo 1", 10, 16, 10, 4.2, 0], ["Lesmo 2", 10, 14, 10, 4.8, 0],
+        ["Serraglio", 20, 260, 20, -0.3, -6],
+        ["Variante Ascari", 8, 8, 8, -4.5, 0], ["Variante Ascari", 8, 8, 8, 4.5, 0], ["Variante Ascari", 8, 8, 8, -3, 0],
+        ["Reta Oposta", 20, 320, 20, 0, 6, { drs: 1 }],
+        ["Parabólica", 20, 50, 40, 3.6, 0],
+      ],
+    };
+    const GP = !!tema.gp && !!CIRCUITOS[op.pista];
+    const curvas = []; // curvas com nome: { nome, ini, fim, curva }
+    if (GP) {
+      CIRCUITOS[op.pista].forEach(([nome, e, f, sa, cv, sub, ex = {}]) => {
+        const n0 = segs.length;
+        trecho(e, f, sa, cv, sub);
+        for (let n = n0; n < segs.length; n++) { const sg = segs[n]; if (ex.tunel) sg.tunel = true; if (ex.porto) sg.porto = true; if (ex.reta) sg.reta = true; }
+        if (ex.drs) { segs[n0 + e].drsIni = true; for (let n = n0 + e; n < n0 + e + f - 10; n++) segs[n].drs = true; }
+        if (nome && Math.abs(cv) >= 1) {
+          const ult = curvas[curvas.length - 1];
+          if (ult && ult.nome === nome && ult.fim >= n0 - 1) ult.fim = segs.length - 1, ult.curva = Math.sign(ult.curva) * Math.max(Math.abs(ult.curva), Math.abs(cv)), ult.chicane = true;
+          else curvas.push({ nome, ini: n0, fim: segs.length - 1, curva: cv });
+        }
+      });
+    } else (TRACADOS[op.pista] || TRACADOS.campo).forEach(t => trecho(...t));
     trecho(30, 30, 40, 0, ultimaY() / -SEG); // volta à altura do começo
     const N = segs.length, VOLTA = N * SEG;
+    const MURO = op.pista === "monaco"; // Mônaco: muro dos dois lados, sem área de escape
+    segs.forEach(sg => { sg.zebra = !GP; if (MURO) sg.parede = true; });
+    if (GP) curvas.forEach(cu => {
+      for (let n = cu.ini - 4; n <= cu.fim + 4; n++) segs[(n + N) % N].zebra = true;
+      if (!MURO && Math.abs(cu.curva) >= 2.5) for (let n = cu.ini + 4; n <= cu.fim + 10; n++) segs[(n + N) % N].brita = true;
+    });
     // Largada e chegada (quadriculado)
     segs[2].largada = true; segs[3].largada = true;
     // Faixas de turbo ⚡ nas retas, numa das 3 faixas da pista: passar por cima dá um empurrão
-    for (let n = 45; n < N - 30; n += 50 + Math.floor(Math.random() * 35)) {
+    for (let n = 45; !GP && n < N - 30; n += 50 + Math.floor(Math.random() * 35)) {
       if ([0, 1, 2, 3].some(k => Math.abs(segs[n + k].curva) > 1.5)) continue;
       const tx = [-2 / 3, 0, 2 / 3][Math.floor(Math.random() * 3)];
       for (let k = 0; k < 4; k++) segs[n + k].turbo = tx;
@@ -764,7 +935,43 @@
     // Enfeites dos dois lados
     const imagens = {};
     const img = tipo => (imagens[tipo] = imagens[tipo] || desenharEnfeite(tipo));
-    for (let n = 20; n < N - 10; n += 3 + Math.floor(Math.random() * 4)) {
+    // tamanho de cada enfeite no mundo (o pórtico e a boca do túnel têm a largura da pista)
+    const tamDe = t => (t === "portico" ? LARGURA * 2.4 : t === "tunel" ? LARGURA * 3 : TAM_ENFEITE[t] || TAM_ENFEITE[t.split(":")[0]] || 1000);
+    const por = (n, tipo, x, solido = true) => segs[(n + N) % N].enfeites.push({ tipo, x, solido });
+    if (GP) {
+      por(3, "portico", 0, false);
+      for (let n = 0; n < N; n++) {
+        const sg = segs[n], r = Math.random();
+        if (sg.tunel) { if (!segs[(n - 1 + N) % N].tunel) por(n, "tunel", 0, false); por(n, "parede-tunel", -1.3, false); por(n, "parede-tunel", 1.3, false); continue; }
+        if (sg.reta) {
+          // reta dos boxes: muro, garagens das equipes do lado esquerdo e a arquibancada do outro
+          if (n % 3 === 0) por(n, "muro", -1.3);
+          if (n % 7 === 0) por(n, "boxes", -2.6);
+          if (n % 9 === 4) por(n, "arquibancada", 2.7);
+          continue;
+        }
+        if (MURO) {
+          if (n % 3 === 0) { por(n, "guardrail", -1.3, false); por(n, "guardrail", 1.3, false); }
+          if (n % 4 === 1) por(n, "predio-dia", -(2.1 + r * 0.5));
+          if (sg.porto) { if (n % 6 === 2) por(n, "iate", 2.9); }
+          else if (n % 4 === 3) por(n, "predio-dia", 2.1 + r * 0.5);
+          if (n % 23 === 0) por(n, "coqueiro", sg.porto ? -1.7 : 1.7);
+        } else {
+          // parque: árvores (Monza é cheia delas), pneus por fora das curvas e torcida
+          if (n % (op.pista === "monza" ? 2 : 4) === 0) por(n, Math.random() < 0.8 ? "arvore" : "pinheiro", (r < 0.5 ? -1 : 1) * (2.6 + Math.random() * 1.2));
+          if (n % 17 === 0) por(n, "faixa-gp", (r < 0.5 ? -1 : 1) * 2.1);
+        }
+      }
+      // em cada curva com nome: placa com o nome, arquibancada e pneus por fora, placas de frenagem antes das fechadas
+      curvas.forEach(cu => {
+        const fora = cu.curva > 0 ? -1 : 1;
+        por(cu.ini - 22, "nome:" + cu.nome, -fora * 2.3);
+        if (!MURO) { por(cu.ini + 2, "arquibancada", fora * 2.9); por(cu.ini + 6, "pneus", fora * 2); por(cu.ini + 14, "pneus", fora * 2); }
+        if (Math.abs(cu.curva) >= 5.5) [["150", 36], ["100", 24], ["50", 12]].forEach(([m, d]) => por(cu.ini - d, "freio:" + m, fora * 1.55));
+      });
+      segs.forEach((sg, n) => { if (sg.drsIni) por(n, "drs", 1.6); });
+    }
+    for (let n = 20; !GP && n < N - 10; n += 3 + Math.floor(Math.random() * 4)) {
       const lado = Math.random() < 0.5 ? -1 : 1, tipo = Motor.sortear(tema.coisas);
       // a arquibancada é grande: fica mais longe da pista
       segs[n].enfeites.push({ tipo, x: lado * (tipo === "arquibancada" ? 2.3 + Math.random() * 0.8 : 1.35 + Math.random() * 1.4) });
@@ -772,7 +979,8 @@
     }
 
     // ----- Jogadores (1 ou 2, tela dividida) e adversários -----
-    const VMAX = (SEG / (1 / 60)) * NIVEL.max;
+    const VMAX = (SEG / (1 / 60)) * NIVEL.max * (GP ? 1.2 : 1);
+    const KMH = { interlagos: 320, monaco: 290, monza: 350 }[op.pista] || 220; // velocidade máxima no velocímetro
     const CAM = ALT_CAMERA * PROF; // o carro do jogador fica esta distância à frente da câmera
     const EMOJI_COR = { vermelho: "🔴", azul: "🔵", amarelo: "🟡", verde: "🟢", rosa: "🩷", laranja: "🟠" };
     const cor1 = CORES[op.cor] ? op.cor : "vermelho", cor2 = CORES[op.cor2] && op.cor2 !== cor1 ? op.cor2 : cor1 === "azul" ? "laranja" : "azul";
@@ -782,12 +990,12 @@
         n, cor, hex, tec: ent, ent, emoji: EMOJI_COR[cor], turbo: 0, aviso: null, tFim: 0,
         nome: (n === 1 ? op.nome1 : op.nome2) || (DOIS ? `Jogador ${n}` : "Você"),
         giro: 0, inclina: 0, parts: [],
-        pos: 0, x: 0, vel: 0, voltas: 0, ceuDesl: 0, morroDesl: 0, sacode: 0, ultPos: 9, chegou: 0,
+        pos: 0, x: 0, vel: 0, voltas: 0, ceuDesl: 0, morroDesl: 0, sacode: 0, ultPos: 99, chegou: 0,
       };
     };
     const jog = DOIS ? [novoJogador(1, cor1, T.ent), novoJogador(2, cor2, T.ent2)] : [novoJogador(1, cor1, T.ent)];
     if (DOIS) { jog[0].x = -0.5; jog[1].x = 0.5; }
-    const roncos = jog.map((j, i) => somDeMotor(DOIS ? (i ? 0.6 : -0.6) : 0));
+    const roncos = jog.map((j, i) => somDeMotor(DOIS ? (i ? 0.6 : -0.6) : 0, !!tema.gp));
     const usadas = jog.map(j => j.hex);
     const outrasCores = Object.values(CORES).filter(c => !usadas.includes(c));
     // Os adversários ganham nomes sorteados (diferentes dos nomes dos jogadores)
@@ -798,16 +1006,33 @@
       x: [-0.5, 0.5][k % 2], z: k < 2 ? VOLTA - (k + 1) * 4 * SEG : (k - 1) * 4 * SEG, voltas: k < 2 ? -1 : 0,
       vel: VMAX * NIVEL.rivais * (0.93 + k * 0.025), chegou: 0,
     }));
+    // Grande Prêmio (1 jogador): 10 carros no grid, em fila dupla; você larga em 6º e os da frente são mais rápidos
+    const SLOT = 5;
+    if (GP && !DOIS) {
+      const EQUIPES = ["#e10600", "#00d2be", "#ff8700", "#1e41ff", "#006f62", "#f596c8", "#b6babd", "#2b4562", "#ffd700", "#900000", "#6cd3bf"].filter(h => h !== jog[0].hex);
+      rivais.length = 0;
+      for (let slot = 0, k = 0; slot < 10; slot++) {
+        if (slot === SLOT) continue;
+        let z = CAM + (SLOT - slot) * 1.5 * SEG, voltas = 0;
+        if (z < 0) { z += VOLTA; voltas = -1; }
+        rivais.push({ cor: EQUIPES[k], nome: nomesRivais[k], tFim: 0, x: slot % 2 ? 0.45 : -0.45, z, voltas, vel: VMAX * NIVEL.rivais * (1.04 - slot * 0.013), chegou: 0 });
+        k++;
+      }
+      jog[0].x = SLOT % 2 ? 0.45 : -0.45;
+    }
+    jog.forEach(j => { j.tVolta = 0; j.melhor = 0; j.ultima = 0; j.drs = false; });
     const TOTAL_CARROS = rivais.length + jog.length;
     let tempo = 0, fase = "largada", contagem = 3.6, chegada = 0, primeiraChegada = 0;
+    // Grande Prêmio: antes das luzes, o narrador apresenta o autódromo (com o cartão na tela)
+    let esperaIntro = GP && !DOIS;
     // relógio da prova: continua depois que você chega, para cada carro ter o seu tempo de chegada
     let relogioProva = 0;
     const TOTAL_VOLTAS = Math.max(1, Math.min(10, parseInt(op.voltas, 10) || 3)); // escolhido nas opções
     const segDe = z => segs[Math.floor(((z % VOLTA) + VOLTA) % VOLTA / SEG) % N];
     const progresso = (v, z) => v * VOLTA + z;
     const posicao = j => {
-      const meu = progresso(j.voltas, j.pos);
-      return 1 + rivais.filter(r => progresso(r.voltas, r.z) > meu).length + jog.filter(o => o !== j && progresso(o.voltas, o.pos) > meu).length;
+      const meu = progresso(j.voltas, j.pos + CAM); // o carro fica CAM à frente da câmera
+      return 1 + rivais.filter(r => progresso(r.voltas, r.z) > meu).length + jog.filter(o => o !== j && progresso(o.voltas, o.pos + CAM) > meu).length;
     };
     const lugarDe = j => j.chegou || posicao(j);
     const relogio = () => `${Math.floor(tempo / 60)}:${String(Math.floor(tempo % 60)).padStart(2, "0")}`;
@@ -845,16 +1070,39 @@
         const dx = dt * 2.2 * pv;
         if (corre && j.ent.esq) j.x -= dx;
         if (corre && j.ent.dir) j.x += dx;
-        j.x -= dx * pv * seg.curva * 0.28;
-        const acelera = corre && (j.ent.acel || (NIVEL.auto && !j.ent.freio));
-        if (acelera) j.vel += VMAX / 5 * dt;
+        // fórmula gruda mais no chão (asas), mas nas curvas fechadas só passa freando antes
+        j.x -= dx * pv * seg.curva * 0.28 * (GP ? 0.7 : 1);
+        let acelera = corre && (j.ent.acel || (NIVEL.auto && !j.ent.freio));
+        j.freioAuto = false;
+        if (GP && corre) {
+          // a curva mais fechada logo à frente e a velocidade que dá para fazer nela
+          let cmax = 0;
+          for (let k = 0; k < 34; k++) cmax = Math.max(cmax, Math.abs(segDe(j.pos + CAM + k * SEG).curva));
+          const limite = cmax > 0 ? Math.min(1, 1 / (cmax * 0.28 * 0.7) - 0.04) : 1;
+          // no fácil, o carro freia sozinho antes das curvas fechadas
+          if (NIVEL.auto && pv > limite) { acelera = false; j.vel -= VMAX * 0.9 * dt; j.freioAuto = true; }
+          else if (pv > limite + 0.06 && j.voltas === 0 && !j.ent.freio && (!j.ultFreio || tempo - j.ultFreio > 4)) { j.ultFreio = tempo; avisar(j, "🛑 FREIE!", "#ff4d6d", 1); }
+          // DRS: ao entrar na zona, abre se o carro da frente estiver a menos de 1 segundo
+          if (seg.drsIni && j.zonaDrs !== seg.i) {
+            j.zonaDrs = seg.i;
+            const zj = j.pos + CAM, frente = [...rivais.map(r => r.z), ...jog.filter(o => o !== j).map(o => o.pos + CAM)].map(z => ((z - zj) % VOLTA + VOLTA) % VOLTA).filter(d => d > 0);
+            const gap = frente.length ? Math.min(...frente) / Math.max(j.vel, VMAX * 0.3) : 9;
+            j.drs = gap < 1 && j.voltas >= 1; // como na Fórmula 1: o DRS só vale a partir da 2ª volta
+            if (j.drs) { avisar(j, "🟢 DRS ABERTO!", "#3cff78", 1.4); Motor.nota(520, { dur: 0.25, tipo: "triangle", vol: 0.08, ate: 900 }); }
+            else if (!j.explicouDrs && !DOIS && j.voltas >= 1) { j.explicouDrs = true; Motor.falar("Zona de DRS! Chegue a menos de um segundo do carro da frente, e a asa traseira abre na próxima reta."); }
+          }
+          if (!seg.drs || j.ent.freio) j.drs = false;
+        }
+        if (acelera) j.vel += VMAX / 5 * dt * (j.drs ? 1.4 : 1);
         else if (j.ent.freio) j.vel -= VMAX * dt;
         else j.vel -= VMAX / 5 * dt;
         if (fase === "fim") j.vel -= VMAX / 3 * dt;
-        // Fora da pista: mais devagar e sacudindo
-        if (Math.abs(j.x) > 1.05) { if (j.vel > VMAX / 4) j.vel -= VMAX / 1.6 * dt; j.sacode = 1.5; } else j.sacode = 0;
+        // Fora da pista: mais devagar e sacudindo (na brita do autódromo, o carro quase para)
+        if (Math.abs(j.x) > 1.05) { if (seg.brita) { if (j.vel > VMAX / 7) j.vel -= VMAX * 1.1 * dt; } else if (j.vel > VMAX / 4) j.vel -= VMAX / 1.6 * dt; j.sacode = 1.5; } else j.sacode = 0;
+        // Mônaco: encostou no muro, raspa e perde velocidade
+        if (seg.parede && Math.abs(j.x) > 1.1) { j.x = Math.sign(j.x) * 1.1; j.vel -= VMAX * 0.9 * dt; j.sacode = 1.5; if (!j.ultMuro || tempo - j.ultMuro > 0.5) { j.ultMuro = tempo; Motor.ruido({ dur: 0.15, vol: 0.18, freq: 1800 }); } }
         // Bateu num enfeite da beira
-        seg.enfeites.forEach(e => { if (Math.abs(j.x - e.x) < 0.35 && Math.abs(e.x) > 1) { j.vel = VMAX / 5; j.x = e.x > 0 ? e.x - 0.5 : e.x + 0.5; Motor.ruido({ dur: 0.15, vol: 0.2, freq: 400 }); } });
+        seg.enfeites.forEach(e => { if (e.solido !== false && Math.abs(j.x - e.x) < 0.35 && Math.abs(e.x) > 1) { j.vel = VMAX / 5; j.x = e.x > 0 ? e.x - 0.5 : e.x + 0.5; Motor.ruido({ dur: 0.15, vol: 0.2, freq: 400 }); } });
         // Turbo: passou por cima da faixa ⚡ e ganha velocidade além do normal por um tempinho
         if (corre && seg.turbo !== undefined && Math.abs(j.x - seg.turbo) < 0.34) {
           if (j.turbo <= 0) { Motor.nota(260, { dur: 0.6, tipo: "sawtooth", vol: 0.05, ate: 1000 }); avisar(j, "⚡ TURBO!", "#ffd60a", 1.1); }
@@ -874,7 +1122,7 @@
       }
       j.x = Math.max(-2.6, Math.min(2.6, j.x));
       // acima da velocidade máxima só com turbo; quando ele acaba, volta aos poucos
-      const teto = VMAX * (j.turbo > 0 ? 1.3 : 1);
+      const teto = VMAX * (j.turbo > 0 ? 1.3 : 1) * (j.drs ? 1.1 : 1);
       if (j.vel > teto) j.vel = Math.max(teto, j.vel - VMAX * 0.5 * dt);
       j.vel = Math.max(0, j.vel);
       j.pos += j.vel * dt;
@@ -884,6 +1132,7 @@
     }
 
     function atualizar(dt) {
+      if (fase === "largada" && esperaIntro) { if (jog.some(j => j.ent.acel)) esperaIntro = false; return; } // tocar em acelerar pula a apresentação
       if (fase === "largada") {
         const antes = Math.ceil(contagem), luzesAntes = luzesAcesas();
         contagem -= dt;
@@ -900,8 +1149,12 @@
       // Adversários: aceleram até a sua velocidade, freiam um pouco nas curvas e desviam
       const carrosJog = jog.map(j => ({ x: j.x, z: j.pos + CAM, v: j.vel }));
       rivais.forEach(r => {
-        const sr = segDe(r.z), alvo = r.vel * (1 - Math.min(0.25, Math.abs(sr.curva) * 0.05)) * (r.chegou ? 0.4 : 1);
-        r.v = (r.v || 0) + (alvo - (r.v || 0)) * Math.min(1, dt * 1.2);
+        const sr = segDe(r.z);
+        let fator = 1 - Math.min(0.25, Math.abs(sr.curva) * 0.05);
+        if (GP) { let c = 0; for (let k = 0; k < 7; k++) c = Math.max(c, Math.abs(segDe(r.z + k * SEG).curva)); fator = (c > 0 ? Math.min(1, 1.05 / (c * 0.196)) : 1) * (sr.drs ? 1.04 : 1); }
+        const alvo = r.vel * fator * (r.chegou ? 0.4 : 1);
+        if (GP) r.v = (r.v || 0) + Math.max(-VMAX * dt, Math.min(VMAX / 4.6 * dt, alvo - (r.v || 0))); // aceleram e freiam como carro de verdade
+        else r.v = (r.v || 0) + (alvo - (r.v || 0)) * Math.min(1, dt * 1.2);
         r.freando = alvo < r.v - VMAX * 0.02; // só para acender as lanternas no desenho
         // desvia de quem está logo à frente (e dos jogadores)
         const frente = [...rivais.filter(o => o !== r), ...carrosJog].find(o => { const d = ((o.z - r.z) % VOLTA + VOLTA) % VOLTA; return d > 0 && d < SEG * 6 && Math.abs(o.x - r.x) < 0.5 && (o.v ?? o.vel) < r.v; });
@@ -921,13 +1174,19 @@
     function classificacao() {
       return [
         ...rivais.map(r => ({ nome: r.nome, hex: r.cor, prog: progresso(r.voltas, r.z), tempo: r.tFim || 0, j: null })),
-        ...jog.map(j => ({ nome: j.nome, hex: j.hex, prog: progresso(j.voltas, j.pos), tempo: j.tFim || 0, j })),
+        ...jog.map(j => ({ nome: j.nome, hex: j.hex, prog: progresso(j.voltas, j.pos + CAM), tempo: j.tFim || 0, j })),
       ].sort((a, b) => (a.tempo && b.tempo ? a.tempo - b.tempo : a.tempo ? -1 : b.tempo ? 1 : b.prog - a.prog));
     }
     const tempoTxt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")},${Math.floor(t * 10 % 10)}`;
+    const tempoFalado = t => (t >= 60 ? `${Math.floor(t / 60)} minuto${t >= 120 ? "s" : ""} e ` : "") + `${Math.floor(t % 60)} segundos`;
     const avisar = (j, txt, cor, dur = 1.4) => { j.aviso = { txt, cor, t: dur, dur }; };
     function novaVolta(j) {
       if (fase !== "correndo" || j.chegou) return;
+      const tv = tempo - j.tVolta;
+      j.tVolta = tempo; j.ultima = tv;
+      const recorde = GP && j.melhor && tv < j.melhor;
+      if (!j.melhor || tv < j.melhor) j.melhor = tv;
+      if (recorde && j.voltas < TOTAL_VOLTAS) { setTimeout(() => { if (vivo()) avisar(j, `🟣 VOLTA MAIS RÁPIDA! ${tempoTxt(tv)}`, "#c77dff", 2.2); }, 2100); if (!DOIS) Motor.falar(`Volta mais rápida! ${tempoFalado(tv)}.`, { naFila: true }); }
       if (j.voltas >= TOTAL_VOLTAS) {
         j.chegou = posicao(j);
         j.tFim = relogioProva;
@@ -940,7 +1199,7 @@
       } else {
         Motor.tim();
         const ultima = j.voltas === TOTAL_VOLTAS - 1, msg = ultima ? "Última volta" : `Volta ${j.voltas + 1}`;
-        avisar(j, ultima ? "🏁 ÚLTIMA VOLTA!" : `VOLTA ${j.voltas + 1}`, ultima ? "#ff4d6d" : "#fff", 2);
+        avisar(j, (ultima ? "🏁 ÚLTIMA VOLTA!" : `VOLTA ${j.voltas + 1}`) + (GP ? ` · ${tempoTxt(tv)}` : ""), ultima ? "#ff4d6d" : "#fff", 2);
         if (ultima) { Motor.nota(660, { dur: 0.15, tipo: "triangle", vol: 0.1 }); Motor.nota(880, { dur: 0.3, tipo: "triangle", vol: 0.1, inicio: 0.15 }); }
         Motor.falar(DOIS ? `${msg}, ${j.nome}!` : msg + "!");
       }
@@ -1212,6 +1471,8 @@
       });
       ctx.fillStyle = corChao; ctx.fillRect(0, baseY - 1, W, H - baseY + 1);
       ctx.drawImage(nevoaHoriz, 0, horiz - 40 * esc, W, 44 * esc);
+      const noTunel = !!segJ.tunel;
+      if (noTunel) { ctx.fillStyle = "#121216"; ctx.fillRect(0, 0, W, H); }
       // Estrada: de perto para longe, cortando o que fica atrás dos morros (maxy)
       const base = segDe(pos), pBase = (pos % SEG) / SEG;
       let maxy = H, dx = -(base.curva * pBase), xc = 0;
@@ -1227,13 +1488,18 @@
         const { sx: x1, sy: y1, sw: w1 } = s.p1, { sx: x2, sy: y2, sw: w2 } = s.p2;
         const f = s.nevoa ** 2;
         const cor = c => (f > 0.02 ? nevoa(c, f) : c);
-        ctx.fillStyle = cor(tema.grama[s.cor]); ctx.fillRect(0, y2, W, y1 - y2);
+        ctx.fillStyle = cor(s.tunel ? "#26262c" : tema.grama[s.cor]); ctx.fillRect(0, y2, W, y1 - y2);
         const z1 = w1 / Math.max(6, 2 * FAIXAS), z2 = w2 / Math.max(6, 2 * FAIXAS);
-        // acostamento (cascalho/areia) por fora da zebra
-        const a1 = z1 + w1 * 0.16, a2 = z2 + w2 * 0.16;
-        poligono([x1 - w1 - a1, y1, x1 + w1 + a1, y1, x2 + w2 + a2, y2, x2 - w2 - a2, y2], cor(tonsAcost[s.cor]));
-        poligono([x1 - w1 - z1, y1, x1 - w1, y1, x2 - w2, y2, x2 - w2 - z2, y2], cor(tema.zebra[s.cor]));
-        poligono([x1 + w1 + z1, y1, x1 + w1, y1, x2 + w2, y2, x2 + w2 + z2, y2], cor(tema.zebra[s.cor]));
+        // acostamento (cascalho/areia) por fora da zebra; no Grande Prêmio: brita larga por fora das
+        // curvas, calçada em Mônaco, e grama nas retas
+        if (!GP) { const a1 = z1 + w1 * 0.16, a2 = z2 + w2 * 0.16; poligono([x1 - w1 - a1, y1, x1 + w1 + a1, y1, x2 + w2 + a2, y2, x2 - w2 - a2, y2], cor(tonsAcost[s.cor])); }
+        else if (s.tunel) { const a1 = w1 * 0.12, a2 = w2 * 0.12; poligono([x1 - w1 - a1, y1, x1 + w1 + a1, y1, x2 + w2 + a2, y2, x2 - w2 - a2, y2], cor("#3a3a42")); }
+        else if (MURO) { const a1 = w1 * 0.14, a2 = w2 * 0.14; poligono([x1 - w1 - a1, y1, x1 + w1 + a1, y1, x2 + w2 + a2, y2, x2 - w2 - a2, y2], cor(s.cor ? "#c4c8cd" : "#bcc0c5")); }
+        else if (s.brita) { const a1 = w1 * 0.7, a2 = w2 * 0.7; poligono([x1 - w1 - a1, y1, x1 + w1 + a1, y1, x2 + w2 + a2, y2, x2 - w2 - a2, y2], cor(s.cor ? "#d9c9a0" : "#d2c196")); }
+        if (s.zebra) {
+          poligono([x1 - w1 - z1, y1, x1 - w1, y1, x2 - w2, y2, x2 - w2 - z2, y2], cor(tema.zebra[s.cor]));
+          poligono([x1 + w1 + z1, y1, x1 + w1, y1, x2 + w2, y2, x2 + w2 + z2, y2], cor(tema.zebra[s.cor]));
+        }
         poligono([x1 - w1, y1, x1 + w1, y1, x2 + w2, y2, x2 - w2, y2], cor(tonsPista[s.tom][s.cor]));
         // linhas brancas contínuas da beira (só perto, onde aparecem)
         if (n < 110) {
@@ -1241,6 +1507,7 @@
           poligono([x1 - b1 - e1, y1, x1 - b1 + e1, y1, x2 - b2 + e2, y2, x2 - b2 - e2, y2], cb);
           poligono([x1 + b1 - e1, y1, x1 + b1 + e1, y1, x2 + b2 + e2, y2, x2 + b2 - e2, y2], cb);
         }
+        if (s.drsIni) poligono([x1 - w1, y1, x1 + w1, y1, x2 + w2, y2, x2 - w2, y2], cor("#e9ecef")); // linha onde começa o DRS
         if (s.largada) {
           const q = 8;
           for (let k = 0; k < q; k++) poligono([x1 - w1 + 2 * w1 * k / q, y1, x1 - w1 + 2 * w1 * (k + 1) / q, y1, x2 - w2 + 2 * w2 * (k + 1) / q, y2, x2 - w2 + 2 * w2 * k / q, y2], (k + s.i) % 2 ? "#111" : "#fff");
@@ -1285,7 +1552,7 @@
       for (let n = VISTA - 1; n > 0; n--) {
         const s = segs[(base.i + n) % N];
         if (!s.p1.escala || s.p1.cz <= PROF) continue;
-        s.enfeites.forEach(e => coisa(img(e.tipo), TAM_ENFEITE[e.tipo] || 1000, s.p1.escala, s.p1.sx + s.p1.escala * e.x * LARGURA * W / 2, s.p1.sy, s.clip));
+        s.enfeites.forEach(e => coisa(img(e.tipo), tamDe(e.tipo), s.p1.escala, s.p1.sx + s.p1.escala * e.x * LARGURA * W / 2, s.p1.sy, s.clip));
         rivais.forEach(r => { if (segDe(r.z) === s) carroNaPista(spriteCarro(r.cor, s.curva > 1 ? "dir" : s.curva < -1 ? "esq" : "reto", r.freando, Math.floor(r.z / 400) % 2), s, r.z, r.x); });
         outros.forEach(c => { if (c.s === s) carroNaPista(c.img, s, c.z, c.o.x); });
       }
@@ -1294,7 +1561,7 @@
       const vira = virandoDe(j.ent), pvJ = j.vel / VMAX;
       if (j.vel > 1) j.giro += dtQuadro * (3 + 12 * pvJ);
       j.inclina += (((vira === "dir") - (vira === "esq")) * pvJ - j.inclina) * Math.min(1, dtQuadro * 6);
-      const im = spriteCarro(j.hex, vira, j.ent.freio && j.vel > 1, Math.floor(j.giro) % 2);
+      const im = spriteCarro(j.hex, vira, (j.ent.freio || j.freioAuto) && j.vel > 1, Math.floor(j.giro) % 2);
       const cw = Math.min(W * 0.36, 260), ch = cw * im.height / im.width;
       const balanca = (j.sacode ? (Math.random() - 0.5) * 6 : 0) + Math.sin(tempo * 30) * pvJ * 1.2;
       const fundoCarro = H - 8 + balanca;
@@ -1307,6 +1574,7 @@
       ctx.drawImage(im, -cw / 2, -ch, cw, ch);
       ctx.restore();
       particulas(j, W, H, W / 2, fundoCarro, cw, ch);
+      if (noTunel) { ctx.fillStyle = "rgba(10,10,20,.28)"; ctx.fillRect(0, 0, W, H); } // dentro do túnel fica tudo mais escuro
       // sensação de velocidade: risquinhos nas laterais e cantos escurecendo
       if (pvJ > 0.45) ctx.globalAlpha = Math.min(1, (pvJ - 0.45) / 0.55) * 0.8, ctx.drawImage(fundo.vinheta, 0, 0, W, H), ctx.globalAlpha = 1;
       if (pvJ > 0.72 && dtQuadro > 0) {
@@ -1322,13 +1590,21 @@
       atras.forEach(c => { if (c.s.p1.escala && c.s.p1.cz > PROF) carroNaPista(c.img, c.s, c.z, c.o.x); });
       // Ultrapassagem: som e aviso (com folga, para não repetir quando dois carros andam lado a lado)
       const p = posicao(j);
-      if (p < j.ultPos && j.ultPos < 9 && fase === "correndo" && !j.chegou) {
+      if (p < j.ultPos && j.ultPos < 99 && fase === "correndo" && !j.chegou) {
         Motor.nota(990, { dur: 0.12, tipo: "triangle", vol: 0.08 });
         if (!j.ultAviso || tempo - j.ultAviso > 1.6) { avisar(j, `ULTRAPASSOU! ${p}º`, "#8cff9e", 1.2); j.ultAviso = tempo; }
       }
+      // Grande Prêmio: o narrador conta quem passou quem (sem falar toda hora)
+      if (GP && !DOIS && fase === "correndo" && !j.chegou && j.ultPos < 99 && p !== j.ultPos && (!j.ultNarra || tempo - j.ultNarra > 5)) {
+        const meu = progresso(j.voltas, j.pos + CAM), outros = rivais.map(r => ({ n: r.nome, d: progresso(r.voltas, r.z) - meu }));
+        if (p < j.ultPos) { const q = outros.filter(o => o.d < 0).sort((a, b) => b.d - a.d)[0]; if (q) { j.ultNarra = tempo; Motor.falar(`Você passou ${q.n}! Agora está em ${p}º lugar!`); } }
+        else { const q = outros.filter(o => o.d > 0).sort((a, b) => a.d - b.d)[0]; if (q) { j.ultNarra = tempo; Motor.falar(`${q.n} passou você! Vamos buscar!`); } }
+      }
       j.ultPos = p;
       const s = Math.max(0.75, Math.min(2.2, Math.min(W, H * 1.7) / 680)); // tudo cresce em tela grande
-      if (fase === "largada") semaforo(W, H, s, luzesAcesas(), false);
+      if (GP && fase === "correndo" && contagem <= -1.2 && !j.chegou) nomeDaCurva(j, W, s);
+      if (GP && fase === "largada" && esperaIntro) cartaoCircuito(W, H, s);
+      else if (fase === "largada") semaforo(W, H, s, luzesAcesas(), false);
       else if (fase === "correndo" && contagem > -1.2) { semaforo(W, H, s, 5, true); texto("JÁ!", 120 * s, "#2a9d55", W, H); }
       else if (DOIS && j.chegou && !j.aviso) texto(`${MEDALHA(j.chegou)} ${j.chegou}º lugar!`, 52 * s, "#ffd60a", W, H);
       if (j.aviso) {
@@ -1343,6 +1619,61 @@
       }
       painel(j, W, H, s);
       if (pausado) texto("⏸️ Pausa", 50 * s, "#fff", W, H);
+    }
+    // Grande Prêmio: a curva que vem (ou em que você está), com a seta do lado; na 1ª volta a voz fala o nome
+    function nomeDaCurva(j, W, s) {
+      const i = segDe(j.pos + CAM).i, cu = curvas.find(c => i >= c.ini - 28 && i <= c.fim);
+      if (!cu) return;
+      if (j.voltas === 0 && !DOIS && cu !== j.curvaFalada) { j.curvaFalada = cu; Motor.falar(cu.nome); }
+      const t = `${cu.curva < 0 ? "↰" : "↱"} ${cu.nome.toUpperCase()}`;
+      ctx.font = `bold ${17 * s}px Fredoka, sans-serif`;
+      const w = ctx.measureText(t).width + 30 * s, x = W / 2 - w / 2, y = 10 * s;
+      ctx.fillStyle = "rgba(20,33,61,.86)"; ctx.beginPath(); ctx.roundRect(x, y, w, 32 * s, 16 * s); ctx.fill();
+      ctx.fillStyle = "#ffd60a"; ctx.fillRect(x + 14 * s, y + 28 * s, w - 28 * s, 3 * s);
+      ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(t, W / 2, y + 16 * s);
+      ctx.textBaseline = "alphabetic";
+    }
+    // Antes da largada: o cartão do autódromo, como na transmissão, enquanto o narrador apresenta
+    function cartaoCircuito(W, H, s) {
+      const inf = INFO_GP[op.pista], w = Math.min(W - 40, 460 * s), h = 178 * s, x = W / 2 - w / 2, y = H * 0.14;
+      ctx.fillStyle = "rgba(15,20,35,.88)"; ctx.beginPath(); ctx.roundRect(x, y, w, h, 18 * s); ctx.fill();
+      ctx.fillStyle = "#e10600"; ctx.fillRect(x, y + 18 * s, 7 * s, h - 36 * s);
+      ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = "#ffd60a"; ctx.font = `bold ${15 * s}px Fredoka, sans-serif`; ctx.fillText("GRANDE PRÊMIO", x + 22 * s, y + 30 * s);
+      ctx.fillStyle = "#fff"; ctx.font = `bold ${30 * s}px Fredoka, sans-serif`; ctx.fillText(inf.nome, x + 22 * s, y + 64 * s, w * 0.55);
+      ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.font = `bold ${15 * s}px Fredoka, sans-serif`;
+      [inf.local, `📏 ${inf.km} · ${inf.curvas} curvas`, `🔄 sentido ${inf.sentido}`, `🏁 ${TOTAL_VOLTAS} voltas · você larga em ${SLOT + 1}º`].forEach((l, k) => ctx.fillText(l, x + 22 * s, y + (90 + k * 22) * s, w * 0.6));
+      const m = Math.min(h - 30 * s, w * 0.36);
+      mapaPista(x + w - m - 16 * s, y + (h - m) / 2, m, null);
+    }
+    // Mapa da pista: o desenho do traçado (feito somando as curvas) e um pontinho para cada carro
+    const MAPA = (() => {
+      if (!GP) return null;
+      let a = 0, px = 0, py = 0;
+      const tot = segs.reduce((t, sg) => t + sg.curva, 0), k = (Math.PI * 2) / Math.abs(tot || 1);
+      const pts = segs.map(sg => { a += sg.curva * k; px += Math.sin(a); py -= Math.cos(a); return [px, py]; });
+      // corrige o pedacinho que sobra para o desenho fechar certinho
+      const [ex, ey] = pts[pts.length - 1];
+      pts.forEach((q, i) => { q[0] -= ex * (i + 1) / pts.length; q[1] -= ey * (i + 1) / pts.length; });
+      const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
+      const x0 = Math.min(...xs), y0 = Math.min(...ys), tam = Math.max(Math.max(...xs) - x0, Math.max(...ys) - y0) || 1;
+      return pts.map(([qx, qy]) => [(qx - x0) / tam, (qy - y0) / tam, (Math.max(...xs) - x0) / tam, (Math.max(...ys) - y0) / tam]);
+    })();
+    function mapaPista(x, y, m, j) {
+      if (!MAPA) return;
+      const [, , lw, lh] = MAPA[0], ox = x + (m - lw * m) / 2, oy = y + (m - lh * m) / 2;
+      const ponto = z => { const q = MAPA[Math.floor(((z % VOLTA) + VOLTA) % VOLTA / SEG) % N]; return [ox + q[0] * m, oy + q[1] * m]; };
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      [["rgba(0,0,0,.55)", 7], ["#e9ecef", 3]].forEach(([c, lwd]) => {
+        ctx.strokeStyle = c; ctx.lineWidth = lwd; ctx.beginPath();
+        for (let i = 0; i <= N; i += 3) { const q = MAPA[i % N]; i ? ctx.lineTo(ox + q[0] * m, oy + q[1] * m) : ctx.moveTo(ox + q[0] * m, oy + q[1] * m); }
+        ctx.closePath(); ctx.stroke();
+      });
+      const [lx, ly] = ponto(3 * SEG); ctx.fillStyle = "#e10600"; ctx.fillRect(lx - 4, ly - 4, 8, 8);
+      if (!j) return;
+      rivais.forEach(r => { const [qx, qy] = ponto(r.z); ctx.fillStyle = r.cor; ctx.beginPath(); ctx.arc(qx, qy, 3.5, 0, 7); ctx.fill(); });
+      jog.forEach(o => { const [qx, qy] = ponto(o.pos + CAM); ctx.fillStyle = o.hex; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(qx, qy, o === j ? 6 : 4.5, 0, 7); ctx.fill(); ctx.stroke(); });
+      ctx.lineCap = "butt";
     }
     // Semáforo da largada: 5 luzes; ao apagar as vermelhas, ficam verdes (JÁ!)
     function semaforo(W, H, s, acesas, verde) {
@@ -1381,11 +1712,26 @@
       ctx.fillStyle = "#fff"; ctx.font = `bold ${26 * s}px Fredoka, sans-serif`;
       ctx.fillText(`${Math.min(j.voltas + 1, TOTAL_VOLTAS)}/${TOTAL_VOLTAS}`, xd, y0 + 48 * s);
       ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.font = `bold ${15 * s}px Fredoka, sans-serif`;
-      ctx.fillText(`⏱ ${relogio()}`, xd, y0 + 68 * s);
+      ctx.fillText(`⏱ ${GP ? tempoTxt(Math.max(0, tempo - j.tVolta)) : relogio()}`, xd, y0 + 68 * s);
+      // Grande Prêmio: a melhor volta e quanto falta para alcançar o carro da frente
+      let extra = 0;
+      if (GP) {
+        const zj = progresso(j.voltas, j.pos + CAM);
+        let alvo = null, dmin = Infinity;
+        rivais.forEach(r => { const d = progresso(r.voltas, r.z) - zj; if (d > 0 && d < dmin) { dmin = d; alvo = r.nome; } });
+        jog.forEach(o => { if (o === j) return; const d = progresso(o.voltas, o.pos + CAM) - zj; if (d > 0 && d < dmin) { dmin = d; alvo = o.nome; } });
+        const bh = 44 * s, by = y0 + ph + 6 * s;
+        ctx.fillStyle = "rgba(15,20,35,.72)"; ctx.beginPath(); ctx.roundRect(x0, by, pw, bh, 10 * s); ctx.fill();
+        ctx.textAlign = "left"; ctx.font = `bold ${13 * s}px Fredoka, sans-serif`;
+        ctx.fillStyle = j.melhor ? "#c77dff" : "rgba(255,255,255,.55)"; ctx.fillText(`🟣 MELHOR ${j.melhor ? tempoTxt(j.melhor) : "--:--"}`, x0 + 10 * s, by + 18 * s);
+        ctx.fillStyle = "rgba(255,255,255,.85)";
+        ctx.fillText(alvo && !j.chegou ? `▲ ${alvo.toUpperCase()} +${(dmin / Math.max(j.vel, VMAX * 0.3)).toFixed(1).replace(".", ",")}s` : "🏁 NA FRENTE!", x0 + 10 * s, by + 36 * s, pw - 20 * s);
+        extra = bh + 6 * s;
+      }
       // classificação (só se couber)
       const lh = 24 * s, lista = classificacao();
-      if (H > ph + lista.length * lh + 120 && W > 300) {
-        let y = y0 + ph + 8 * s;
+      if (H > ph + extra + lista.length * lh + 120 && W > 300) {
+        let y = y0 + ph + 8 * s + extra;
         lista.forEach((c, i) => {
           const eu = c.j === j, outro = c.j && c.j !== j, w = pw * (eu ? 1 : 0.92);
           ctx.fillStyle = eu ? "#ffd60a" : outro ? "rgba(255,255,255,.88)" : "rgba(15,20,35,.72)";
@@ -1400,7 +1746,7 @@
       }
       // velocímetro
       const R = 46 * s, cx = W - R - 14, cy = (DOIS && j.n === 1 ? 14 : 66) + R;
-      const kmh = Math.round(j.vel / VMAX * 220 * NIVEL.max), frac = Math.min(1, j.vel / (VMAX * 1.3));
+      const kmh = Math.round(j.vel / VMAX * KMH * NIVEL.max), frac = Math.min(1, j.vel / (VMAX * 1.3));
       ctx.fillStyle = "rgba(15,20,35,.78)"; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill();
       ctx.lineCap = "round"; ctx.lineWidth = 7 * s;
       ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.beginPath(); ctx.arc(cx, cy, R - 9 * s, Math.PI * 0.75, Math.PI * 2.25); ctx.stroke();
@@ -1409,8 +1755,12 @@
       ctx.lineCap = "butt";
       ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = `bold ${28 * s}px Fredoka, sans-serif`;
       ctx.fillText(String(kmh), cx, cy + 8 * s);
-      ctx.fillStyle = j.turbo > 0 ? "#ffd60a" : "rgba(255,255,255,.65)"; ctx.font = `bold ${12 * s}px Fredoka, sans-serif`;
-      ctx.fillText(j.turbo > 0 ? "⚡ TURBO" : "km/h", cx, cy + 26 * s);
+      const zonaDrs = GP && segDe(j.pos + CAM).drs;
+      ctx.fillStyle = j.turbo > 0 ? "#ffd60a" : j.drs ? "#3cff78" : zonaDrs ? "rgba(255,255,255,.45)" : "rgba(255,255,255,.65)"; ctx.font = `bold ${12 * s}px Fredoka, sans-serif`;
+      ctx.fillText(j.turbo > 0 ? "⚡ TURBO" : j.drs ? "🟢 DRS" : zonaDrs ? "DRS ⚪" : GP ? `km/h · ${1 + Math.min(7, Math.floor(j.vel / VMAX * 8))}ª` : "km/h", cx, cy + 26 * s);
+      // mapa da pista embaixo do velocímetro (se couber)
+      const m = Math.min(130 * s, W * 0.22), my = cy + R + 10 * s;
+      if (GP && my + m < H - 150 && !DOIS) { ctx.fillStyle = "rgba(15,20,35,.6)"; ctx.beginPath(); ctx.roundRect(W - m - 18, my - 4, m + 8, m + 8, 12 * s); ctx.fill(); mapaPista(W - m - 14, my, m, j); }
     }
     function texto(t, tamanho, cor, W, H) {
       ctx.font = `bold ${Math.min(tamanho, W / 6)}px Fredoka, sans-serif`;
@@ -1438,14 +1788,20 @@
     // Gancho para os testes automáticos (só existe se a página de teste pedir)
     if (window.CARROS_TESTE) {
       window.CARROS_TESTE = {
-        estado: () => ({ fase, VOLTA, jog: jog.map(j => ({ n: j.n, pos: j.pos, x: j.x, vel: j.vel, voltas: j.voltas, chegou: j.chegou, lugar: lugarDe(j) })) }),
+        estado: () => ({ fase, VOLTA, tunel: segs.findIndex(sg => sg.tunel), jog: jog.map(j => ({ n: j.n, pos: j.pos, x: j.x, vel: j.vel, voltas: j.voltas, chegou: j.chegou, lugar: lugarDe(j) })) }),
         levar: (k, voltas, pos) => { jog[k].voltas = voltas; jog[k].pos = pos; },
       };
     }
     requestAnimationFrame(laco);
-    if (DOIS) Motor.falar(`Corrida a dois! ${jog[0].nome} usa o primeiro controle ou as setas. ${jog[1].nome} usa o segundo controle ou as letras W A S D. Passe nas setas amarelas para ganhar turbo!`);
-    else Motor.falar((tema.gp ? `Grande Prêmio de ${NOMES_PISTA[op.pista].split(" (")[0]}! ${TOTAL_VOLTAS} voltas. ` : `Corrida de ${TOTAL_VOLTAS} ${TOTAL_VOLTAS === 1 ? "volta" : "voltas"}! `) +
+    if (GP && !DOIS) {
+      const fim = () => { esperaIntro = false; };
+      Motor.falar(INFO_GP[op.pista].fala + ` São ${TOTAL_VOLTAS} voltas e você larga em sexto. Freie quando aparecerem as placas cento e cinquenta, cem e cinquenta. Atenção às luzes!`).then(fim);
+      setTimeout(fim, 22000);
+    } else if (DOIS) Motor.falar(`Corrida a dois! ${jog[0].nome} usa o primeiro controle ou as setas. ${jog[1].nome} usa o segundo controle ou as letras W A S D.` + (GP ? " Freie antes das curvas fechadas!" : " Passe nas setas amarelas para ganhar turbo!"));
+    else {
+      Motor.falar((tema.gp ? `Grande Prêmio de ${NOMES_PISTA[op.pista].split(" (")[0]}! ${TOTAL_VOLTAS} voltas. ` : `Corrida de ${TOTAL_VOLTAS} ${TOTAL_VOLTAS === 1 ? "volta" : "voltas"}! `) +
       (NIVEL.auto ? "O carro acelera sozinho: use as setas para virar." : "Acelere, faça as curvas e passe os outros carros!") + " Passe nas setas amarelas para ganhar turbo!");
+    }
   }
 
   // =====================================================================
