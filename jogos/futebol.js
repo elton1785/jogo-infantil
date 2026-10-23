@@ -56,6 +56,7 @@
       { figura: "⚽", texto: "Escolha Pênaltis ou Partida, contra o computador ou com um amigo, e a cor do seu time." },
       { figura: ["🎯", "🥅"], texto: "Pênaltis: mire no gol com as setas (ou arrastando o dedo no gol). O alvo mostra onde a bola vai." },
       { figura: "💪", texto: "A barra de força sobe e desce: chute quando ela estiver no verde! Fraco demais o goleiro pega; forte demais a bola sobe." },
+      { figura: ["💣", "🎯", "🥄"], texto: "Nos pênaltis, escolha o tipo de chute (Espaço, botão X ou o botão do tipo): forte, colocado no ângulo ou cavadinha. A cavadinha engana o goleiro que pula, mas se ele ficar no meio, pega fácil!" },
       { figura: ["🧤", "⬅️⬆️➡️"], texto: "Quando você for o goleiro, escolha um lado para pular antes do chute: esquerda, meio ou direita." },
       { figura: "🔁", texto: "São 5 cobranças para cada time, uma de cada vez. Se empatar, continua até alguém errar." },
       { figura: "🏟️", texto: "Partida: leve a bola até o gol do outro time. Você controla o jogador com a setinha, o mais perto da bola." },
@@ -123,10 +124,12 @@
     pintar(op0);
     const camisas = (t, exceto) => Object.entries(CORES).filter(([id]) => id !== exceto).map(([id, c]) => [id, c.nome, () => jogadorDoTime(id, t)]);
     Motor.telaOpcoes(area, {
-      chave: CHAVE, padrao: PADRAO, antes: previa,
+      chave: CHAVE, padrao: { ...PADRAO, tempo: { "5-6": "2", "6-8": "2,5" }[faixa && faixa.id] || "3" }, antes: previa,
       opcoes: [
         { chave: "modo", titulo: "O que vamos jogar?", valores: [["penaltis", "Pênaltis", SVG_PENALTI], ["partida", "Partida", SVG_PARTIDA]] },
         { chave: "jogadores", titulo: "Quem vai jogar?", valores: [[1, "Contra o computador", op => figuraDupla(op, true)], [2, "2 jogadores", op => figuraDupla(op, false)]] },
+        { chave: "tempo", titulo: "Quanto tempo dura a partida?", quando: op => op.modo === "partida",
+          valores: [["1", "1 minuto (rapidinho)"], ["2", "2 minutos"], ["2,5", "2,5 minutos"], ["3", "3 minutos"], ["5", "5 minutos"], ["7", "7 minutos"], ["10", "10 minutos"]] },
         { chave: "nivel", titulo: "Nível do computador", quando: op => op.jogadores !== 2, valores: [["facil", "😊 Fácil"], ["medio", "🧠 Médio"], ["dificil", "🦉 Difícil"]] },
         { chave: "cor1", titulo: op => (op.jogadores === 2 ? "Camisa do jogador 1" : "A camisa do seu time"), valores: () => camisas(1) },
         { chave: "nome1", tipo: "texto", titulo: op => (op.jogadores === 2 ? "Nome do time do jogador 1" : "Nome do seu time"), dica: op => nomeTime(op.cor1), sugestoes: SUGESTOES_TIME },
@@ -805,7 +808,18 @@
     let escolha = null, travado = false, mergulho = { d: 0, t: -9, x: 0, alto: 0 }, corrida = 0, voo = null, resultado = null;
     let bola = null, msg = null, rede = { x: 0, y: 1, t: 9, a: 0 }, animo = 0.15, confete = [], cpu = null, tChute = 9;
     const jaFalou = { bater: false, goleiro: false };
-    let bChutar = null, bGoleiro = [];
+    let bChutar = null, bTipo = null, bGoleiro = [];
+    // Tipos de chute: forte (bomba), colocado (no ângulo, com curva, mais preciso e mais lento)
+    // e cavadinha (lenta e por cima: entra se o goleiro pular para um lado, mas quem fica no meio pega)
+    const TIPOS = [{ id: "forte", rot: "💣 Forte" }, { id: "colocado", rot: "🎯 No ângulo" }, { id: "cavadinha", rot: "🥄 Cavadinha" }];
+    const tipoTime = [0, 0];
+    const tipoAtual = () => TIPOS[humano(batedor) ? tipoTime[batedor] : cpu ? cpu.tipo : 0];
+    function trocarTipo() {
+      tipoTime[batedor] = (tipoTime[batedor] + 1) % TIPOS.length;
+      Motor.nota(520 + tipoTime[batedor] * 140, { dur: 0.07, tipo: "triangle", vol: 0.12 });
+      Motor.falar(TIPOS[tipoTime[batedor]].rot.slice(3), { naFila: false });
+      if (bTipo) bTipo.textContent = tipoAtual().rot;
+    }
     // Visual: fundo parado (arquibancada, placas, gramado) e cobertura desenhados uma vez fora da tela;
     // torcida em tiras por fila (parada / braços para cima) que pulam em grupinhos.
     let fundoP = null, tetoP = null, tiras = [], rastro = [];
@@ -882,7 +896,11 @@
       const gx = lado * (n === "facil" ? rnd(0.12, 0.85) : n === "medio" ? rnd(0.35, 0.93) : rnd(0.55, 0.97));
       const gy = n === "facil" ? rnd(0.1, 0.75) : rnd(0.12, 0.88);
       const forca = n === "facil" ? rnd(0.25, 0.96) : n === "medio" ? rnd(0.35, 0.9) : rnd(0.45, 0.87);
-      return { gx, gy, forca, espera: rnd(1.7, 2.6) + (J.fx === "5-6" ? 0.8 : 0) };
+      const r = Math.random(), tipo = n === "dificil" ? (r < 0.25 ? 1 : r < 0.35 ? 2 : 0) : n === "medio" ? (r < 0.15 ? 1 : r < 0.2 ? 2 : 0) : 0;
+      const p = { gx, gy, forca, tipo, espera: rnd(1.7, 2.6) + (J.fx === "5-6" ? 0.8 : 0) };
+      if (tipo === 1) { p.gx = lado * rnd(0.72, 0.9); p.gy = rnd(0.6, 0.85); p.forca = rnd(0.4, 0.8); }
+      if (tipo === 2) { p.gx = rnd(-0.2, 0.2); p.gy = rnd(0.5, 0.8); p.forca = rnd(0.35, 0.65); }
+      return p;
     }
     function atualizarInfo() {
       const tm = batedor;
@@ -917,9 +935,10 @@
       fase = "corrida"; corrida = 0; tFase = 0;
     }
 
-    function salva(d, gx, gy, F) {
+    function salva(d, gx, gy, F, angulo) {
       const cpuGk = !humano(goleiroTime());
       let ax = cpuGk ? N.alcance[0] : 0.9, ay = cpuGk ? N.alcance[1] : 0.9;
+      if (angulo && Math.abs(gx) > 0.68 && gy > 0.55) { ax -= 0.12; ay -= 0.1; } // colocado no ângulo: difícil de alcançar
       if (cpuGk && J.fx === "5-6") ax -= 0.06;
       const bonus = F < 0.3 ? 0.22 : F < 0.45 ? 0.08 : 0;
       if (d === 0) return Math.abs(gx) < 0.3 + bonus && gy < 0.8 + bonus;
@@ -928,10 +947,18 @@
 
     function chutar() {
       travado = true;
-      const F = forcaFinal;
-      let gx = alvo.gx + rnd(-0.04, 0.04), gy = alvo.gy + rnd(-0.04, 0.04);
-      if (F > 0.86) gy += (F - 0.86) * 4.5;
-      if (F < 0.2) gy = Math.min(gy, 0.25);
+      const F = forcaFinal, tipo = tipoAtual().id;
+      const erro = tipo === "colocado" ? 0.02 : 0.04;
+      let gx = alvo.gx + rnd(-erro, erro), gy = alvo.gy + rnd(-erro, erro);
+      if (tipo === "cavadinha") {
+        // cavadinha: a bola vai devagar e por cima; com força demais passa por cima do travessão
+        gy = clamp(gy, 0.35, 0.95);
+        if (F > 0.8) gy += (F - 0.8) * 2.5;
+        if (F < 0.15) gy = 0.3;
+      } else {
+        if (F > 0.86) gy += (F - 0.86) * (tipo === "colocado" ? 2.5 : 4.5);
+        if (F < 0.2) gy = Math.min(gy, 0.25);
+      }
       gy = Math.max(0.05, gy);
       const lado = Math.abs(gx) < 0.28 ? 0 : Math.sign(gx);
       if (!humano(goleiroTime())) {
@@ -941,13 +968,16 @@
       const ag = Math.abs(gx);
       if (ag > 1.04 || gy > 1.04) resultado = "fora";
       else if (ag > 0.955 || gy > 0.96) resultado = "trave";
-      else resultado = salva(escolha, gx, gy, F) ? "defesa" : "gol";
+      else if (tipo === "cavadinha") resultado = escolha === lado || (escolha === 0 && ag < 0.5) || F < 0.15 ? "defesa" : "gol";
+      else resultado = salva(escolha, gx, gy, tipo === "colocado" ? Math.min(F, 0.6) : F, tipo === "colocado") ? "defesa" : "gol";
       mergulho = {
         d: escolha, t: -0.12,
         x: resultado === "defesa" && escolha !== 0 ? clamp(gx * PX - escolha * 0.95, -2.9, 2.9) : escolha * 2.3,
         alto: resultado === "defesa" ? clamp((gy * PY - 1.0) * 0.5, 0, 0.75) : 0.2,
       };
-      voo = { t: 0, dur: 1.0 - 0.5 * F, X1: gx * PX, Y1: gy * PY, gx, gy, efeito: (-gx * 0.9 + rnd(-0.3, 0.3)) * (F > 0.3 ? 1 : 0.4) };
+      voo = { t: 0, dur: 1.0 - 0.5 * F, X1: gx * PX, Y1: gy * PY, gx, gy, tipo, efeito: (-gx * 0.9 + rnd(-0.3, 0.3)) * (F > 0.3 ? 1 : 0.4), arco: 0.4 * Math.min(1, gy * PY) };
+      if (tipo === "colocado") { voo.dur = 1.15 - 0.35 * F; voo.efeito = -gx * 1.5; voo.arco = 0.6 * Math.min(1, gy * PY); }
+      if (tipo === "cavadinha") { voo.dur = 1.45; voo.efeito = rnd(-0.1, 0.1); voo.arco = 1.5 + 0.6 * F; }
       fase = "voo"; tFase = 0; tChute = 0;
       Motor.nota(140, { dur: 0.12, tipo: "triangle", vol: 0.45, ate: 60 });
       Motor.ruido({ dur: 0.07, vol: 0.18, freq: 2600 });
@@ -956,7 +986,7 @@
     function chegou() {
       const v = voo, dur = v.dur;
       bola.vX = (v.X1 - v.efeito * Math.PI) / dur;
-      bola.vY = (v.Y1 - RB) / dur - 0.4 * Math.PI / dur * Math.min(1, v.Y1);
+      bola.vY = (v.Y1 - RB) / dur - v.arco * Math.PI / dur;
       bola.vZ = 11 / dur;
       bola.fisica = true;
       const nome = J.nomeTime(batedor);
@@ -968,7 +998,9 @@
         soltarConfete(confete, cx, gy0 - GW / 3 * 0.6, [J.times[batedor].c, "#ffd43b", "#fff", "#69db7c", "#74c0fc"], 90);
         Motor.ruido({ dur: 2.2, vol: 0.22, filtro: "bandpass", freq: 800 });
         Motor.tim();
-        Motor.falar(J.humanos === 1 ? (batedor === 0 ? "Goool! Que golaço!" : "Gol do computador!") : `Goool do ${nome}!`);
+        const jeito = v.tipo === "cavadinha" ? " De cavadinha!" : v.tipo === "colocado" && Math.abs(v.gx) > 0.68 && v.gy > 0.55 ? " No ângulo!" : "";
+        if (jeito) msg.txt = v.tipo === "cavadinha" ? "CAVADINHA!" : "NO ÂNGULO!";
+        Motor.falar((J.humanos === 1 ? (batedor === 0 ? "Goool! Que golaço!" : "Gol do computador!") : `Goool do ${nome}!`) + jeito);
       } else {
         gols[batedor].push(false);
         if (resultado === "defesa") {
@@ -977,7 +1009,7 @@
           msg = { txt: "DEFENDEU!", cor: "#74c0fc", t: 0 };
           animo = 0.7;
           Motor.ruido({ dur: 0.25, vol: 0.25, freq: 600 });
-          Motor.falar(J.humanos === 1 ? (batedor === 1 ? "Defendeu! Que goleiro!" : "Defendeu!") : `Defendeu o goleiro do ${J.nomeTime(goleiroTime())}!`);
+          Motor.falar(v.tipo === "cavadinha" ? "O goleiro não caiu na cavadinha e pegou!" : J.humanos === 1 ? (batedor === 1 ? "Defendeu! Que goleiro!" : "Defendeu!") : `Defendeu o goleiro do ${J.nomeTime(goleiroTime())}!`);
         } else if (resultado === "trave") {
           const travessao = v.gy > 0.96 && Math.abs(v.gx) <= 0.955;
           bola.vX = travessao ? rnd(-1.5, 1.5) : -Math.sign(v.gx) * rnd(2, 3.5);
@@ -1049,7 +1081,7 @@
         voo.t += dt;
         const p = Math.min(1, voo.t / voo.dur);
         bola.X = voo.X1 * p + voo.efeito * Math.sin(Math.PI * p);
-        bola.Y = RB + (voo.Y1 - RB) * p + Math.sin(Math.PI * p) * 0.4 * Math.min(1, voo.Y1);
+        bola.Y = RB + (voo.Y1 - RB) * p + Math.sin(Math.PI * p) * voo.arco;
         bola.Z = ZSPOT + (18 - ZSPOT) * p;
         bola.giro += dt * 18;
         if (resultado === "defesa" && bola.Z >= ZG - 0.1) { bola.Z = ZG - 0.1; chegou(); }
@@ -1083,7 +1115,7 @@
 
     // ---------- Ações ----------
     function acao(h, tipo) {
-      if (fase === "mirar" && batedor === h && humano(h)) { iniciarCorrida(); return; }
+      if (fase === "mirar" && batedor === h && humano(h)) { if (tipo === "passe") trocarTipo(); else iniciarCorrida(); return; }
       if (goleiroTime() === h && podeEscolher() && tipo === "chute") escolher(0);
     }
     function direcaoApertada(h, [dx, dy]) {
@@ -1117,11 +1149,14 @@
     function montarToque() {
       J.camada.innerHTML = "";
       bGoleiro = [];
-      bChutar = null;
+      bChutar = bTipo = null;
       if (!J.toque) return;
       bChutar = J.criarBotao("⚽ Chutar!", "Chutar", () => { if (fase === "mirar" && humano(batedor)) iniciarCorrida(); }, "chute largo");
       Object.assign(bChutar.style, { right: "12px", bottom: "12px", height: "72px" });
       J.camada.appendChild(bChutar);
+      bTipo = J.criarBotao(tipoAtual().rot, "Trocar o tipo de chute", () => { if (fase === "mirar" && humano(batedor)) trocarTipo(); });
+      Object.assign(bTipo.style, { right: "12px", bottom: "94px", height: "54px", fontSize: "17px", padding: "0 14px" });
+      J.camada.appendChild(bTipo);
       [[-1, "⬅️", "Pular para a esquerda", 160], [0, "🧍", "Ficar no meio", 86], [1, "➡️", "Pular para a direita", 12]].forEach(([d, rot, aria, dir]) => {
         const b = J.criarBotao(rot, aria, () => { if (podeEscolher()) escolher(d); });
         Object.assign(b.style, { right: dir + "px", bottom: "12px", width: "66px", height: "66px" });
@@ -1132,6 +1167,7 @@
     }
     function atualizarBotoes() {
       if (bChutar) bChutar.hidden = !(fase === "mirar" && humano(batedor));
+      if (bTipo) { bTipo.hidden = bChutar.hidden; if (!bTipo.hidden && bTipo.textContent !== tipoAtual().rot) bTipo.textContent = tipoAtual().rot; }
       const mostrar = podeEscolher();
       bGoleiro.forEach(b => {
         b.hidden = !mostrar;
@@ -1506,6 +1542,7 @@
       c.font = `bold 14px ${FONTE}`; c.textAlign = "center"; c.textBaseline = "bottom"; c.fillStyle = "#fff";
       c.fillText("💪", x + bw / 2, y - 7);
       c.restore();
+      pilula(c, tipoAtual().rot, x + bw / 2, Math.min(H - 60, y + bh + 26), 14);
     }
     function desenharEscolhaGoleiro() {
       const gk = goleiroTime();
@@ -1569,9 +1606,9 @@
 
     function dica() {
       if (J.toque || fase === "voo" || fase === "depois" || fase === "fim") return "";
-      const teclasDe = h => (h === 0 ? { mira: "Setas", ok: "Enter" } : { mira: "W A S D", ok: "F" });
+      const teclasDe = h => (h === 0 ? { mira: "Setas", ok: "Enter", tipo: "Espaço" } : { mira: "W A S D", ok: "F", tipo: "G" });
       if (fase === "goleiro") { const k = teclasDe(goleiroTime()); return `🧤 ${k.mira === "Setas" ? "⬅️ ⬆️ ➡️" : "A  W  D"}: escolha o lado em segredo`; }
-      if ((fase === "mirar" || fase === "corrida") && humano(batedor)) { const k = teclasDe(batedor); return `🎯 ${k.mira}: mirar · ${k.ok} ou Ⓐ: chutar`; }
+      if ((fase === "mirar" || fase === "corrida") && humano(batedor)) { const k = teclasDe(batedor); return `🎯 ${k.mira}: mirar · ${k.tipo} ou Ⓧ: tipo de chute · ${k.ok} ou Ⓐ: chutar`; }
       if (podeEscolher()) { const k = teclasDe(goleiroTime()); return `🧤 ${k.mira === "Setas" ? "⬅️ ⬆️ ➡️" : "A  W  D"}: escolha o lado para pular`; }
       return "";
     }
@@ -1619,7 +1656,7 @@
     const c = J.ctx;
     const N = J.nivel;
     const L = 80, LG = 50, B1 = 18, B2 = 32, RJ = 1.9, RB = 0.85, VEL = 15;
-    const DUR = { "5-6": 120, "6-8": 150 }[J.fx] || 180;
+    const DUR = Math.round(parseFloat(String(J.op.tempo || "").replace(",", ".")) * 60) || { "5-6": 120, "6-8": 150 }[J.fx] || 180; // tempo escolhido nas opções
     const pequeno = J.fx === "5-6";
     const humanoT = tm => tm === 0 || J.humanos === 2;
     let W = 1, H = 1, empe = false, rb = 0;
@@ -1988,20 +2025,28 @@
       const m2 = Math.hypot(dx, dy) || 1;
       p.dx = dx / m2 * VEL * f * 0.9; p.dy = dy / m2 * VEL * f * 0.9;
     }
+    // Reposição do goleiro (igual para os dois times): chutão pelo alto para o lado do campo
+    // onde está o companheiro mais livre, sempre passando do meio-campo do próprio time.
+    function reposicao(p) {
+      const sentido = p.t === 0 ? 1 : -1, golX = p.t === 0 ? 0 : L;
+      const comps = jogs.filter(q => q.t === p.t && q.papel !== "gk");
+      const livre = q => Math.min(...jogs.filter(o => o.t !== p.t).map(o => dist(o, q)));
+      const nota = q => livre(q) + Math.abs(q.x - golX) * 0.25;
+      const alvo = comps.sort((a, b) => nota(b) - nota(a))[0];
+      const ax = golX + sentido * clamp(Math.abs(alvo.x - golX) + 6, 34, 52);
+      const ay = clamp(alvo.y + rnd(-3, 3), 8, LG - 8);
+      const d = Math.hypot(ax - bola.x, ay - bola.y);
+      chutarBola(p, ax - bola.x, ay - bola.y, clamp(d * 1.0 + 12, 48, 58));
+      bola.vz = 26; bola.ignora = null; bola.voo = 0.45; // sobe bem (passa por cima de quem está perto)
+      if (humanoT(p.t)) { ativo[p.t] = alvo; trocaManual[p.t] = 1.2; }
+    }
     function goleiroIA(p, dt) {
       const linha = p.t === 0 ? 2.4 : L - 2.4, sentido = p.t === 0 ? 1 : -1, golX = p.t === 0 ? 0 : L;
       const f = fatorVel(p);
       if (bola.dono === p) {
         p.dx = p.dy = 0;
         p.segura += dt;
-        if (p.segura > 0.9) {
-          // repõe a bola para o companheiro mais livre
-          const comps = jogs.filter(q => q.t === p.t && q.papel !== "gk");
-          const livre = q => Math.min(...jogs.filter(o => o.t !== p.t).map(o => dist(o, q)));
-          const alvo = comps.sort((a, b) => livre(b) - livre(a))[0];
-          p.segura = 0;
-          passar(p, alvo);
-        }
+        if (p.segura > 1.1) { p.segura = 0; reposicao(p); }
         return;
       }
       p.segura = 0;
@@ -2109,9 +2154,11 @@
         }
         return;
       }
+      if (bola.voo > 0) { bola.voo -= dt; return; } // chutão do goleiro ainda subindo
       let melhor = null, md = Infinity;
       jogs.forEach(q => {
         if (q.atord > 0 || (bola.semToque === q && bola.tSem > 0) || bola.ignora === q) return;
+        if (bola.z > (q.papel === "gk" ? 4 : 2.4)) return; // bola alta passa por cima
         const d = dist(q, bola), alc = RJ + RB + (q.papel === "gk" ? 0.9 : 0.25);
         if (d < alc && d < md) { md = d; melhor = q; }
       });
@@ -2150,7 +2197,7 @@
       msg = { txt: "FIM DE JOGO!", cor: "#fff", t: 0, dur: 9 };
       apito(3);
       jogs.forEach(p => { p.dx = p.dy = 0; });
-      Motor.depois(() => { if (!J.acabou) J.fim(placar, `Partida de ${Math.round(DUR / 60 * 10) / 10} minutos`.replace(".", ",")); }, 1700);
+      Motor.depois(() => { if (!J.acabou) J.fim(placar, `Partida de ${Math.round(DUR / 60 * 10) / 10} minuto${DUR > 60 ? "s" : ""}`.replace(".", ",")); }, 1700);
     }
 
     function escolherAtivos(dt) {
@@ -2415,7 +2462,7 @@
       estado: () => ({ modo: "partida", fase, placar: [...placar], tempo, rot: false, s: kRef, zoom: true, cam: [camX, camY],
         bola: { x: bola.x, y: bola.y, vx: bola.vx, vy: bola.vy, dono: bola.dono ? jogs.indexOf(bola.dono) : -1 },
         jogs: jogs.map(p => ({ t: p.t, papel: p.papel, x: p.x, y: p.y })), ativo: ativo.map(p => (p ? jogs.indexOf(p) : -1)) }),
-      teste: { setTempo: v => { tempo = v; }, golDireto: tm => gol(tm) },
+      teste: { setTempo: v => { tempo = v; }, golDireto: tm => gol(tm), bolaNoGoleiro: tm => { const g = jogs.find(p => p.t === tm && p.papel === "gk"); bola.dono = g; g.segura = 0; } },
     };
   }
 })();
